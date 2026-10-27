@@ -46,6 +46,11 @@ typography:
     fontWeight: 600
     lineHeight: 1.2
     letterSpacing: "-0.01em"
+  title:
+    fontFamily: "'Libre Franklin', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 600
+    lineHeight: 1.2
   body:
     fontFamily: "'Libre Franklin', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
     fontSize: "0.9375rem"
@@ -260,8 +265,9 @@ Cada tintura tiene tres tokens con funciones distintas:
 Se cargan desde Google Fonts solo los pesos 400, 500 y 600, con `display=swap` para que el HTML prerenderizado por SSR muestre el texto al instante con la fuente de sistema. `b` y `strong` están mapeados a 600 para que el navegador no sintetice un 700 que no existe.
 
 ### Hierarchy
-- **Display** (600, 2,5rem, 1,1, -0,02em): el nombre del sistema en el panel de marca de acceso, con `max-width: 12ch`. En celular baja a 1,125rem. No se usa dentro del sistema.
+- **Display** (600, 2,5rem, 1,1, -0,02em): el nombre del sistema en el panel de marca de acceso, con `max-width: 12ch`. En celular baja a 1rem. No se usa dentro del sistema.
 - **Headline** (600, 1,625rem, 1,2, -0,01em): el `h1` de cada página (títulos de acceso y el título de módulo de `app-page-title`). `h2` y `h3` comparten peso, interlineado y tracking.
+- **Title** (600, 1,25rem, 1,2): el `h2` de los diálogos de confirmación (`.dialogo`).
 - **Body** (400, 0,9375rem / 15px, 1,5): texto general de la interfaz. Botones a 500; botón principal, nombre del usuario e ítem activo del menú a 600.
 - **Body input** (400, 1rem / 16px): el texto dentro de los inputs; 16px evita el zoom automático de iOS.
 - **Label** (600, 0,875rem): etiquetas de formulario; también el tamaño de avisos y enlaces secundarios de acceso (a 400).
@@ -467,9 +473,36 @@ magick /tmp/escudo.png -background none -gravity center \( -clone 0 -resize 15x1
   \( -clone 0 -resize 30x30 -extent 32x32 \) -delete 0 public/favicon.ico
 ```
 
+### Registros inactivos
+- **`.registro-inactivo`**: la fila o tarjeta de un registro inactivo (usuario, rol…) pasa a texto `neutro-500`, siempre igual en todos los módulos. El estado se dice además con un badge de texto (`Inactivo`), nunca solo con el color.
+
+### Diálogos de confirmación
+- **`.dialogo`** sobre un `<dialog>` nativo abierto con `showModal()`: atrapa el foco, Esc cierra y el navegador devuelve el foco al botón que lo abrió. El contenido queda siempre en el DOM y el diálogo se abre con `afterNextRender`, para que el foco y el lector de pantalla encuentren ya el texto del registro. El botón de cancelar lleva `autofocus`; la acción va en `.btn-primary`. Acciones en `.dialogo-acciones`. Solo para acciones que cambian el estado de un registro (activar o desactivar), no para tareas que caben en la página.
+
+```html
+<dialog #dialogo class="dialogo" aria-labelledby="dialogo-titulo" aria-describedby="dialogo-texto">
+  <h2 id="dialogo-titulo">Desactivar a Maria Perez</h2>
+  <p id="dialogo-texto">No podrá iniciar sesión hasta que su cuenta se vuelva a activar.</p>
+  <div class="dialogo-acciones">
+    <button type="button" class="btn" autofocus>Cancelar</button>
+    <button type="button" class="btn btn-primary">Desactivar</button>
+  </div>
+</dialog>
+```
+
+### Listados (patrón de Gestión de Usuarios)
+- Encabezado con `app-page-title` y la acción principal (`.btn-primary`), visible solo con su permiso (`*appHasPermission="'usuarios.crear'"`).
+- Un contenedor `role="status"` fijo para el resultado de las acciones; un 429 se muestra como `.alert-advertencia` con un texto que pide esperar.
+- Filtros en un `form role="search"` con labels visibles; la búsqueda espera 350 ms (debounce).
+- Escritorio: `.table` con `caption` para lectores de pantalla, cifras con `.dato` y acciones de fila como `.btn-icono .btn-sin-borde` con `aria-label` que nombra el registro ("Editar a Maria Perez") y `title`. Celular (≤ 768 px): tarjetas apiladas con las acciones en texto visible, en lugar de scroll horizontal.
+- Carga: `.esqueleto` (barras quietas en `neutro-100`, sin animación) y un "Cargando…" solo para lectores de pantalla. Vacío: `.card.estado-vacio` con el mensaje y "Limpiar filtros" si hay filtros activos.
+- Paginación: `nav.paginacion` con "x–y de total" en `.dato` y `.paginacion-botones` (Anterior/Siguiente; en celular ocupan todo el ancho).
+- Fechas y horas siempre en hora de Lima (`ZONA_HORARIA_LIMA`, en `shared/utils/zona-horaria.ts`).
+- Las acciones de fila y la acción principal se ocultan con `*appHasPermission`. Es solo presentación: el backend valida cada permiso.
+
 ### Iconografía
 - **Fuente:** Material Symbols Outlined, trazo 300, tamaño óptico 20, sin relleno, a 20 px (`--icono-md`). Se carga desde Google Fonts con un subconjunto recortado por el parámetro `icon_names` en `src/index.html`.
-- **Lista espejo:** `src/app/shared/utils/iconos-disponibles.ts` (`ICONOS_DISPONIBLES`) repite exactamente esa lista. Las dos listas deben ser idénticas y estar en orden alfabético. Hoy: `admin_panel_settings`, `bar_chart`, `campaign`, `check_circle`, `dashboard`, `error`, `event`, `group`, `logout`, `menu`, `military_tech`, `people`, `school`, `visibility`, `visibility_off`, `workspace_premium`.
+- **Lista espejo:** `src/app/shared/utils/iconos-disponibles.ts` (`ICONOS_DISPONIBLES`) repite exactamente esa lista. Las dos listas deben ser idénticas y estar en orden alfabético. Hoy: `add`, `admin_panel_settings`, `bar_chart`, `campaign`, `check_circle`, `chevron_left`, `chevron_right`, `dashboard`, `edit`, `error`, `event`, `forward_to_inbox`, `group`, `how_to_reg`, `lock_open`, `logout`, `menu`, `military_tech`, `people`, `person_off`, `school`, `visibility`, `visibility_off`, `workspace_premium`.
 - **Íconos de módulo:** cada módulo trae en el backend el nombre de un ícono de Material. Si se agrega un módulo con un ícono nuevo, hay que sumarlo a **las dos** listas (en orden alfabético). El sidebar descarta los nombres que no están en `ICONOS_DISPONIBLES` y deja solo la etiqueta, para que nunca se dibuje el nombre del ícono como texto.
 - **Dónde:** solo en el menú, acciones, controles y estados. Siempre con texto visible al lado o, en botones de solo ícono, con `aria-label`; el `span` del ícono lleva `aria-hidden="true"`.
 

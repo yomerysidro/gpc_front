@@ -21,6 +21,14 @@ Base Angular 18 standalone con SSR e hidratación. AppComponent solo contiene
 - core/interceptors/auth.interceptor.ts: autorización explícita por solicitud y
   manejo del 401.
 - core/interfaces/autenticacion/auth.interface.ts: contratos de AuthController de gpc_back.
+- core/interfaces/api/api-response.interface.ts: ApiResponse<T>, PaginatedResponse<T> (data/meta),
+  ValidationErrorResponse y ErrorApi (error normalizado que emiten los servicios). Reutilizables por
+  cualquier módulo; por eso no viven en la carpeta de usuarios.
+- core/interfaces/usuarios/usuario.interface.ts: Usuario, UsuarioPayload, UsuarioActualizarPayload,
+  UsuarioFiltros. core/interfaces/roles/rol.interface.ts: Rol mínimo (se amplía en la Fase 3).
+- core/services/usuarios/usuarios.service.ts y core/services/roles/roles.service.ts: todas sus
+  llamadas llevan AUTHENTICATED_REQUEST; los errores salen como ErrorApi (422 por campo; 404, 409 y
+  429 con el message del backend).
 - core/interfaces/navigation/navigation-item.interface.ts: contrato de entradas del menú.
 - core/interfaces/certificado/certificado.interface.ts: CertificadoRow inicial,
   según los campos proporcionados; pendiente de validar contra Laravel.
@@ -30,12 +38,19 @@ Base Angular 18 standalone con SSR e hidratación. AppComponent solo contiene
 - models: reservado para modelos con comportamiento real; README explica su criterio.
 - pages/autenticacion: login, recuperar-password, restablecer-password (ruta
   /reset-password) y acceso-denegado.
+- pages/seguridad/usuarios/listar-usuarios y formulario-usuario: Gestión de Usuarios (Fase 2).
+  Rutas /usuarios (usuarios.ver), /usuarios/nuevo (usuarios.crear) y /usuarios/:id/editar
+  (usuarios.editar), con permissionGuard en cada nivel. Los datos se cargan con afterNextRender:
+  en el SSR no hay sesión.
 - pages/home: HomeComponent, ruta /inicio (destino si el usuario no tiene módulos).
 - pages/en-construccion: destino provisional de /usuarios, /roles y de los
   módulos del menú cuyas pantallas aún no existen.
 - pages/certificados/listar-certificados: ListarCertificadosComponent base, sin API ni CRUD.
 - shared/components/page-title: título reutilizable mediante input obligatorio.
-- shared/directives, shared/pipes y shared/utils: sin implementaciones hasta tener
+- shared/directives/has-permission.directive.ts: `*appHasPermission="'clave'"` muestra el
+  elemento solo si la sesión tiene el permiso (AuthService.tienePermiso). Solo presentación.
+- shared/utils: iconos-disponibles.ts (espejo de icon_names), error-api.ts (aErrorApi) y
+  zona-horaria.ts (ZONA_HORARIA_LIMA). shared/pipes sigue sin implementaciones hasta tener
   consumidores reales.
 - src/assets: recursos reales de la aplicación, publicados bajo /assets/.
 
@@ -82,7 +97,8 @@ línea vacía, porque el builder la interpreta como la ruta `/`.
 | `/login`, `/recuperar-password` | guestGuard | Con sesión redirigen al primer módulo |
 | `/reset-password` | — | Enlace del correo: `?token=…&email=…` |
 | `/acceso-denegado` | — | |
-| `/inicio`, `/usuarios`, `/roles`, `**` | authGuard (private-layout) | usuarios.ver y roles.ver con permissionGuard |
+| `/inicio`, `/roles`, `**` | authGuard (private-layout) | roles.ver con permissionGuard |
+| `/usuarios`, `/usuarios/nuevo`, `/usuarios/:id/editar` | authGuard + permissionGuard | usuarios.ver, usuarios.crear y usuarios.editar |
 
 ## Dependencias y estilos
 

@@ -5,9 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ResultadoLogin } from '../../../core/interfaces/autenticacion/auth.interface';
 import { AuthLayoutComponent } from '../../../components/layouts/auth-layout/auth-layout.component';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
-
-/** Perú no tiene horario de verano: Lima es siempre UTC-5. */
-export const ZONA_HORARIA_LIMA = '-0500';
+import { ZONA_HORARIA_LIMA } from '../../../shared/utils/zona-horaria';
 
 @Component({
   selector: 'app-login',

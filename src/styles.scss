@@ -417,6 +417,97 @@ a {
   color: var(--tintura-sol-texto);
 }
 
+/* Registros inactivos (usuarios, roles…): siempre atenuados igual; el estado va además en un badge con texto */
+.registro-inactivo {
+  color: var(--neutro-500);
+}
+
+/* Diálogo de confirmación: <dialog> nativo abierto con showModal() (foco atrapado, Esc cierra) */
+.dialogo {
+  width: min(28rem, calc(100vw - 2 * var(--espacio-4)));
+  padding: var(--espacio-5);
+  border: 1px solid var(--neutro-200);
+  border-radius: var(--radio-lg);
+  background: var(--neutro-0);
+  color: var(--neutro-900);
+  box-shadow: var(--sombra-lg);
+
+  &::backdrop {
+    background: var(--color-velo);
+  }
+
+  h2 {
+    margin-bottom: var(--espacio-2);
+    font-size: 1.25rem;
+  }
+
+  p {
+    margin: 0 0 var(--espacio-5);
+    color: var(--neutro-700);
+  }
+}
+
+.dialogo-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--espacio-3);
+}
+
+/* Listados: estado vacío, carga y paginación (ver DESIGN.md, "Listados") */
+.estado-vacio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  background: var(--neutro-50);
+
+  p {
+    margin: 0;
+    color: var(--neutro-700);
+  }
+}
+
+/* Carga: barras quietas en neutro, sin animación decorativa; el texto va en role="status" */
+.esqueleto {
+  display: grid;
+  gap: var(--espacio-2);
+
+  > span {
+    height: 3rem;
+    border-radius: var(--radio-sm);
+    background: var(--neutro-100);
+  }
+}
+
+.paginacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  padding-top: var(--espacio-4);
+
+  p {
+    margin: 0;
+    color: var(--neutro-500);
+  }
+}
+
+.paginacion-botones {
+  display: flex;
+  gap: var(--espacio-2);
+
+  @media (max-width: 768px) {
+    flex: 1;
+
+    .btn {
+      flex: 1;
+    }
+  }
+}
+
 /* Franja de tinturas: identidad del escudo en el panel de marca */
 .franja-tinturas {
   display: grid;

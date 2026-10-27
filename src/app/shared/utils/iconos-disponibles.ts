@@ -4,7 +4,8 @@
  * en la fuente se dibujaría como texto literal.
  */
 export const ICONOS_DISPONIBLES: ReadonlySet<string> = new Set([
-  'admin_panel_settings', 'bar_chart', 'campaign', 'check_circle', 'dashboard', 'error',
-  'event', 'group', 'logout', 'menu', 'military_tech', 'people', 'school', 'visibility',
-  'visibility_off', 'workspace_premium',
+  'add', 'admin_panel_settings', 'bar_chart', 'campaign', 'check_circle', 'chevron_left',
+  'chevron_right', 'dashboard', 'edit', 'error', 'event', 'forward_to_inbox',
+  'group', 'how_to_reg', 'lock_open', 'logout', 'menu', 'military_tech',
+  'people', 'person_off', 'school', 'visibility', 'visibility_off', 'workspace_premium',
 ]);

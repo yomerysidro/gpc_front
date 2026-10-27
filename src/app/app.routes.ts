@@ -10,6 +10,8 @@ import { RestablecerPasswordComponent } from './pages/autenticacion/restablecer-
 import { AccesoDenegadoComponent } from './pages/autenticacion/acceso-denegado/acceso-denegado.component';
 import { HomeComponent } from './pages/home/home.component';
 import { EnConstruccionComponent } from './pages/en-construccion/en-construccion.component';
+import { ListarUsuariosComponent } from './pages/seguridad/usuarios/listar-usuarios/listar-usuarios.component';
+import { FormularioUsuarioComponent } from './pages/seguridad/usuarios/formulario-usuario/formulario-usuario.component';
 
 export const routes: Routes = [
   // Sin componente: en el navegador inicioGuard redirige al primer módulo o a /login.
@@ -29,9 +31,23 @@ export const routes: Routes = [
       { path: 'inicio', component: HomeComponent },
       {
         path: 'usuarios',
-        component: EnConstruccionComponent,
         canActivate: [permissionGuard],
-        data: { permiso: 'usuarios.ver', titulo: 'Gestión de Usuarios' },
+        data: { permiso: 'usuarios.ver' },
+        children: [
+          { path: '', component: ListarUsuariosComponent },
+          {
+            path: 'nuevo',
+            component: FormularioUsuarioComponent,
+            canActivate: [permissionGuard],
+            data: { permiso: 'usuarios.crear' },
+          },
+          {
+            path: ':id/editar',
+            component: FormularioUsuarioComponent,
+            canActivate: [permissionGuard],
+            data: { permiso: 'usuarios.editar' },
+          },
+        ],
       },
       {
         path: 'roles',
