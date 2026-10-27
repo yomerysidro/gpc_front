@@ -1,0 +1,13 @@
+:host { display: block; }
+.encabezado, .acciones, .paginacion, .filtros { display: flex; align-items: center; flex-wrap: wrap; gap: var(--espacio-3); }
+.encabezado { justify-content: space-between; margin-bottom: var(--espacio-4); }
+.acciones, .filtros, .paginacion { margin-block: var(--espacio-4); }
+.tabla { overflow-x: auto; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: var(--espacio-4); }
+.form-field { min-width: 0; }
+.detalle { margin-block: var(--espacio-5); }
+dt { color: var(--neutro-500); font-size: .875rem; }
+dd { margin: 0 0 var(--espacio-3); overflow-wrap: anywhere; }
+.nota { color: var(--neutro-700); font-size: .875rem; }
+.table td { overflow-wrap: anywhere; }
+.errores { color: var(--color-error); }

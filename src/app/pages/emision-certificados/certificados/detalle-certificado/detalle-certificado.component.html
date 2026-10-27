@@ -1,0 +1,18 @@
+<app-page-title title="Detalle de certificado" />
+<a class="btn" routerLink="/certificaciones/certificados">Volver a Certificados</a>
+@if (cargando()) { <p role="status">Cargando certificado…</p> }
+@if (error(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
+@if (certificado(); as registro) {
+  <section class="card detalle">
+    <h2>Certificado #{{ registro.id_certificado }}</h2>
+    <dl>
+      @for (campo of campos; track campo.nombre) {
+        <dt>{{ campo.titulo }}</dt><dd>{{ mostrar(registro[campo.nombre]) }}</dd>
+      }
+    </dl>
+    <div class="acciones">
+      <a class="btn" *appHasPermission="'emision.editar'" [routerLink]="['/certificaciones/certificados', registro.id_certificado, 'editar']">Editar certificado</a>
+      <a class="btn" routerLink="/certificaciones/certificados/documentos" [queryParams]="{ id_certificado: registro.id_certificado }">Ver documentos</a>
+    </div>
+  </section>
+}

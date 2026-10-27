@@ -12,7 +12,7 @@ import { HeaderComponent } from './components/header/header.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { MainLayoutComponent } from './components/layouts/main-layout/main-layout.component';
 import { HomeComponent } from './pages/home/home.component';
-import { ListarCertificadosComponent } from './pages/certificados/listar-certificados/listar-certificados.component';
+import { ListarCertificadosComponent } from './pages/emision-certificados/certificados/listar-certificados/listar-certificados.component';
 import { PageTitleComponent } from './shared/components/page-title/page-title.component';
 import { authGuard } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
@@ -22,9 +22,15 @@ import { AuthService } from './core/services/autenticacion/auth.service';
 import { SessionAuthService } from './core/services/autenticacion/session-auth.service';
 import { SesionResponse } from './core/interfaces/autenticacion/auth.interface';
 import { AUTHENTICATED_REQUEST } from './core/security/auth-request.context';
+import { EmisionCertificadosService } from './core/services/emision-certificados/emision-certificados.service';
 
 describe('Componentes de la estructura base', () => {
-  beforeEach(() => TestBed.configureTestingModule({ providers: [provideRouter([])] }));
+  beforeEach(() => TestBed.configureTestingModule({ providers: [provideRouter([]),
+    { provide: AuthService, useValue: { tienePermiso: () => true } },
+    { provide: EmisionCertificadosService, useValue: {
+      listar: () => of({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }),
+    } },
+  ] }));
 
   for (const component of [HeaderComponent, SidebarComponent, MainLayoutComponent,
     HomeComponent, ListarCertificadosComponent]) {
