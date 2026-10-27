@@ -1,1 +1,269 @@
-/* You can add global styles to this file, and also import other style files */
+/* Estilos globales: tokens de diseño y clases base reutilizables. */
+
+:root {
+  --color-primario: #1f4e79;
+  --color-primario-oscuro: #173a5b;
+  --color-primario-claro: #e8eff6;
+  --color-error: #b3261e;
+  --color-error-claro: #fdecea;
+  --color-exito: #2e7d32;
+  --color-exito-claro: #e8f5e9;
+  --color-advertencia: #8a5a00;
+  --color-advertencia-claro: #fff4e0;
+
+  --gris-50: #f7f8fa;
+  --gris-100: #eef0f3;
+  --gris-200: #dde1e6;
+  --gris-400: #9aa3ad;
+  --gris-600: #5b6570;
+  --gris-800: #2c333a;
+  --blanco: #ffffff;
+
+  --radio-sm: 4px;
+  --radio-md: 6px;
+  --radio-lg: 10px;
+
+  --espacio-1: 0.25rem;
+  --espacio-2: 0.5rem;
+  --espacio-3: 0.75rem;
+  --espacio-4: 1rem;
+  --espacio-5: 1.5rem;
+  --espacio-6: 2rem;
+
+  --fuente-base: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --sombra-sm: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.08);
+  --foco: 0 0 0 3px rgb(31 78 121 / 0.25);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--fuente-base);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--gris-800);
+  background: var(--gris-50);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--espacio-4);
+  line-height: 1.25;
+  color: var(--gris-800);
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+
+a {
+  color: var(--color-primario);
+}
+
+.material-icons {
+  font-size: 1.25rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* Botones */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espacio-2);
+  min-height: 2.5rem;
+  padding: var(--espacio-2) var(--espacio-4);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-md);
+  background: var(--blanco);
+  color: var(--gris-800);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+
+  &:hover:not(:disabled) {
+    background: var(--gris-100);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--foco);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  border-color: var(--color-primario);
+  background: var(--color-primario);
+  color: var(--blanco);
+
+  &:hover:not(:disabled) {
+    background: var(--color-primario-oscuro);
+  }
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* Formularios */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+  margin-bottom: var(--espacio-4);
+
+  label {
+    font-weight: 500;
+    font-size: 0.875rem;
+  }
+}
+
+.input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: var(--espacio-2) var(--espacio-3);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-md);
+  background: var(--blanco);
+  color: var(--gris-800);
+  font: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primario);
+    box-shadow: var(--foco);
+  }
+
+  &.ng-invalid.ng-touched {
+    border-color: var(--color-error);
+  }
+}
+
+.error-text {
+  margin: 0;
+  color: var(--color-error);
+  font-size: 0.8125rem;
+}
+
+/* Avisos dentro de formularios o páginas */
+.alert {
+  margin-bottom: var(--espacio-4);
+  padding: var(--espacio-3) var(--espacio-4);
+  border-radius: var(--radio-md);
+  font-size: 0.875rem;
+}
+
+.alert-error {
+  background: var(--color-error-claro);
+  color: var(--color-error);
+}
+
+.alert-exito {
+  background: var(--color-exito-claro);
+  color: var(--color-exito);
+}
+
+/* Contenedores */
+.card {
+  padding: var(--espacio-5);
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio-lg);
+  background: var(--blanco);
+  box-shadow: var(--sombra-sm);
+}
+
+/* Tablas */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--blanco);
+
+  th,
+  td {
+    padding: var(--espacio-3) var(--espacio-4);
+    border-bottom: 1px solid var(--gris-200);
+    text-align: left;
+  }
+
+  th {
+    background: var(--gris-100);
+    color: var(--gris-600);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  tbody tr:hover {
+    background: var(--gris-50);
+  }
+}
+
+/* Etiquetas de estado */
+.badge {
+  display: inline-block;
+  padding: 0.125rem var(--espacio-2);
+  border-radius: 999px;
+  background: var(--gris-100);
+  color: var(--gris-600);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-exito {
+  background: var(--color-exito-claro);
+  color: var(--color-exito);
+}
+
+.badge-error {
+  background: var(--color-error-claro);
+  color: var(--color-error);
+}
+
+/* Páginas públicas centradas (login, recuperación, acceso denegado) */
+.auth-page {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--espacio-4);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+
+  h1 {
+    font-size: 1.25rem;
+  }
+}
+
+.auth-subtitulo {
+  margin: calc(var(--espacio-3) * -1) 0 var(--espacio-5);
+  color: var(--gris-600);
+  font-size: 0.875rem;
+}
+
+.auth-enlaces {
+  margin: var(--espacio-4) 0 0;
+  text-align: center;
+  font-size: 0.875rem;
+}

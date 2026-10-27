@@ -1,7 +1,12 @@
 <aside>
   <nav aria-label="Navegación principal">
     @for (item of items(); track item.path) {
-      <a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">{{ item.label }}</a>
+      <a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">
+        @if (item.icon) {
+          <span class="material-icons" aria-hidden="true">{{ item.icon }}</span>
+        }
+        <span>{{ item.label }}</span>
+      </a>
     }
   </nav>
 </aside>

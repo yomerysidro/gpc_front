@@ -1,0 +1,14 @@
+:host {
+  display: block;
+}
+
+.aviso {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  color: var(--gris-600);
+
+  p {
+    margin: 0;
+  }
+}

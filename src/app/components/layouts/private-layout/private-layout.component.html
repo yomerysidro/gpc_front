@@ -1,0 +1,18 @@
+<app-main-layout [navigation]="navegacion()">
+  <div layout-header class="barra">
+    <span class="sistema">Sistema de Certificados</span>
+    @if (auth.usuario(); as usuario) {
+      <div class="usuario">
+        <span class="material-icons" aria-hidden="true">account_circle</span>
+        <span class="datos">
+          <span class="nombre">{{ usuario.nombre }}</span>
+          <span class="rol">{{ usuario.rol }}</span>
+        </span>
+        <button type="button" class="btn salir" (click)="cerrarSesion()" [disabled]="saliendo()">
+          <span class="material-icons" aria-hidden="true">logout</span>
+          Cerrar sesión
+        </button>
+      </div>
+    }
+  </div>
+</app-main-layout>

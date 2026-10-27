@@ -1,0 +1,55 @@
+:host {
+  display: block;
+}
+
+.barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+  width: 100%;
+}
+
+.sistema {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.usuario {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+}
+
+.datos {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.nombre {
+  font-weight: 500;
+}
+
+.rol {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.salir {
+  min-height: 2.25rem;
+  border-color: rgb(255 255 255 / 0.4);
+  background: transparent;
+  color: var(--blanco);
+
+  &:hover:not(:disabled) {
+    background: rgb(255 255 255 / 0.12);
+  }
+}
+
+@media (max-width: 600px) {
+  .datos,
+  .sistema {
+    display: none;
+  }
+}
