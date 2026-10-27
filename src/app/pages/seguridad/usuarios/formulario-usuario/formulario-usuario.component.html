@@ -1,0 +1,112 @@
+<section class="formulario-usuario">
+  <app-page-title [title]="modoEdicion ? 'Editar usuario' : 'Nuevo usuario'" />
+
+  @if (cargando()) {
+    <p role="status" class="estado-carga">Cargando usuario…</p>
+  } @else if (errorCarga()) {
+    <div class="alert alert-error" role="alert">
+      <span class="material-symbols-outlined" aria-hidden="true">error</span>
+      <span>{{ errorCarga() }}</span>
+    </div>
+    <a routerLink="/usuarios" class="btn">Volver a usuarios</a>
+  } @else {
+    <div role="alert">
+      @if (errorGeneral(); as mensaje) {
+        <div class="alert alert-error">
+          <span class="material-symbols-outlined" aria-hidden="true">error</span>
+          <span>{{ mensaje }}</span>
+        </div>
+      }
+    </div>
+
+    <form class="card" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+      @if (modoEdicion) {
+        @if (usuario(); as usuario) {
+          <dl class="solo-lectura">
+            <div><dt>Nombre</dt><dd>{{ usuario.nombre }}</dd></div>
+            <div><dt>DNI</dt><dd class="dato">{{ usuario.dni }}</dd></div>
+          </dl>
+        }
+      } @else {
+        <fieldset>
+          <legend>Persona</legend>
+          <div class="form-field campo-dni">
+            <label for="dni">DNI</label>
+            <input id="dni" class="input dato" type="text" inputmode="numeric" maxlength="8" autocomplete="off"
+              formControlName="dni" aria-required="true" aria-describedby="dni-error"
+              [attr.aria-invalid]="!!error('dni')" />
+            <div id="dni-error" aria-live="polite">
+              @if (error('dni'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="nombres">Nombres</label>
+            <input id="nombres" class="input" type="text" autocomplete="off" formControlName="nombres"
+              aria-describedby="ayuda-persona nombres-error" [attr.aria-invalid]="!!error('nombres')" />
+            <div id="nombres-error" aria-live="polite">
+              @if (error('nombres'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+            </div>
+          </div>
+
+          <div class="fila">
+            <div class="form-field">
+              <label for="apellido-paterno">Apellido paterno</label>
+              <input id="apellido-paterno" class="input" type="text" autocomplete="off" formControlName="apellidoPaterno"
+                aria-describedby="ayuda-persona apellido-paterno-error" [attr.aria-invalid]="!!error('apellidoPaterno')" />
+              <div id="apellido-paterno-error" aria-live="polite">
+                @if (error('apellidoPaterno'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="apellido-materno">Apellido materno <span class="opcional">(opcional)</span></label>
+              <input id="apellido-materno" class="input" type="text" autocomplete="off" formControlName="apellidoMaterno"
+                aria-describedby="apellido-materno-error" [attr.aria-invalid]="!!error('apellidoMaterno')" />
+              <div id="apellido-materno-error" aria-live="polite">
+                @if (error('apellidoMaterno'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+              </div>
+            </div>
+          </div>
+          <p id="ayuda-persona" class="form-ayuda ayuda-persona">Si la persona ya está registrada, se usarán sus datos existentes.</p>
+        </fieldset>
+      }
+
+      <fieldset>
+        <legend>Cuenta de acceso</legend>
+        <div class="fila">
+          <div class="form-field">
+            <label for="correo">Correo electrónico</label>
+            <input id="correo" class="input" type="email" inputmode="email" autocomplete="off" formControlName="correo"
+              aria-required="true" aria-describedby="correo-ayuda correo-error" [attr.aria-invalid]="!!error('correo')" />
+            <div id="correo-error" aria-live="polite">
+              @if (error('correo'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+            </div>
+            @if (!modoEdicion) {
+              <p id="correo-ayuda" class="form-ayuda">Recibirá aquí un enlace para crear su contraseña.</p>
+            }
+          </div>
+          <div class="form-field">
+            <label for="rol">Rol</label>
+            <select id="rol" class="input" formControlName="idRol" aria-required="true" aria-describedby="rol-error"
+              [attr.aria-invalid]="!!error('idRol')">
+              <option value="" disabled>Elige un rol</option>
+              @for (rol of roles(); track rol.id) {
+                <option [value]="rol.id">{{ rol.nombre }}</option>
+              }
+            </select>
+            <div id="rol-error" aria-live="polite">
+              @if (error('idRol'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="acciones">
+        <a routerLink="/usuarios" class="btn">Cancelar</a>
+        <button type="submit" class="btn btn-primary" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+          {{ enviando() ? 'Guardando…' : modoEdicion ? 'Guardar cambios' : 'Crear usuario' }}
+        </button>
+      </div>
+    </form>
+  }
+</section>
