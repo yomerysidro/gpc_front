@@ -1,3 +1,68 @@
 :host {
-  display: block;
+  display: grid;
+  grid-template-columns: var(--ancho-sidebar) 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+app-header {
+  grid-column: 1 / -1;
+}
+
+main {
+  min-width: 0;
+  padding: var(--espacio-6);
+  background: var(--neutro-0);
+}
+
+// Escritorio: el popover se comporta como columna normal del grid.
+@media (min-width: 769px) {
+  app-sidebar[popover] {
+    position: static;
+    display: block;
+    inset: auto;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: visible;
+    color: inherit;
+  }
+
+  .menu-toggle {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  :host {
+    grid-template-columns: 1fr;
+  }
+
+  main {
+    padding: var(--espacio-5) var(--espacio-4);
+  }
+
+  app-sidebar[popover] {
+    inset: 0 auto 0 0;
+    width: min(calc(var(--ancho-sidebar) + var(--espacio-6)), 85vw);
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: var(--sombra-lg);
+    overflow-y: auto;
+  }
+
+  // El :host del sidebar declara display: block; sin esto el cajón cerrado seguiría visible.
+  app-sidebar[popover]:not(:popover-open) {
+    display: none;
+  }
+
+  app-sidebar::backdrop {
+    background: var(--color-velo);
+  }
 }

@@ -1,0 +1,134 @@
+:host {
+  display: block;
+}
+
+// Línea base común: el h1 de page-title conserva su margen inferior.
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--espacio-4);
+  margin-bottom: var(--espacio-2);
+}
+
+.filtros {
+  display: grid;
+  grid-template-columns: minmax(16rem, 24rem) repeat(2, minmax(10rem, 13rem));
+  gap: var(--espacio-4);
+  margin-bottom: var(--espacio-2);
+}
+
+.tabla-caja {
+  overflow-x: auto;
+  border: 1px solid var(--neutro-200);
+  border-radius: var(--radio-lg);
+
+  .table th:first-child,
+  .table td:first-child {
+    padding-left: var(--espacio-4);
+  }
+
+  .table td:last-child {
+    padding-right: var(--espacio-2);
+  }
+}
+
+.nombre {
+  font-weight: 600;
+}
+
+tr.registro-inactivo .nombre,
+.tarjeta.registro-inactivo .nombre {
+  font-weight: 500;
+}
+
+.correo {
+  overflow-wrap: anywhere;
+}
+
+.badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-1);
+}
+
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.acciones-con-texto {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--espacio-2);
+  margin-top: var(--espacio-3);
+}
+
+.tarjetas {
+  display: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta {
+  padding: var(--espacio-4) 0;
+  border-bottom: 1px solid var(--neutro-200);
+}
+
+.tarjeta-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-2);
+}
+
+.tarjeta-correo {
+  margin: var(--espacio-1) 0 0;
+  color: var(--neutro-500);
+}
+
+.tarjeta-datos {
+  display: grid;
+  gap: var(--espacio-1);
+  margin: var(--espacio-2) 0 0;
+
+  div {
+    display: grid;
+    grid-template-columns: 7.5rem 1fr;
+    gap: var(--espacio-2);
+  }
+
+  dt {
+    color: var(--neutro-500);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .encabezado {
+    margin-bottom: var(--espacio-5);
+  }
+
+  .filtros {
+    grid-template-columns: 1fr 1fr;
+
+    .buscar {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .tabla-caja {
+    display: none;
+  }
+
+  .tarjetas {
+    display: block;
+  }
+}
