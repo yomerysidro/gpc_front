@@ -13,6 +13,13 @@ export function app(): express.Express {
   const indexHtml = join(serverDistFolder, 'index.server.html');
 
   const commonEngine = new CommonEngine();
+  server.disable('x-powered-by');
+  server.get('/healthz', (_req, res) => res.type('text/plain').send('ok'));
+  // HTML and non-fingerprinted public assets must revalidate after deployment.
+  server.use((_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    next();
+  });
 
   server.set('view engine', 'html');
   server.set('views', browserDistFolder);
@@ -21,7 +28,12 @@ export function app(): express.Express {
   // server.get('/api/**', (req, res) => { });
   // Serve static files from /browser
   server.get('**', express.static(browserDistFolder, {
-    maxAge: '1y',
+    maxAge: 0,
+    setHeaders: (res, filePath) => {
+      if (/-[A-Z0-9]{8,}\.(?:js|css|woff2?|png|jpe?g|gif|svg|webp)$/i.test(filePath)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
     index: 'index.html',
   }));
 

@@ -1,0 +1,7 @@
+<app-header>
+  <ng-content select="[layout-header]" />
+</app-header>
+<app-sidebar [items]="navigation()" />
+<main>
+  <router-outlet />
+</main>

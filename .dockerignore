@@ -1,0 +1,17 @@
+node_modules
+dist
+.angular
+.git
+.github
+.vscode
+coverage
+deploy
+.agents
+.codex
+.aws
+**/*.pem
+**/*.key
+*.log
+.env
+.env.*
+!.env.example
