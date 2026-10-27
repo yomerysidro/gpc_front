@@ -85,8 +85,10 @@ Actions al repositorio en la configuración del paquete.
 
 Solo push a main publica latest y sha-<SHA-completo> en
 ghcr.io/<propietario-real>/<repositorio-real>, después de pasar los checks.
-PRs hacia development/main, pushes a development y ejecuciones manuales validan
-sin publicar. Una ejecución manual sobre main tampoco publica.
+PRs hacia development/main y ejecuciones manuales validan sin publicar.
+Los pushes a development o ramas personales no inician este workflow por sí solos;
+si hay un PR abierto hacia development/main, actualizarlo sí ejecuta sus validaciones.
+Una ejecución manual sobre main tampoco publica.
 Revisar ejecución del workflow y pestaña Packages para confirmar publicación.
 GHCR puede ser privado; configurar visibilidad y permisos según corresponda.
 **Publicar en GHCR no despliega automáticamente en Ubuntu.**
@@ -103,6 +105,11 @@ main -> validaciones del commit integrado -> publicar GHCR latest y sha-...
 
 `development` es la integración del equipo y `main` es producción. No se publica
 imagen de desarrollo ni se despliega al servidor por integrar en development.
+Cada integrante sube sus commits a su propia rama remota (por ejemplo,
+`dev-yomer`, `dev/nombre` o `feature/...`) y abre un PR hacia `development`.
+Subir una rama personal no integra sus cambios automáticamente en development.
+Solo después de aprobar el PR se fusiona en la rama compartida. Cuando el equipo
+verifica el conjunto, promueve development a main mediante otro PR aprobado.
 La revisión del PR de development no sustituye la revisión del PR hacia main.
 La aprobación del equipo es manual; pasar checks no garantiza ausencia de bugs.
 
