@@ -1,6 +1,7 @@
 import { Component, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NavigationItem } from '../../core/interfaces/navigation/navigation-item.interface';
+import { ICONOS_DISPONIBLES } from '../../shared/utils/iconos-disponibles';
 
 @Component({
   selector: 'app-sidebar',
@@ -11,4 +12,5 @@ import { NavigationItem } from '../../core/interfaces/navigation/navigation-item
 })
 export class SidebarComponent {
   readonly items = input<readonly NavigationItem[]>([]);
+  protected readonly iconos = ICONOS_DISPONIBLES;
 }

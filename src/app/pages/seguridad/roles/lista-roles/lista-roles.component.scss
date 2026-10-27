@@ -1,0 +1,65 @@
+:host {
+  display: block;
+}
+
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  margin-bottom: var(--espacio-4);
+}
+
+.descripcion {
+  margin: 0;
+  color: var(--neutro-500);
+}
+
+.tabla-caja {
+  border: 1px solid var(--neutro-200);
+  border-radius: var(--radio-lg);
+
+  .table th:first-child {
+    padding-left: var(--espacio-4);
+  }
+}
+
+.rol-nombre {
+  font-weight: 600;
+}
+
+.rol-sistema {
+  display: block;
+  color: var(--neutro-500);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.registro-inactivo .rol-nombre {
+  font-weight: 500;
+}
+
+.rol-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--espacio-1);
+}
+
+.etiqueta-movil {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .table tr > :first-child {
+    flex-basis: auto;
+  }
+
+  .etiqueta-movil {
+    display: inline;
+  }
+
+  .rol-acciones {
+    justify-content: flex-start;
+  }
+}

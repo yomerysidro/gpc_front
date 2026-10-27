@@ -1,0 +1,29 @@
+<div class="dividido">
+  <aside class="marca" aria-label="Municipalidad Distrital de Morales">
+    <div class="franja-tinturas" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="presentacion">
+      <!-- Escudo provisional (regenerado a partir del logotipo): ver DESIGN.md, pendientes. -->
+      <picture>
+        <source media="(max-width: 800px)" srcset="/marca/escudo-48.webp 1x, /marca/escudo-96.webp 2x">
+        <img class="escudo" src="/marca/escudo-160.webp" srcset="/marca/escudo-160.webp 1x, /marca/escudo-320.webp 2x"
+          width="150" height="160" alt="Escudo de la Municipalidad Distrital de Morales">
+      </picture>
+      <div class="textos">
+        <p class="sistema">Sistema de Certificados Digitales</p>
+        <p class="municipalidad">Municipalidad Distrital de Morales</p>
+        <p class="descripcion">Registro, emisión y verificación de los certificados que emite la municipalidad.</p>
+      </div>
+    </div>
+    <!-- El portal público de verificación aún no existe: se enlazará cuando tenga ruta. -->
+    <p class="verificar">
+      ¿Recibiste un certificado? <strong>Verificar autenticidad</strong>
+      <span class="badge">Próximamente</span>
+    </p>
+  </aside>
+
+  <main class="contenido">
+    <div class="formulario">
+      <ng-content />
+    </div>
+  </main>
+</div>
