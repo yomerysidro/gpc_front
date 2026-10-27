@@ -1,0 +1,110 @@
+<div class="encabezado">
+  <p class="descripcion">Cada rol reúne los módulos y permisos de un grupo de usuarios.</p>
+  <button *appHasPermission="'roles.crear'" type="button" class="btn btn-primary" (click)="abrirNombre(null)">
+    <span class="material-symbols-outlined" aria-hidden="true">add</span>
+    Nuevo rol
+  </button>
+</div>
+
+<div role="status">
+  @if (aviso(); as aviso) {
+    <div class="alert" [class.alert-exito]="aviso.tipo === 'exito'" [class.alert-error]="aviso.tipo === 'error'">
+      <span class="material-symbols-outlined" aria-hidden="true">{{ aviso.tipo === 'exito' ? 'check_circle' : 'error' }}</span>
+      <span>{{ aviso.texto }}</span>
+    </div>
+  }
+</div>
+
+<div [attr.aria-busy]="cargando()">
+  @if (errorCarga(); as mensaje) {
+    <div class="alert alert-error" role="alert">
+      <span class="material-symbols-outlined" aria-hidden="true">error</span>
+      <span>No se pudieron cargar los roles. {{ mensaje }}</span>
+    </div>
+  } @else if (cargando()) {
+    <p class="sr-only" role="status">Cargando roles…</p>
+    <div class="esqueleto" aria-hidden="true"><span></span><span></span><span></span></div>
+  } @else if (!roles().length) {
+    <div class="card estado-vacio"><p>Todavía no hay roles.</p></div>
+  } @else {
+    <div class="tabla-caja">
+      <table class="table table-apilable">
+        <caption class="sr-only">Roles del sistema</caption>
+        <thead>
+          <tr>
+            <th scope="col">Nombre</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Usuarios</th>
+            <th *appHasPermission="'roles.editar'" scope="col"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (rol of roles(); track rol.id) {
+            <tr [class.registro-inactivo]="!rol.estado">
+              <th scope="row" class="rol-nombre">
+                {{ rol.nombre }}
+                @if (esAdministrador(rol)) { <span class="rol-sistema">Rol del sistema</span> }
+              </th>
+              <td><span class="badge" [class.badge-exito]="rol.estado">{{ rol.estado ? 'Activo' : 'Inactivo' }}</span></td>
+              <td class="dato">{{ rol.usuarios }}<span class="etiqueta-movil"> {{ rol.usuarios === 1 ? 'usuario' : 'usuarios' }}</span></td>
+              <td *appHasPermission="'roles.editar'">
+                <div class="rol-acciones">
+                  <a class="btn" [routerLink]="['/roles', rol.id, 'accesos']">
+                    <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+                    Configurar accesos<span class="sr-only"> de {{ rol.nombre }}</span>
+                  </a>
+                  <!-- Administrador es un rol del sistema: el backend no permite renombrarlo ni desactivarlo (409). -->
+                  @if (!esAdministrador(rol)) {
+                    <button type="button" class="btn btn-icono btn-sin-borde" (click)="abrirNombre(rol)"
+                      [attr.aria-label]="'Editar nombre de ' + rol.nombre" title="Editar nombre">
+                      <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                    </button>
+                    <button type="button" class="btn btn-icono btn-sin-borde" [disabled]="procesando() === rol.id"
+                      (click)="cambiarEstado(rol)" [attr.aria-label]="(rol.estado ? 'Desactivar ' : 'Activar ') + rol.nombre"
+                      [attr.title]="rol.estado ? 'Desactivar' : 'Activar'">
+                      <span class="material-symbols-outlined" aria-hidden="true">{{ rol.estado ? 'toggle_off' : 'toggle_on' }}</span>
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<app-dialogo #dialogoNombre [titulo]="editando() ? 'Editar nombre del rol' : 'Nuevo rol'">
+  <form [formGroup]="form" (ngSubmit)="guardarNombre()" novalidate>
+    <div role="alert">
+      @if (errorDialogo(); as mensaje) {
+        <div class="alert alert-error">
+          <span class="material-symbols-outlined" aria-hidden="true">error</span>
+          <span>{{ mensaje }}</span>
+        </div>
+      }
+    </div>
+    <div class="form-field">
+      <label for="nombre-rol">Nombre</label>
+      <input id="nombre-rol" class="input" type="text" formControlName="nombre" autocomplete="off" autofocus
+        maxlength="50" aria-required="true" aria-describedby="nombre-rol-error" [attr.aria-invalid]="!!mensajeNombre()" />
+      <div id="nombre-rol-error" aria-live="polite">
+        @if (mensajeNombre(); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+      </div>
+    </div>
+    <div class="dialogo-acciones">
+      <button type="button" class="btn" (click)="cerrarNombre()">Cancelar</button>
+      <button type="submit" class="btn btn-primary" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+        {{ enviando() ? 'Guardando…' : editando() ? 'Guardar' : 'Crear rol' }}
+      </button>
+    </div>
+  </form>
+</app-dialogo>
+
+<app-dialogo-confirmacion
+  [titulo]="(porConfirmar()?.estado ? 'Desactivar' : 'Activar') + ' el rol ' + (porConfirmar()?.nombre ?? '')"
+  [texto]="porConfirmar()?.estado
+    ? 'Sus ' + (porConfirmar()?.usuarios ?? 0) + ' usuarios dejarán de tener los accesos de este rol.'
+    : 'Sus usuarios recuperarán los accesos de este rol.'"
+  [confirmar]="porConfirmar()?.estado ? 'Desactivar' : 'Activar'" />

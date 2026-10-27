@@ -1,0 +1,23 @@
+<section>
+  <app-page-title title="Roles y Permisos" />
+
+  <div class="pestanas" role="tablist" aria-label="Roles y permisos" (keydown)="alTeclear($event)">
+    <button type="button" role="tab" id="pestana-roles" aria-controls="panel-roles"
+      [attr.aria-selected]="pestana() === 'roles'" [attr.tabindex]="pestana() === 'roles' ? 0 : -1"
+      (click)="seleccionar('roles')">Roles</button>
+    <button type="button" role="tab" id="pestana-modulos" aria-controls="panel-modulos"
+      [attr.aria-selected]="pestana() === 'modulos'" [attr.tabindex]="pestana() === 'modulos' ? 0 : -1"
+      (click)="seleccionar('modulos')">Módulos y permisos</button>
+  </div>
+
+  <div role="tabpanel" id="panel-roles" aria-labelledby="pestana-roles" [hidden]="pestana() !== 'roles'">
+    @if (pestana() === 'roles') {
+      <app-lista-roles />
+    }
+  </div>
+  <div role="tabpanel" id="panel-modulos" aria-labelledby="pestana-modulos" [hidden]="pestana() !== 'modulos'">
+    @if (pestana() === 'modulos') {
+      <app-catalogo-modulos />
+    }
+  </div>
+</section>

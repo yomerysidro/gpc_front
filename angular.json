@@ -32,7 +32,8 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "public",
+                "ignore": ["marca/escudo-morales-solo.png"]
               },
               {
                 "glob": "**/*",
@@ -46,7 +47,10 @@
             ],
             "scripts": [],
             "server": "src/main.server.ts",
-            "prerender": true,
+            "prerender": {
+              "discoverRoutes": false,
+              "routesFile": "prerender-routes.txt"
+            },
             "ssr": {
               "entry": "server.ts"
             }
@@ -88,7 +92,8 @@
               "buildTarget": "gpc_front:build:production"
             },
             "development": {
-              "buildTarget": "gpc_front:build:development"
+              "buildTarget": "gpc_front:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"
@@ -108,7 +113,8 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "public",
+                "ignore": ["marca/escudo-morales-solo.png"]
               },
               {
                 "glob": "**/*",

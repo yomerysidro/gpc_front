@@ -1,7 +1,13 @@
 <aside>
   <nav aria-label="Navegación principal">
     @for (item of items(); track item.path) {
-      <a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">{{ item.label }}</a>
+      <a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">
+        <!-- Los nombres vienen del backend: solo se dibujan los incluidos en la fuente recortada. -->
+        @if (item.icon && iconos.has(item.icon)) {
+          <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+        }
+        <span>{{ item.label }}</span>
+      </a>
     }
   </nav>
 </aside>

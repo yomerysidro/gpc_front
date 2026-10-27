@@ -1,0 +1,23 @@
+<app-main-layout [navigation]="navegacion()">
+  <div layout-header class="barra">
+    <!-- Escudo provisional (regenerado a partir del logotipo): ver DESIGN.md, pendientes. -->
+    <span class="marca">
+      <img class="escudo" src="/marca/escudo-36.webp" srcset="/marca/escudo-36.webp 1x, /marca/escudo-72.webp 2x"
+        width="34" height="36" alt="">
+      <span class="sistema">Sistema de Certificados Digitales</span>
+    </span>
+    @if (auth.usuario(); as usuario) {
+      <div class="usuario">
+        <span class="datos">
+          <span class="nombre">{{ usuario.nombre }}</span>
+          <span class="rol">{{ usuario.rol }}</span>
+        </span>
+        <button type="button" class="btn salir" (click)="cerrarSesion()" [disabled]="saliendo()"
+          [attr.aria-busy]="saliendo()">
+          <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+          <span class="salir-texto">Salir</span>
+        </button>
+      </div>
+    }
+  </div>
+</app-main-layout>

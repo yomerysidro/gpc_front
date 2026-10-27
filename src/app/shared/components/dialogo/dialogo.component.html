@@ -1,0 +1,4 @@
+<dialog #dialogo class="dialogo" [attr.aria-labelledby]="idTitulo" [attr.aria-describedby]="idDescripcion()" (close)="cerrado.emit()">
+  <h2 [id]="idTitulo">{{ titulo() }}</h2>
+  <ng-content />
+</dialog>

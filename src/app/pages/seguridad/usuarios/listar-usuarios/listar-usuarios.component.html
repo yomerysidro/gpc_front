@@ -1,0 +1,190 @@
+<section class="usuarios">
+  <div class="encabezado">
+    <app-page-title title="Gestión de Usuarios" />
+    <a *appHasPermission="'usuarios.crear'" routerLink="/usuarios/nuevo" class="btn btn-primary">
+      <span class="material-symbols-outlined" aria-hidden="true">add</span>
+      Nuevo usuario
+    </a>
+  </div>
+
+  <div role="status">
+    @if (aviso(); as aviso) {
+      <div class="alert" [class.alert-exito]="aviso.tipo === 'exito'" [class.alert-error]="aviso.tipo === 'error'"
+        [class.alert-advertencia]="aviso.tipo === 'advertencia'">
+        <span class="material-symbols-outlined" aria-hidden="true">{{ aviso.tipo === 'exito' ? 'check_circle' : 'error' }}</span>
+        <span>{{ aviso.texto }}</span>
+      </div>
+    }
+  </div>
+
+  <form class="filtros" role="search" aria-label="Filtrar usuarios" [formGroup]="filtros" (submit)="$event.preventDefault()">
+    <div class="form-field buscar">
+      <label for="buscar-usuarios">Buscar</label>
+      <input id="buscar-usuarios" class="input" type="search" formControlName="search"
+        placeholder="Nombre, DNI o correo" autocomplete="off" />
+    </div>
+    <div class="form-field">
+      <label for="filtro-rol">Rol</label>
+      <select id="filtro-rol" class="input" formControlName="idRol">
+        <option value="">Todos los roles</option>
+        @for (rol of roles(); track rol.id) {
+          <option [value]="rol.id">{{ rol.nombre }}</option>
+        }
+      </select>
+    </div>
+    <div class="form-field">
+      <label for="filtro-estado">Estado</label>
+      <select id="filtro-estado" class="input" formControlName="estado">
+        <option value="">Todos</option>
+        <option value="true">Activos</option>
+        <option value="false">Inactivos</option>
+      </select>
+    </div>
+  </form>
+
+  <div class="resultados" [attr.aria-busy]="cargando()">
+    @if (errorCarga(); as mensaje) {
+      <div class="alert alert-error" role="alert">
+        <span class="material-symbols-outlined" aria-hidden="true">error</span>
+        <span>No se pudo cargar la lista de usuarios. {{ mensaje }}</span>
+      </div>
+    } @else if (cargando() && !usuarios().length) {
+      <p class="sr-only" role="status">Cargando usuarios…</p>
+      <div class="esqueleto" aria-hidden="true">
+        @for (fila of [1, 2, 3, 4]; track fila) {
+          <span></span>
+        }
+      </div>
+    } @else if (!usuarios().length) {
+      <div class="card estado-vacio">
+        <p>No hay usuarios con esos filtros.</p>
+        @if (hayFiltros()) {
+          <button type="button" class="btn" (click)="limpiarFiltros()">Limpiar filtros</button>
+        }
+      </div>
+    } @else {
+      <!-- Escritorio: tabla -->
+      <div class="tabla-caja">
+        <table class="table">
+          <caption class="sr-only">Usuarios del sistema</caption>
+          <thead>
+            <tr>
+              <th scope="col">Nombre</th>
+              <th scope="col">DNI</th>
+              <th scope="col">Correo</th>
+              <th scope="col">Rol</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Último acceso</th>
+              <th *appHasPermission="'usuarios.editar'" scope="col"><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (usuario of usuarios(); track usuario.id) {
+              <tr [class.registro-inactivo]="!usuario.estado">
+                <td class="nombre">{{ usuario.nombre }}</td>
+                <td class="dato">{{ usuario.dni }}</td>
+                <td class="correo">{{ usuario.correo }}</td>
+                <td>{{ usuario.rol?.nombre ?? 'Sin rol' }}</td>
+                <td><ng-container *ngTemplateOutlet="estado; context: { $implicit: usuario }" /></td>
+                <td class="dato">
+                  {{ usuario.ultimoAcceso ? (usuario.ultimoAcceso | date: 'dd/MM/yyyy HH:mm' : zonaLima) : 'Nunca' }}
+                </td>
+                <td *appHasPermission="'usuarios.editar'">
+                  <ng-container *ngTemplateOutlet="acciones; context: { $implicit: usuario, conTexto: false }" />
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Celular: tarjetas apiladas -->
+      <ul class="tarjetas" aria-label="Usuarios del sistema">
+        @for (usuario of usuarios(); track usuario.id) {
+          <li class="tarjeta" [class.registro-inactivo]="!usuario.estado">
+            <div class="tarjeta-cabecera">
+              <span class="nombre">{{ usuario.nombre }}</span>
+              <ng-container *ngTemplateOutlet="estado; context: { $implicit: usuario }" />
+            </div>
+            <p class="tarjeta-correo correo">{{ usuario.correo }}</p>
+            <dl class="tarjeta-datos">
+              <div><dt>DNI</dt><dd class="dato">{{ usuario.dni }}</dd></div>
+              <div><dt>Rol</dt><dd>{{ usuario.rol?.nombre ?? 'Sin rol' }}</dd></div>
+              <div><dt>Último acceso</dt><dd class="dato">
+                {{ usuario.ultimoAcceso ? (usuario.ultimoAcceso | date: 'dd/MM/yyyy HH:mm' : zonaLima) : 'Nunca' }}
+              </dd></div>
+            </dl>
+            <ng-container *appHasPermission="'usuarios.editar'">
+              <ng-container *ngTemplateOutlet="acciones; context: { $implicit: usuario, conTexto: true }" />
+            </ng-container>
+          </li>
+        }
+      </ul>
+
+      @if (rango(); as rango) {
+        <nav class="paginacion" aria-label="Paginación de usuarios">
+          <p class="dato">{{ rango.desde }}–{{ rango.hasta }} de {{ rango.total }}</p>
+          <div class="paginacion-botones">
+            <button type="button" class="btn" [disabled]="!hayAnterior() || cargando()" (click)="irAPagina(meta()!.page - 1)">
+              <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+              Anterior
+            </button>
+            <button type="button" class="btn" [disabled]="!haySiguiente() || cargando()" (click)="irAPagina(meta()!.page + 1)">
+              Siguiente
+              <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+            </button>
+          </div>
+        </nav>
+      }
+    }
+  </div>
+</section>
+
+<ng-template #estado let-usuario>
+  <span class="badges">
+    <span class="badge" [class.badge-exito]="usuario.estado">{{ usuario.estado ? 'Activo' : 'Inactivo' }}</span>
+    @if (usuario.bloqueado) {
+      <span class="badge badge-advertencia">Bloqueado</span>
+    }
+  </span>
+</ng-template>
+
+<ng-template #acciones let-usuario let-conTexto="conTexto">
+  <div class="acciones" [class.acciones-con-texto]="conTexto">
+    <a class="btn" [class.btn-icono]="!conTexto" [class.btn-sin-borde]="!conTexto"
+      [routerLink]="['/usuarios', usuario.id, 'editar']"
+      [attr.aria-label]="conTexto ? null : 'Editar a ' + usuario.nombre" [attr.title]="conTexto ? null : 'Editar'">
+      <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+      @if (conTexto) { Editar }
+    </a>
+    <button type="button" class="btn" [class.btn-icono]="!conTexto" [class.btn-sin-borde]="!conTexto"
+      [disabled]="procesando() === usuario.id" (click)="pedirCambioEstado(usuario)"
+      [attr.aria-label]="conTexto ? null : (usuario.estado ? 'Desactivar a ' : 'Activar a ') + usuario.nombre"
+      [attr.title]="conTexto ? null : (usuario.estado ? 'Desactivar' : 'Activar')">
+      <span class="material-symbols-outlined" aria-hidden="true">{{ usuario.estado ? 'person_off' : 'how_to_reg' }}</span>
+      @if (conTexto) { {{ usuario.estado ? 'Desactivar' : 'Activar' }} }
+    </button>
+    @if (usuario.bloqueado) {
+      <button type="button" class="btn" [class.btn-icono]="!conTexto" [class.btn-sin-borde]="!conTexto"
+        [disabled]="procesando() === usuario.id" (click)="desbloquear(usuario)"
+        [attr.aria-label]="conTexto ? null : 'Desbloquear a ' + usuario.nombre" [attr.title]="conTexto ? null : 'Desbloquear'">
+        <span class="material-symbols-outlined" aria-hidden="true">lock_open</span>
+        @if (conTexto) { Desbloquear }
+      </button>
+    }
+    <button type="button" class="btn" [class.btn-icono]="!conTexto" [class.btn-sin-borde]="!conTexto"
+      [disabled]="procesando() === usuario.id" (click)="reenviarEnlace(usuario)"
+      [attr.aria-label]="conTexto ? null : 'Reenviar enlace de contraseña a ' + usuario.nombre"
+      [attr.title]="conTexto ? null : 'Reenviar enlace de contraseña'">
+      <span class="material-symbols-outlined" aria-hidden="true">forward_to_inbox</span>
+      @if (conTexto) { Reenviar enlace }
+    </button>
+  </div>
+</ng-template>
+
+<app-dialogo-confirmacion
+  [titulo]="(activarConfirmacion() ? 'Activar' : 'Desactivar') + ' a ' + (porConfirmar()?.nombre ?? '')"
+  [texto]="activarConfirmacion()
+    ? 'Podrá volver a iniciar sesión con su correo y su contraseña.'
+    : 'No podrá iniciar sesión hasta que su cuenta se vuelva a activar.'"
+  [confirmar]="activarConfirmacion() ? 'Activar' : 'Desactivar'" />

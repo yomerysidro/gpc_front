@@ -1,0 +1,103 @@
+:host {
+  display: block;
+}
+
+.volver {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--alto-control);
+  margin-bottom: var(--espacio-1);
+  text-decoration: none;
+}
+
+.ayuda {
+  max-width: 70ch;
+  margin: 0 0 var(--espacio-4);
+  color: var(--neutro-500);
+}
+
+.matriz {
+  th,
+  td {
+    height: auto;
+    padding: var(--espacio-1) var(--espacio-3);
+    vertical-align: middle;
+  }
+
+  .modulo {
+    min-width: 12rem;
+    padding-left: 0;
+    font-weight: 400;
+  }
+}
+
+.modulo-nombre {
+  display: block;
+  font-weight: 600;
+}
+
+.modulo-url {
+  margin-right: var(--espacio-2);
+  color: var(--neutro-500);
+  font-size: 0.8125rem;
+}
+
+.sin-acceso .modulo-nombre {
+  font-weight: 500;
+}
+
+.no-aplica {
+  color: var(--neutro-400);
+}
+
+.otros {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--espacio-4);
+}
+
+// Escritorio: el encabezado de columna nombra la casilla; el texto queda para lectores de pantalla.
+@media (min-width: 769px) {
+  .celda-acceso .etiqueta,
+  .celda-permiso .etiqueta {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+
+// Celular: cada módulo es una tarjeta con sus permisos como casillas apiladas.
+@media (max-width: 768px) {
+  .matriz {
+    thead {
+      display: none;
+    }
+
+    tr {
+      display: flex;
+      flex-direction: column;
+      padding: var(--espacio-3) 0;
+      border-bottom: 1px solid var(--neutro-200);
+    }
+
+    th,
+    td {
+      padding: 0;
+      border: 0;
+    }
+
+    .celda-permiso:has(.no-aplica) {
+      display: none;
+    }
+  }
+
+  .otros {
+    flex-direction: column;
+
+    .no-aplica {
+      display: none;
+    }
+  }
+}
