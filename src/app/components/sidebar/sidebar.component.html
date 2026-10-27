@@ -1,13 +1,82 @@
 <aside>
+  <button type="button" class="btn btn-icono btn-sin-borde cerrar-menu" popovertarget="menu-principal"
+    popovertargetaction="hide" aria-label="Cerrar menú de navegación">
+    <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+  </button>
   <nav aria-label="Navegación principal">
-    @for (item of items(); track item.path) {
-      <a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">
-        <!-- Los nombres vienen del backend: solo se dibujan los incluidos en la fuente recortada. -->
-        @if (item.icon && iconos.has(item.icon)) {
-          <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+    @for (entrada of navegacion(); track entrada.item.path) {
+      @if (entrada.tipo === 'seguridad') {
+        <button type="button" class="modulo" [class.active]="seguridadActiva()"
+          aria-label="Seguridad y Acceso" [attr.title]="contraido() ? 'Seguridad y Acceso' : null"
+          [attr.aria-expanded]="!contraido() && expandido()" aria-controls="submenu-seguridad"
+          (click)="alternar($event)">
+          <span class="material-symbols-outlined" aria-hidden="true">admin_panel_settings</span>
+          <span class="titulo-modulo">SEGURIDAD Y ACCESO</span>
+          <span class="material-symbols-outlined flecha" [class.expandida]="expandido()"
+            aria-hidden="true">expand_more</span>
+        </button>
+        <div id="submenu-seguridad" class="submenu" [hidden]="!expandido()">
+          @for (hijo of entrada.hijos; track hijo.path) {
+            <a [routerLink]="hijo.path" routerLinkActive="active" ariaCurrentWhenActive="page">
+              @if (hijo.icon && iconos.has(hijo.icon)) {
+                <span class="material-symbols-outlined" aria-hidden="true">{{ hijo.icon }}</span>
+              }
+              <span>{{ hijo.label }}</span>
+            </a>
+          }
+        </div>
+      } @else {
+        @let item = entrada.item;
+        <a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page"
+          [attr.aria-label]="item.label" [attr.title]="contraido() ? item.label : null">
+          <!-- Los nombres vienen del backend: solo se dibujan los incluidos en la fuente recortada. -->
+          @if (item.icon && iconos.has(item.icon)) {
+            <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+          } @else if (contraido()) {
+            <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
+          }
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    }
+    @for (modulo of modulos; track modulo.path) {
+      <button type="button" class="modulo" [class.active]="moduloActual() === modulo.path"
+        [attr.aria-label]="modulo.label" [attr.title]="contraido() ? modulo.label : null"
+        [attr.aria-expanded]="!contraido() && expandidos().has(modulo.path)"
+        [attr.aria-controls]="'submenu-' + modulo.path" (click)="alternarModulo($event, modulo.path)">
+        <span class="material-symbols-outlined" aria-hidden="true">{{ modulo.icon }}</span>
+        <span class="titulo-modulo">{{ modulo.label }}</span>
+        <span class="material-symbols-outlined flecha" [class.expandida]="expandidos().has(modulo.path)"
+          aria-hidden="true">expand_more</span>
+      </button>
+      <div [id]="'submenu-' + modulo.path" class="submenu" [hidden]="!expandidos().has(modulo.path)">
+        @for (opcion of modulo.opciones; track opcion.path) {
+          <a [routerLink]="['/', modulo.path, opcion.path]" routerLinkActive="active"
+            ariaCurrentWhenActive="page">
+            <span class="material-symbols-outlined" aria-hidden="true">{{ opcion.icon }}</span>
+            <span>{{ opcion.label }}</span>
+          </a>
         }
-        <span>{{ item.label }}</span>
-      </a>
+      </div>
+    }
+    @if (reportes().length) {
+      <button type="button" class="modulo" [class.active]="moduloActual() === 'reportes'"
+        aria-label="Reportes" [attr.title]="contraido() ? 'Reportes' : null"
+        [attr.aria-expanded]="!contraido() && expandidos().has('reportes')" aria-controls="submenu-reportes"
+        (click)="alternarModulo($event, 'reportes')">
+        <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>
+        <span class="titulo-modulo">REPORTES</span>
+        <span class="material-symbols-outlined flecha" [class.expandida]="expandidos().has('reportes')"
+          aria-hidden="true">expand_more</span>
+      </button>
+      <div id="submenu-reportes" class="submenu" [hidden]="!expandidos().has('reportes')">
+        @for (item of reportes(); track item.path) {
+          <a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>
+            <span>{{ item.label }}</span>
+          </a>
+        }
+      </div>
     }
   </nav>
 </aside>

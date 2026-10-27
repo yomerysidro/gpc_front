@@ -1,6 +1,6 @@
 :host {
   display: grid;
-  grid-template-columns: var(--ancho-sidebar) 1fr;
+  grid-template-columns: var(--ancho-sidebar) minmax(0, 1fr);
   grid-template-rows: auto 1fr;
   min-height: 100vh;
   min-height: 100dvh;
@@ -8,6 +8,20 @@
 
 app-header {
   grid-column: 1 / -1;
+}
+
+.menu-toggle {
+  background: transparent;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: #1b7189;
+    color: #fff;
+  }
+
+  &:focus-visible {
+    outline-color: #fff;
+  }
 }
 
 main {
@@ -18,6 +32,9 @@ main {
 
 // Escritorio: el popover se comporta como columna normal del grid.
 @media (min-width: 769px) {
+  :host(.sidebar-contraido) {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+  }
   app-sidebar[popover] {
     position: static;
     display: block;
@@ -31,12 +48,15 @@ main {
     color: inherit;
   }
 
-  .menu-toggle {
+  .menu-movil {
     display: none;
   }
 }
 
 @media (max-width: 768px) {
+  .menu-escritorio {
+    display: none;
+  }
   :host {
     grid-template-columns: 1fr;
   }

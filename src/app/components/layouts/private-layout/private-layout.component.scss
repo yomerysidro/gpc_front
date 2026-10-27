@@ -56,8 +56,22 @@
 }
 
 .rol {
-  color: var(--neutro-500);
+  color: #fff;
   font-size: 0.8125rem;
+}
+
+.salir {
+  border-color: #fff;
+  background: transparent;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: #1b7189;
+  }
+
+  &:focus-visible {
+    outline-color: #fff;
+  }
 }
 
 @media (max-width: 768px) {
