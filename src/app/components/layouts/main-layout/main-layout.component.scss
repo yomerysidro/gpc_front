@@ -10,6 +10,20 @@ app-header {
   grid-column: 1 / -1;
 }
 
+.menu-toggle {
+  background: transparent;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: #1b7189;
+    color: #fff;
+  }
+
+  &:focus-visible {
+    outline-color: #fff;
+  }
+}
+
 main {
   min-width: 0;
   padding: var(--espacio-6);
