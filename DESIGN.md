@@ -85,6 +85,7 @@ rounded:
   sm: "4px"
   md: "6px"
   lg: "8px"
+  pildora: "999px"
 spacing:
   "1": "0.25rem"
   "2": "0.5rem"
@@ -300,6 +301,7 @@ Plano por defecto. La profundidad se expresa con capas tonales (blanco, papel c�
 
 Esquinas apenas suavizadas y bordes cálidos finos.
 - **2px** (`--radio-xs`): solo las muestras de color de 8 px de los badges de tipo.
+- **999px** (`--radio-pildora`): solo el interruptor (`.interruptor`).
 - **4px** (`--radio-sm`): controles (botones, inputs, ítems del menú) y etiquetas.
 - **6px** (`--radio-md`): avisos.
 - **8px** (`--radio-lg`): tarjetas.
@@ -476,8 +478,16 @@ magick /tmp/escudo.png -background none -gravity center \( -clone 0 -resize 15x1
 ### Registros inactivos
 - **`.registro-inactivo`**: la fila o tarjeta de un registro inactivo (usuario, rol…) pasa a texto `neutro-500`, siempre igual en todos los módulos. El estado se dice además con un badge de texto (`Inactivo`), nunca solo con el color.
 
-### Diálogos de confirmación
-- **`.dialogo`** sobre un `<dialog>` nativo abierto con `showModal()`: atrapa el foco, Esc cierra y el navegador devuelve el foco al botón que lo abrió. El contenido queda siempre en el DOM y el diálogo se abre con `afterNextRender`, para que el foco y el lector de pantalla encuentren ya el texto del registro. El botón de cancelar lleva `autofocus`; la acción va en `.btn-primary`. Acciones en `.dialogo-acciones`. Solo para acciones que cambian el estado de un registro (activar o desactivar), no para tareas que caben en la página.
+### Diálogos
+- **`app-dialogo`** (`shared/components/dialogo`): `<dialog>` nativo con título y contenido proyectado, para formularios cortos (nombre de un rol, módulo, permiso). `abrir()` espera a que el contenido esté pintado; el campo principal lleva `autofocus`; `cerrar()` y Esc lo cierran.
+- **`app-dialogo-confirmacion`** (`shared/components/dialogo-confirmacion`): `await confirmacion.abrir()` resuelve `true` solo con el botón de confirmar (Cancelar y Esc dan `false`). Entradas: `titulo`, `texto` (enlazado por `aria-describedby`), `confirmar` y `cancelar`. Lo usan usuarios, roles, módulos y permisos, y la salida con cambios sin guardar.
+
+```html
+<app-dialogo-confirmacion titulo="Salir sin guardar" texto="Los cambios se perderán."
+  confirmar="Salir sin guardar" cancelar="Seguir editando" />
+```
+
+- **`.dialogo`** (la clase que usan ambos) sobre un `<dialog>` nativo abierto con `showModal()`: atrapa el foco, Esc cierra y el navegador devuelve el foco al botón que lo abrió. El contenido queda siempre en el DOM y el diálogo se abre con `afterNextRender`, para que el foco y el lector de pantalla encuentren ya el texto del registro. El botón de cancelar lleva `autofocus`; la acción va en `.btn-primary`. Acciones en `.dialogo-acciones`. Solo para acciones que cambian el estado de un registro (activar o desactivar), no para tareas que caben en la página.
 
 ```html
 <dialog #dialogo class="dialogo" aria-labelledby="dialogo-titulo" aria-describedby="dialogo-texto">
@@ -500,9 +510,31 @@ magick /tmp/escudo.png -background none -gravity center \( -clone 0 -resize 15x1
 - Fechas y horas siempre en hora de Lima (`ZONA_HORARIA_LIMA`, en `shared/utils/zona-horaria.ts`).
 - Las acciones de fila y la acción principal se ocultan con `*appHasPermission`. Es solo presentación: el backend valida cada permiso.
 
+### Inputs con prefijo fijo y de solo lectura
+- **`.input-con-prefijo`**: un `span.prefijo` que no se edita, pegado al `.input`. Se usa en la clave de un permiso: el prefijo `<slug-del-módulo>.` es fijo y solo se escribe la acción. El input lleva `aria-describedby` hacia el prefijo, que incluye un "Prefijo fijo:" para lectores de pantalla.
+- **`.input[readonly]`**: fondo `neutro-50`. Para valores que se muestran pero no se pueden cambiar, con una ayuda que explique por qué (p. ej., la URL de un módulo con permisos: "No se puede cambiar porque las claves de sus permisos dependen de ella").
+
+### Roles del sistema
+- El rol **Administrador** es un rol del sistema: en la lista de roles no muestra "Editar nombre" ni "Activar/Desactivar" y lleva bajo su nombre la nota "Rol del sistema" (`neutro-500`, 0,8125rem). Sus accesos sí se configuran, con el aviso de accesos protegidos. Si el backend responde 409 igualmente, se muestra su mensaje.
+
+### Tablas apilables y filas con nombre
+- **`<th scope="row">`** en `tbody` para el nombre del registro (rol, módulo): texto normal a 600. Solo `thead th` lleva el estilo de encabezado de columna.
+- **`.table-apilable`**: en celular (≤ 768 px) cada fila se apila; la primera y la última celda ocupan todo el ancho (nombre arriba, acciones abajo). Para tablas cortas (roles, permisos de un módulo); los listados largos usan tarjetas (ver *Listados*).
+
+### Pestañas
+- **`.pestanas`** con `role="tablist"` y botones `role="tab"` (`aria-selected`, `aria-controls`, `tabindex` 0 solo en la activa). Flechas, Inicio y Fin cambian de pestaña y mueven el foco. Paneles `role="tabpanel"` con `aria-labelledby`. La pestaña activa va en la URL (`?pestana=`).
+
+### Casillas, interruptores y matriz de accesos
+- **Casillas nativas** dentro de un `<label class="casilla">` (44 px de alto): el label da el nombre accesible y el área táctil. `accent-color` en primario.
+- **`.interruptor`**: `<input type="checkbox" role="switch" class="interruptor">` para encender o apagar un acceso completo (por ejemplo, "Acceso al módulo"). Píldora con `--radio-pildora`.
+- **Matriz de accesos** (`/roles/:id/accesos`): filas = módulos; columnas = Acceso, Ver, Crear, Editar, Eliminar y Otros permisos. En escritorio el encabezado de columna nombra la casilla y su texto queda para lectores de pantalla ("Ver en Reportes"); en celular cada módulo es una tarjeta con las casillas apiladas y etiquetadas. Las reglas (auto-acceso, Ver implícito, apagar el módulo desmarca sus permisos) viven en `models/roles/matriz-accesos.model.ts`.
+
+### Barra de acciones fija
+- **`.barra-acciones`**: barra `position: sticky` al pie del contenido para pantallas que editan mucho de una vez (la matriz). A la izquierda `.barra-acciones-estado` con `role="status"` ("Hay cambios sin guardar" con ícono `warning`); a la derecha Descartar y Guardar cambios. Con cambios pendientes, salir de la ruta pide confirmación (`cambiosPendientesGuard`) y cerrar la pestaña activa la confirmación del navegador (`beforeunload`).
+
 ### Iconografía
 - **Fuente:** Material Symbols Outlined, trazo 300, tamaño óptico 20, sin relleno, a 20 px (`--icono-md`). Se carga desde Google Fonts con un subconjunto recortado por el parámetro `icon_names` en `src/index.html`.
-- **Lista espejo:** `src/app/shared/utils/iconos-disponibles.ts` (`ICONOS_DISPONIBLES`) repite exactamente esa lista. Las dos listas deben ser idénticas y estar en orden alfabético. Hoy: `add`, `admin_panel_settings`, `bar_chart`, `campaign`, `check_circle`, `chevron_left`, `chevron_right`, `dashboard`, `edit`, `error`, `event`, `forward_to_inbox`, `group`, `how_to_reg`, `lock_open`, `logout`, `menu`, `military_tech`, `people`, `person_off`, `school`, `visibility`, `visibility_off`, `workspace_premium`.
+- **Lista espejo:** `src/app/shared/utils/iconos-disponibles.ts` (`ICONOS_DISPONIBLES`) repite exactamente esa lista. Las dos listas deben ser idénticas y estar en orden alfabético. Hoy: `add`, `admin_panel_settings`, `bar_chart`, `campaign`, `check_circle`, `chevron_left`, `chevron_right`, `dashboard`, `edit`, `error`, `event`, `expand_more`, `forward_to_inbox`, `group`, `how_to_reg`, `lock_open`, `logout`, `menu`, `military_tech`, `people`, `person_off`, `school`, `toggle_off`, `toggle_on`, `tune`, `visibility`, `visibility_off`, `warning`, `workspace_premium`.
 - **Íconos de módulo:** cada módulo trae en el backend el nombre de un ícono de Material. Si se agrega un módulo con un ícono nuevo, hay que sumarlo a **las dos** listas (en orden alfabético). El sidebar descarta los nombres que no están en `ICONOS_DISPONIBLES` y deja solo la etiqueta, para que nunca se dibuje el nombre del ícono como texto.
 - **Dónde:** solo en el menú, acciones, controles y estados. Siempre con texto visible al lado o, en botones de solo ícono, con `aria-label`; el `span` del ícono lleva `aria-hidden="true"`.
 

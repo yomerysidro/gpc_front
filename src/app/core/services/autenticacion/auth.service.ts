@@ -20,6 +20,8 @@ export abstract class AuthService {
   abstract login(email: string, password: string): Observable<ResultadoLogin>;
   /** Carga /auth/me una sola vez; emite true si hay sesión. */
   abstract cargarSesion(): Observable<boolean>;
+  /** Vuelve a pedir /auth/me aunque ya esté cargada (p. ej., tras cambiar los accesos del propio rol). */
+  abstract recargarSesion(): Observable<boolean>;
   abstract logout(): Observable<void>;
   abstract forgotPassword(email: string): Observable<void>;
   abstract resetPassword(token: string, email: string, password: string,

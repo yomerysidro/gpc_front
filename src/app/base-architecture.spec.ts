@@ -250,6 +250,14 @@ describe('SessionAuthService', () => {
     expect(service.usuario()).toEqual(sesion.user);
   });
 
+  it('recargarSesion vuelve a pedir /auth/me aunque ya esté cargada', () => {
+    service.cargarSesion().subscribe();
+    http.expectOne('/api/auth/me').flush(sesion);
+    service.recargarSesion().subscribe();
+    http.expectOne('/api/auth/me').flush({ ...sesion, modulos: [] });
+    expect(service.modulos()).toEqual([]);
+  });
+
   it('logout limpia la sesión aunque el backend falle y vuelve a /login', () => {
     const navigateByUrl = spyOn(TestBed.inject(Router), 'navigateByUrl').and.resolveTo(true);
     service.cargarSesion().subscribe();

@@ -25,7 +25,14 @@ Base Angular 18 standalone con SSR e hidratación. AppComponent solo contiene
   ValidationErrorResponse y ErrorApi (error normalizado que emiten los servicios). Reutilizables por
   cualquier módulo; por eso no viven en la carpeta de usuarios.
 - core/interfaces/usuarios/usuario.interface.ts: Usuario, UsuarioPayload, UsuarioActualizarPayload,
-  UsuarioFiltros. core/interfaces/roles/rol.interface.ts: Rol mínimo (se amplía en la Fase 3).
+  UsuarioFiltros.
+- core/interfaces/roles/rol.interface.ts (Rol con conteo de usuarios, RolPayload, RolPermisoAsignado y
+  los cuerpos de las asignaciones) y modulo.interface.ts (Modulo con sus Permiso anidados y los payloads).
+  Escritas a partir de las respuestas reales del backend.
+- core/services/modulos/modulos.service.ts: módulos (/api/modulos) y sus permisos (/api/permisos).
+- core/guards/cambios-pendientes.guard.ts: canDeactivate que delega en ConCambiosPendientes.confirmarSalida().
+- models/roles: matriz-accesos.model.ts (reglas de la matriz de accesos, funciones puras) y
+  clave-permiso.model.ts (formato y sugerencia de claves de permiso y URLs de módulo).
 - core/services/usuarios/usuarios.service.ts y core/services/roles/roles.service.ts: todas sus
   llamadas llevan AUTHENTICATED_REQUEST; los errores salen como ErrorApi (422 por campo; 404, 409 y
   429 con el message del backend).
@@ -42,11 +49,15 @@ Base Angular 18 standalone con SSR e hidratación. AppComponent solo contiene
   Rutas /usuarios (usuarios.ver), /usuarios/nuevo (usuarios.crear) y /usuarios/:id/editar
   (usuarios.editar), con permissionGuard en cada nivel. Los datos se cargan con afterNextRender:
   en el SSR no hay sesión.
+- pages/seguridad/roles: roles-permisos (/roles, pestañas), lista-roles y catalogo-modulos (sus
+  pestañas) y accesos-rol (/roles/:id/accesos, matriz de accesos con canDeactivate).
 - pages/home: HomeComponent, ruta /inicio (destino si el usuario no tiene módulos).
-- pages/en-construccion: destino provisional de /usuarios, /roles y de los
-  módulos del menú cuyas pantallas aún no existen.
+- pages/en-construccion: destino provisional de los módulos del menú cuyas pantallas
+  aún no existen (actividades, reportes…).
 - pages/certificados/listar-certificados: ListarCertificadosComponent base, sin API ni CRUD.
 - shared/components/page-title: título reutilizable mediante input obligatorio.
+- shared/components/dialogo y dialogo-confirmacion: <dialog> nativo compartido (formularios y
+  confirmaciones con Promise<boolean>).
 - shared/directives/has-permission.directive.ts: `*appHasPermission="'clave'"` muestra el
   elemento solo si la sesión tiene el permiso (AuthService.tienePermiso). Solo presentación.
 - shared/utils: iconos-disponibles.ts (espejo de icon_names), error-api.ts (aErrorApi) y
@@ -97,7 +108,8 @@ línea vacía, porque el builder la interpreta como la ruta `/`.
 | `/login`, `/recuperar-password` | guestGuard | Con sesión redirigen al primer módulo |
 | `/reset-password` | — | Enlace del correo: `?token=…&email=…` |
 | `/acceso-denegado` | — | |
-| `/inicio`, `/roles`, `**` | authGuard (private-layout) | roles.ver con permissionGuard |
+| `/inicio`, `**` | authGuard (private-layout) | |
+| `/roles`, `/roles/:id/accesos` | authGuard + permissionGuard | roles.ver y roles.editar; la matriz con cambiosPendientesGuard |
 | `/usuarios`, `/usuarios/nuevo`, `/usuarios/:id/editar` | authGuard + permissionGuard | usuarios.ver, usuarios.crear y usuarios.editar |
 
 ## Dependencias y estilos

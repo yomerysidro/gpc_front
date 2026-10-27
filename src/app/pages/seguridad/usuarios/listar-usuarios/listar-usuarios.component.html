@@ -182,18 +182,9 @@
   </div>
 </ng-template>
 
-<!-- El contenido está siempre en el DOM: showModal() encuentra los botones y enfoca "Cancelar". -->
-<dialog #dialogoEstado class="dialogo" aria-labelledby="dialogo-estado-titulo" aria-describedby="dialogo-estado-texto">
-  <h2 id="dialogo-estado-titulo">{{ activarConfirmacion() ? 'Activar' : 'Desactivar' }} a {{ porConfirmar()?.nombre }}</h2>
-  <p id="dialogo-estado-texto">
-    {{ activarConfirmacion()
-      ? 'Podrá volver a iniciar sesión con su correo y su contraseña.'
-      : 'No podrá iniciar sesión hasta que su cuenta se vuelva a activar.' }}
-  </p>
-  <div class="dialogo-acciones">
-    <button type="button" class="btn" autofocus (click)="cancelarCambioEstado()">Cancelar</button>
-    <button type="button" class="btn btn-primary" (click)="confirmarCambioEstado()">
-      {{ activarConfirmacion() ? 'Activar' : 'Desactivar' }}
-    </button>
-  </div>
-</dialog>
+<app-dialogo-confirmacion
+  [titulo]="(activarConfirmacion() ? 'Activar' : 'Desactivar') + ' a ' + (porConfirmar()?.nombre ?? '')"
+  [texto]="activarConfirmacion()
+    ? 'Podrá volver a iniciar sesión con su correo y su contraseña.'
+    : 'No podrá iniciar sesión hasta que su cuenta se vuelva a activar.'"
+  [confirmar]="activarConfirmacion() ? 'Activar' : 'Desactivar'" />

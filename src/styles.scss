@@ -51,6 +51,7 @@
   --radio-sm: 4px;
   --radio-md: 6px;
   --radio-lg: 8px;
+  --radio-pildora: 999px; /* interruptor */
 
   --espacio-1: 0.25rem;
   --espacio-2: 0.5rem;
@@ -263,6 +264,36 @@ a {
   }
 }
 
+/* Solo lectura: se puede leer y copiar, no editar (p. ej., la URL de un módulo con permisos) */
+.input[readonly] {
+  background: var(--neutro-50);
+  color: var(--neutro-700);
+}
+
+/* Input con prefijo fijo que no se edita: <div class="input-con-prefijo"><span class="prefijo">…</span><input class="input"></div> */
+.input-con-prefijo {
+  display: flex;
+
+  .prefijo {
+    display: flex;
+    flex: none;
+    align-items: center;
+    padding: 0 var(--espacio-3);
+    border: 1px solid var(--neutro-400);
+    border-right: 0;
+    border-radius: var(--radio-sm) 0 0 var(--radio-sm);
+    background: var(--neutro-100);
+    color: var(--neutro-700);
+    white-space: nowrap;
+  }
+
+  .input {
+    min-width: 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+}
+
 /* Input con un botón dentro (por ejemplo, mostrar contraseña) */
 .input-con-accion {
   position: relative;
@@ -343,7 +374,7 @@ a {
     text-align: left;
   }
 
-  th {
+  thead th {
     height: 2.5rem;
     border-bottom-color: var(--neutro-200);
     color: var(--neutro-500);
@@ -351,8 +382,43 @@ a {
     font-weight: 600;
   }
 
+  /* <th scope="row">: nombre del registro, no encabezado de columna */
+  tbody th {
+    font-weight: 600;
+  }
+
   tbody tr:hover {
     background: var(--neutro-50);
+  }
+}
+
+/* .table-apilable: en celular cada fila se apila (la primera celda arriba, la última a todo el ancho) */
+@media (max-width: 768px) {
+  .table-apilable {
+    thead {
+      display: none;
+    }
+
+    tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--espacio-1) var(--espacio-3);
+      padding: var(--espacio-3) var(--espacio-4);
+      border-bottom: 1px solid var(--neutro-100);
+    }
+
+    th,
+    td {
+      height: auto;
+      padding: 0;
+      border: 0;
+    }
+
+    tr > :first-child,
+    tr > :last-child {
+      flex-basis: 100%;
+    }
   }
 }
 
@@ -508,6 +574,115 @@ a {
   }
 }
 
+/* Casillas nativas: color del primario y área táctil de 44 px a través del <label> */
+input[type='checkbox'] {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--color-primario);
+  cursor: pointer;
+}
+
+.casilla {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  min-height: var(--alto-control);
+  cursor: pointer;
+}
+
+/* Interruptor: <input type="checkbox" role="switch" class="interruptor"> dentro de su <label> */
+input[type='checkbox'].interruptor {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 2.25rem;
+  height: 1.25rem;
+  border: 1px solid var(--neutro-400);
+  border-radius: var(--radio-pildora);
+  background: var(--neutro-200);
+  transition: background-color 0.15s;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: var(--neutro-0);
+    box-shadow: 0 0 0 1px var(--neutro-400);
+    transition: transform 0.15s;
+  }
+
+  &:checked {
+    border-color: var(--color-primario);
+    background: var(--color-primario);
+
+    &::after {
+      transform: translateX(1rem);
+    }
+  }
+}
+
+/* Pestañas: role="tablist" con botones role="tab" (flechas para moverse) */
+.pestanas {
+  display: flex;
+  gap: var(--espacio-1);
+  margin-bottom: var(--espacio-5);
+  border-bottom: 1px solid var(--neutro-200);
+  overflow-x: auto;
+
+  [role='tab'] {
+    min-height: var(--alto-control);
+    padding: 0 var(--espacio-4);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--neutro-700);
+    font: inherit;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--neutro-900);
+    }
+
+    &[aria-selected='true'] {
+      border-bottom-color: var(--color-primario);
+      color: var(--color-primario);
+      font-weight: 600;
+    }
+
+    &:focus-visible {
+      outline-offset: -2px;
+    }
+  }
+}
+
+/* Barra de acciones fija al pie del contenido (guardar o descartar cambios) */
+.barra-acciones {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--espacio-3);
+  margin-top: var(--espacio-5);
+  padding: var(--espacio-3) 0;
+  border-top: 1px solid var(--neutro-200);
+  background: var(--neutro-0);
+}
+
+.barra-acciones-estado {
+  margin-right: auto;
+  color: var(--neutro-500);
+}
+
 /* Franja de tinturas: identidad del escudo en el panel de marca */
 .franja-tinturas {
   display: grid;
@@ -541,7 +716,9 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .btn {
+  .btn,
+  .interruptor,
+  .interruptor::after {
     transition: none;
   }
 }

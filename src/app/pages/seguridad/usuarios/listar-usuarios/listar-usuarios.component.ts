@@ -1,5 +1,5 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
-import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, Injector, signal, viewChild } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -9,6 +9,7 @@ import { Rol } from '../../../../core/interfaces/roles/rol.interface';
 import { Usuario, UsuarioFiltros } from '../../../../core/interfaces/usuarios/usuario.interface';
 import { RolesService } from '../../../../core/services/roles/roles.service';
 import { UsuariosService } from '../../../../core/services/usuarios/usuarios.service';
+import { DialogoConfirmacionComponent } from '../../../../shared/components/dialogo-confirmacion/dialogo-confirmacion.component';
 import { PageTitleComponent } from '../../../../shared/components/page-title/page-title.component';
 import { HasPermissionDirective } from '../../../../shared/directives/has-permission.directive';
 import { ZONA_HORARIA_LIMA } from '../../../../shared/utils/zona-horaria';
@@ -29,7 +30,7 @@ const MENSAJE_429 = 'Ya se envió un enlace hace menos de un minuto. Espera un m
 @Component({
   selector: 'app-listar-usuarios',
   standalone: true,
-  imports: [DatePipe, NgTemplateOutlet, ReactiveFormsModule, RouterLink, PageTitleComponent, HasPermissionDirective],
+  imports: [DatePipe, NgTemplateOutlet, ReactiveFormsModule, RouterLink, PageTitleComponent, HasPermissionDirective, DialogoConfirmacionComponent],
   templateUrl: './listar-usuarios.component.html',
   styleUrl: './listar-usuarios.component.scss'
 })
@@ -37,9 +38,8 @@ export class ListarUsuariosComponent {
   private readonly usuariosService = inject(UsuariosService);
   private readonly rolesService = inject(RolesService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly injector = inject(Injector);
   private readonly consultas = new Subject<UsuarioFiltros>();
-  private readonly dialogo = viewChild<ElementRef<HTMLDialogElement>>('dialogoEstado');
+  private readonly confirmacion = viewChild.required(DialogoConfirmacionComponent);
 
   protected readonly zonaLima = ZONA_HORARIA_LIMA;
   protected readonly filtros = inject(NonNullableFormBuilder).group({ search: '', idRol: '', estado: '' });
@@ -115,22 +115,10 @@ export class ListarUsuariosComponent {
     this.irAPagina(1);
   }
 
-  /** Abre el diálogo después de pintar su texto: el foco y el lector de pantalla ya ven el nombre correcto. */
-  protected pedirCambioEstado(usuario: Usuario): void {
+  protected async pedirCambioEstado(usuario: Usuario): Promise<void> {
     this.porConfirmar.set(usuario);
-    afterNextRender(() => this.dialogo()?.nativeElement.showModal(), { injector: this.injector });
-  }
 
-  /** Al cerrar (botón o Esc) el navegador devuelve el foco al botón que abrió el diálogo. */
-  protected cancelarCambioEstado(): void {
-    this.dialogo()?.nativeElement.close();
-  }
-
-  protected confirmarCambioEstado(): void {
-    const usuario = this.porConfirmar();
-    this.dialogo()?.nativeElement.close();
-
-    if (!usuario) return;
+    if (!await this.confirmacion().abrir()) return;
 
     const activar = !usuario.estado;
     this.ejecutar(usuario, this.usuariosService.cambiarEstado(usuario.id, activar),

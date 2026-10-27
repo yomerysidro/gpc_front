@@ -99,6 +99,11 @@ export class SessionAuthService extends AuthService {
     return this.sesion$;
   }
 
+  recargarSesion(): Observable<boolean> {
+    this.sesion$ = null;
+    return this.cargarSesion();
+  }
+
   logout(): Observable<void> {
     return this.http.post(`${this.api}/auth/logout`, null, this.opciones()).pipe(
       catchError(() => of(null)),

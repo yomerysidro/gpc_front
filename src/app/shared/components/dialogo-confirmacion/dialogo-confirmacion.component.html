@@ -1,0 +1,7 @@
+<app-dialogo [titulo]="titulo()" [idDescripcion]="idTexto" (cerrado)="alCerrar()">
+  <p [id]="idTexto">{{ texto() }}</p>
+  <div class="dialogo-acciones">
+    <button type="button" class="btn" autofocus (click)="responder(false)">{{ cancelar() }}</button>
+    <button type="button" class="btn btn-primary" (click)="responder(true)">{{ confirmar() }}</button>
+  </div>
+</app-dialogo>

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { cambiosPendientesGuard } from './core/guards/cambios-pendientes.guard';
 import { guestGuard } from './core/guards/guest.guard';
 import { inicioGuard } from './core/guards/inicio.guard';
 import { permissionGuard } from './core/guards/permission.guard';
@@ -12,6 +13,8 @@ import { HomeComponent } from './pages/home/home.component';
 import { EnConstruccionComponent } from './pages/en-construccion/en-construccion.component';
 import { ListarUsuariosComponent } from './pages/seguridad/usuarios/listar-usuarios/listar-usuarios.component';
 import { FormularioUsuarioComponent } from './pages/seguridad/usuarios/formulario-usuario/formulario-usuario.component';
+import { RolesPermisosComponent } from './pages/seguridad/roles/roles-permisos/roles-permisos.component';
+import { AccesosRolComponent } from './pages/seguridad/roles/accesos-rol/accesos-rol.component';
 
 export const routes: Routes = [
   // Sin componente: en el navegador inicioGuard redirige al primer módulo o a /login.
@@ -51,9 +54,18 @@ export const routes: Routes = [
       },
       {
         path: 'roles',
-        component: EnConstruccionComponent,
         canActivate: [permissionGuard],
-        data: { permiso: 'roles.ver', titulo: 'Roles y Permisos' },
+        data: { permiso: 'roles.ver' },
+        children: [
+          { path: '', component: RolesPermisosComponent },
+          {
+            path: ':id/accesos',
+            component: AccesosRolComponent,
+            canActivate: [permissionGuard],
+            canDeactivate: [cambiosPendientesGuard],
+            data: { permiso: 'roles.editar' },
+          },
+        ],
       },
       // Módulos del menú cuyas pantallas aún no existen (actividades, reportes, …).
       { path: '**', component: EnConstruccionComponent },
