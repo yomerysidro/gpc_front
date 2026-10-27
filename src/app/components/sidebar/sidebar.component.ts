@@ -6,6 +6,12 @@ import { NavigationItem } from '../../core/interfaces/navigation/navigation-item
 import { ICONOS_DISPONIBLES } from '../../shared/utils/iconos-disponibles';
 import { MODULOS_NAVEGACION } from './modulos-navegacion';
 
+interface OpcionModulo {
+  readonly path: string;
+  readonly label: string;
+  readonly icon: string;
+}
+
 @Component({
   selector: 'app-sidebar',
   standalone: true,
@@ -30,13 +36,15 @@ export class SidebarComponent {
   protected readonly expandidos = signal<ReadonlySet<string>>(new Set());
   protected readonly moduloActual = computed(() => this.raiz(this.url()));
   protected readonly reportes = computed(() => this.items().filter(item => this.raiz(item.path) === 'reportes'));
+  protected readonly dashboard = computed(() => this.items().filter(item => this.raiz(item.path) === 'dashboard'));
   protected readonly seguridadActiva = computed(() => this.esSeguridad(this.url()));
   protected readonly navegacion = computed(() => {
     const orden = ['usuarios', 'roles', 'permisos', 'modulos'];
     const seguridad = this.items().filter(item => this.esSeguridad(item.path))
       .sort((a, b) => orden.indexOf(this.raiz(a.path)!) - orden.indexOf(this.raiz(b.path)!));
     let agrupado = false;
-    return this.items().filter(item => !this.esModuloPreparado(item.path)
+    return this.items().filter(item => !['dashboard', 'emision', 'practicantes', 'reconocimientos'].includes(this.raiz(item.path) ?? '')
+      && !this.esModuloPreparado(item.path)
       && this.raiz(item.path) !== 'reportes'
       && this.raiz(item.path) !== 'ponentes-firmantes').flatMap<{
       tipo: 'enlace' | 'seguridad'; item: NavigationItem; hijos: readonly NavigationItem[];
@@ -49,6 +57,23 @@ export class SidebarComponent {
       return [{ tipo: 'seguridad' as const, item, hijos: seguridad }];
     });
   });
+
+  protected opcionesModulo(modulo: typeof MODULOS_NAVEGACION[number]): readonly OpcionModulo[] {
+    const rutaDinamica = modulo.path === 'gestion' ? 'practicantes' : 'reconocimientos';
+    const opciones: OpcionModulo[] = modulo.opciones.map(opcion => ({ ...opcion }));
+    const yaConfigurada = opciones.some(opcion => opcion.path === rutaDinamica);
+    const moduloBackend = this.items().find(item => this.raiz(item.path) === rutaDinamica);
+
+    if (!yaConfigurada && moduloBackend) {
+      opciones.push({
+        path: rutaDinamica,
+        label: moduloBackend.label,
+        icon: moduloBackend.icon ?? (modulo.path === 'gestion' ? 'school' : 'military_tech'),
+      });
+    }
+
+    return opciones;
+  }
 
   constructor() {
     effect(() => {

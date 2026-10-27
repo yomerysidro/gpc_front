@@ -6,31 +6,41 @@ import { of } from 'rxjs';
 import { routes } from '../../app.routes';
 import { AuthService } from '../../core/services/autenticacion/auth.service';
 import { MODULOS_NAVEGACION } from './modulos-navegacion';
+import { EmisionCertificadosService } from '../../core/services/emision-certificados/emision-certificados.service';
 
 describe('Navegación de Gestión y Certificaciones', () => {
   let autenticado: boolean;
+  let modulosBackend: ReturnType<typeof signal<readonly { id: number; nombre: string; url: string; imagen: string }[]>>;
 
   beforeEach(() => {
     autenticado = true;
+    modulosBackend = signal([
+      { id: 1, nombre: 'Usuarios', url: '/usuarios', imagen: 'people' },
+      { id: 2, nombre: 'Roles', url: '/roles', imagen: 'admin_panel_settings' },
+      { id: 3, nombre: 'Actividades', url: '/actividades', imagen: 'event' },
+      { id: 4, nombre: 'Ponentes y Firmantes', url: '/ponentes-firmantes', imagen: 'campaign' },
+      { id: 5, nombre: 'Reportes', url: '/reportes', imagen: 'bar_chart' },
+    ]);
     TestBed.configureTestingModule({
       providers: [provideRouter(routes), {
+        provide: EmisionCertificadosService,
+        useValue: {
+          listar: () => of({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }),
+          obtener: () => of({ id_certificado: 1 }),
+        },
+      }, {
         provide: AuthService,
         useValue: {
           cargarSesion: () => of(autenticado),
+          tienePermiso: () => true,
           usuario: signal(null),
-          modulos: signal([
-            { nombre: 'Usuarios', url: '/usuarios', imagen: 'people' },
-            { nombre: 'Roles', url: '/roles', imagen: 'admin_panel_settings' },
-            { nombre: 'Actividades', url: '/actividades', imagen: 'event' },
-            { nombre: 'Ponentes y Firmantes', url: '/ponentes-firmantes', imagen: 'campaign' },
-            { nombre: 'Reportes', url: '/reportes', imagen: 'bar_chart' },
-          ]),
+          modulos: modulosBackend,
         },
       }],
     });
   });
 
-  it('navega las 12 rutas reales, muestra solo su título y activa el acordeón correspondiente', async () => {
+  it('navega las 12 rutas reales, muestra su título y activa el acordeón correspondiente', async () => {
     const harness = await RouterTestingHarness.create();
     for (const modulo of MODULOS_NAVEGACION) {
       for (const opcion of modulo.opciones) {
@@ -39,7 +49,7 @@ describe('Navegación de Gestión y Certificaciones', () => {
         harness.detectChanges();
         const vista: HTMLElement = harness.routeNativeElement!;
         expect(TestBed.inject(Router).url).toBe(url);
-        expect(vista.querySelector('main')?.textContent?.trim()).toBe(opcion.label);
+        expect(vista.querySelector('main h1')?.textContent?.trim()).toBe(opcion.label);
         expect(vista.querySelectorAll('main h1').length).toBe(1);
         expect(vista.querySelector('app-sidebar a.active')?.getAttribute('href')).toBe(url);
         const boton = vista.querySelector<HTMLButtonElement>(`[aria-controls="submenu-${modulo.path}"]`)!;
@@ -87,6 +97,28 @@ describe('Navegación de Gestión y Certificaciones', () => {
     boton.click();
     harness.detectChanges();
     expect(submenu.hidden).toBeFalse();
+  });
+
+  it('oculta Emisión de Certificados del grupo Seguridad y conserva Certificaciones → Certificados', async () => {
+    modulosBackend.set([
+      { id: 1, nombre: 'Usuarios', url: '/usuarios', imagen: 'people' },
+      { id: 2, nombre: 'Emisión de Certificados', url: '/emision', imagen: 'workspace_premium' },
+      { id: 3, nombre: 'Roles', url: '/roles', imagen: 'admin_panel_settings' },
+      { id: 4, nombre: 'Actividades', url: '/actividades', imagen: 'event' },
+    ]);
+
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/certificaciones/certificados');
+    harness.detectChanges();
+    const vista: HTMLElement = harness.routeNativeElement!;
+
+    expect(vista.querySelector('#submenu-seguridad a[href="/emision"]')).toBeNull();
+    expect(vista.querySelectorAll('a[href="/certificaciones/certificados"]').length).toBe(1);
+    vista.querySelector<HTMLAnchorElement>('#submenu-certificaciones a[href="/certificaciones/certificados"]')!.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(TestBed.inject(Router).url).toBe('/certificaciones/certificados');
+    expect(vista.querySelector('main h1')?.textContent?.trim()).toBe('Certificados');
   });
 
   it('contrae el sidebar, conserva la opción activa y abre un módulo desde su icono', async () => {

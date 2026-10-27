@@ -1,0 +1,59 @@
+@if (!permitido) {
+  <p class="alert alert-error" role="alert">No tienes permiso para realizar esta operación.</p>
+} @else if (cargando()) {
+  <p role="status">Cargando registro…</p>
+} @else if (errorCarga()) {
+  <p class="alert alert-error" role="alert">{{ errorCarga() }}</p>
+  <button class="btn" type="button" (click)="cargar()">Reintentar</button>
+} @else {
+  @if (config.aviso) { <p class="nota">{{ config.aviso }}</p> }
+  @if (errorGeneral(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
+  <form [formGroup]="form()" (ngSubmit)="guardar()" [attr.aria-busy]="enviando()">
+    <fieldset [disabled]="enviando()" class="card">
+      <legend>{{ id() === null ? 'Nuevo registro' : 'Editar registro #' + id() }}</legend>
+      <div class="grid">
+        @for (campo of config.campos; track campo.nombre) {
+          <div class="form-field">
+            <label [for]="recurso() + '-' + campo.nombre">{{ campo.titulo }}{{ opcional(campo) ? ' (opcional)' : '' }}</label>
+            @if (campo.tipo === 'booleano') {
+              <input [id]="recurso() + '-' + campo.nombre" type="checkbox" [formControlName]="campo.nombre" />
+            } @else if (campo.opciones) {
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
+                <option value="">Seleccionar</option>
+                @for (opcion of campo.opciones; track opcion) { <option [value]="opcion">{{ opcion }}</option> }
+              </select>
+            } @else if (campo.tipo === 'multilinea') {
+              <textarea class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [attr.maxlength]="campo.max" [attr.aria-invalid]="!!errorCampo(campo)"
+                [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'"></textarea>
+            } @else {
+              <input class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [type]="campo.tipo === 'secreto' ? 'password' : campo.tipo === 'numero' ? 'number' : campo.tipo === 'fecha' ? 'date' : campo.tipo === 'fecha-hora' ? 'datetime-local' : 'text'"
+                [attr.min]="campo.tipo === 'numero' ? 1 : null" [attr.maxlength]="campo.max"
+                [attr.autocomplete]="campo.tipo === 'secreto' ? 'new-password' : 'off'"
+                [attr.list]="campo.relacion ? recurso() + '-' + campo.nombre + '-opciones' : null"
+                [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'" />
+            }
+            @if (campo.relacion) {
+              <button type="button" class="btn" [disabled]="cargandoRelacion().has(campo.nombre)"
+                (click)="cargarOpciones(campo)">{{ cargandoRelacion().has(campo.nombre) ? 'Cargando…' : 'Ver registros disponibles' }}</button>
+              <datalist [id]="recurso() + '-' + campo.nombre + '-opciones'">
+                @for (opcion of opciones()[campo.nombre] ?? []; track opcion.id) {
+                  <option [value]="opcion.id">{{ opcion.texto }}</option>
+                }
+              </datalist>
+              <small class="nota">Usa el ID de un registro existente. Las sugerencias muestran hasta 100 registros de Emisión.</small>
+              @if (errorRelacion()[campo.nombre]; as error) { <small class="errores" role="alert">{{ error }}</small> }
+            }
+            <small class="errores" [id]="recurso() + '-' + campo.nombre + '-error'">{{ errorCampo(campo) }}</small>
+          </div>
+        }
+      </div>
+      <div class="acciones">
+        <button type="submit" class="btn btn-primary" [disabled]="enviando()">{{ enviando() ? 'Guardando…' : 'Guardar' }}</button>
+        <button type="button" class="btn" [disabled]="enviando()" (click)="cancelar.emit()">Cancelar</button>
+      </div>
+    </fieldset>
+  </form>
+}

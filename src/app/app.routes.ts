@@ -17,7 +17,7 @@ import { RolesPermisosComponent } from './pages/seguridad/roles/roles-permisos/r
 import { AccesosRolComponent } from './pages/seguridad/roles/accesos-rol/accesos-rol.component';
 import { MODULOS_NAVEGACION } from './components/sidebar/modulos-navegacion';
 import { VistaTemporalComponent } from './pages/vista-temporal/vista-temporal.component';
-import { ListarCertificadosComponent } from './pages/certificados/listar-certificados/listar-certificados.component';
+import { EMISION_CERTIFICADOS_ROUTES } from './pages/emision-certificados/emision-certificados.routes';
 
 export const routes: Routes = [
   // Sin componente: en el navegador inicioGuard redirige al primer módulo o a /login.
@@ -72,12 +72,12 @@ export const routes: Routes = [
       },
       ...MODULOS_NAVEGACION.map(modulo => ({
         path: modulo.path,
-        children: modulo.opciones.map(opcion => ({
+        children: [...modulo.opciones.filter(opcion => modulo.path !== 'certificaciones'
+          || !['certificados', 'firmas', 'verificacion', 'configuracion'].includes(opcion.path)).map(opcion => ({
           path: opcion.path,
-          component: modulo.path === 'certificaciones' && opcion.path === 'certificados'
-            ? ListarCertificadosComponent : VistaTemporalComponent,
+          component: VistaTemporalComponent,
           data: { titulo: opcion.label },
-        })),
+        })), ...(modulo.path === 'certificaciones' ? EMISION_CERTIFICADOS_ROUTES : [])],
       })),
       // Destino de las demás opciones del menú sin pantalla todavía.
       { path: '**', component: EnConstruccionComponent },
