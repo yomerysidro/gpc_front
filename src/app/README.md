@@ -96,9 +96,11 @@ La sesión se decide solo en el navegador (la cookie no viaja al render del
 servidor). En el servidor los guards devuelven true y nunca llaman a la API;
 la ruta raíz no tiene componente, así que su HTML del servidor queda vacío.
 `withHttpTransferCacheOptions` excluye las URLs de apiBaseUrl de la caché de
-transferencia. Solo se prerenderizan las rutas públicas listadas en
-prerender-routes.txt (`discoverRoutes: false`); el archivo no debe terminar en
-línea vacía, porque el builder la interpreta como la ruta `/`.
+transferencia. Solo se prerenderizan las rutas de prerender-routes.txt
+(`discoverRoutes: false`): las públicas y `/`. `/` genera
+dist/gpc_front/browser/index.html, que el Dockerfile exige; su HTML es el shell vacío
+(sin componente ni datos), y en el navegador inicioGuard redirige. No quitar `/` de la
+lista: sin ese archivo falla el build de la imagen en el CI.
 
 ### Rutas
 
