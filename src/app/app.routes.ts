@@ -15,6 +15,9 @@ import { ListarUsuariosComponent } from './pages/seguridad/usuarios/listar-usuar
 import { FormularioUsuarioComponent } from './pages/seguridad/usuarios/formulario-usuario/formulario-usuario.component';
 import { RolesPermisosComponent } from './pages/seguridad/roles/roles-permisos/roles-permisos.component';
 import { AccesosRolComponent } from './pages/seguridad/roles/accesos-rol/accesos-rol.component';
+import { MODULOS_NAVEGACION } from './components/sidebar/modulos-navegacion';
+import { VistaTemporalComponent } from './pages/vista-temporal/vista-temporal.component';
+import { ListarCertificadosComponent } from './pages/certificados/listar-certificados/listar-certificados.component';
 
 export const routes: Routes = [
   // Sin componente: en el navegador inicioGuard redirige al primer módulo o a /login.
@@ -67,7 +70,16 @@ export const routes: Routes = [
           },
         ],
       },
-      // Módulos del menú cuyas pantallas aún no existen (actividades, reportes, …).
+      ...MODULOS_NAVEGACION.map(modulo => ({
+        path: modulo.path,
+        children: modulo.opciones.map(opcion => ({
+          path: opcion.path,
+          component: modulo.path === 'certificaciones' && opcion.path === 'certificados'
+            ? ListarCertificadosComponent : VistaTemporalComponent,
+          data: { titulo: opcion.label },
+        })),
+      })),
+      // Destino de las demás opciones del menú sin pantalla todavía.
       { path: '**', component: EnConstruccionComponent },
     ],
   },
