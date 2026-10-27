@@ -1,7 +1,15 @@
 <app-header>
+  @if (navigation().length) {
+    <button type="button" class="btn btn-icono btn-sin-borde menu-toggle" popovertarget="menu-principal"
+      aria-label="Menú de navegación">
+      <span class="material-symbols-outlined" aria-hidden="true">menu</span>
+    </button>
+  }
   <ng-content select="[layout-header]" />
 </app-header>
-<app-sidebar [items]="navigation()" />
+<!-- En pantallas angostas el sidebar es un popover (cajón con velo); en escritorio queda fijo. -->
+<app-sidebar id="menu-principal" popover [items]="navigation()"
+  (click)="$any($event.currentTarget).hidePopover()" />
 <main>
   <router-outlet />
 </main>

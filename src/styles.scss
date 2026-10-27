@@ -1,27 +1,56 @@
-/* Estilos globales: tokens de diseño y clases base reutilizables. */
+/*
+ * Estilos globales: tokens de diseño y clases base reutilizables.
+ * Dirección visual "Tinturas del escudo": ver DESIGN.md en la raíz.
+ */
 
 :root {
-  --color-primario: #1f4e79;
-  --color-primario-oscuro: #173a5b;
-  --color-primario-claro: #e8eff6;
+  /* Primario: el teal del logotipo. Solo para lo que se puede presionar
+     (botones, enlaces, navegación activa) y el foco. */
+  --color-primario: #047488; /* 5,44:1 sobre blanco */
+  --color-primario-hover: #035e6e;
+  --color-primario-claro: #e3f0f2;
+
+  /* Neutros cálidos derivados del ocre del escudo */
+  --neutro-0: #ffffff;
+  --neutro-50: #f8f7f5;
+  --neutro-100: #efece8;
+  --neutro-200: #ddd8d1;
+  --neutro-400: #8b8277; /* bordes de controles: 3,78:1 sobre blanco (WCAG 1.4.11) */
+  --neutro-500: #6b6359; /* texto secundario: 5,91:1 sobre blanco */
+  --neutro-700: #45403a;
+  --neutro-900: #23201c; /* texto principal */
+
+  /* Tinturas del escudo: codifican datos (tipo de certificado), nunca acciones.
+     La base pinta muestras y barras; -texto es la variante AA sobre -claro. */
+  --tintura-celeste: #3db7df;
+  --tintura-celeste-texto: #0a6488;
+  --tintura-celeste-claro: #e4f4fb;
+  --tintura-verde: #64a52d;
+  --tintura-verde-texto: #3b6f1b;
+  --tintura-verde-claro: #ebf4e2;
+  --tintura-sol: #e1b232;
+  --tintura-sol-texto: #765700;
+  --tintura-sol-claro: #fcf3d6;
+  --tintura-ocre: #bb946a;
+  --tintura-ocre-texto: #76552f;
+  --tintura-ocre-claro: #f4ede4;
+  --escudo-rojo: #e94d2e; /* franja del escudo: solo identidad, nunca estados */
+
+  /* Estados */
+  --color-exito: #2e6b2a;
+  --color-exito-claro: #e9f3e8;
   --color-error: #b3261e;
-  --color-error-claro: #fdecea;
-  --color-exito: #2e7d32;
-  --color-exito-claro: #e8f5e9;
-  --color-advertencia: #8a5a00;
-  --color-advertencia-claro: #fff4e0;
+  --color-error-claro: #fceceb;
+  --color-advertencia: #7a5000;
+  --color-advertencia-claro: #fff4db;
 
-  --gris-50: #f7f8fa;
-  --gris-100: #eef0f3;
-  --gris-200: #dde1e6;
-  --gris-400: #9aa3ad;
-  --gris-600: #5b6570;
-  --gris-800: #2c333a;
-  --blanco: #ffffff;
+  --color-foco: var(--color-primario);
+  --color-velo: rgb(35 32 28 / 0.45);
 
+  --radio-xs: 2px; /* muestras de color de 8 px (badges de tipo) */
   --radio-sm: 4px;
   --radio-md: 6px;
-  --radio-lg: 10px;
+  --radio-lg: 8px;
 
   --espacio-1: 0.25rem;
   --espacio-2: 0.5rem;
@@ -29,10 +58,17 @@
   --espacio-4: 1rem;
   --espacio-5: 1.5rem;
   --espacio-6: 2rem;
+  --espacio-8: 3rem;
 
-  --fuente-base: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --sombra-sm: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.08);
-  --foco: 0 0 0 3px rgb(31 78 121 / 0.25);
+  --alto-control: 2.75rem; /* 44px: área táctil mínima */
+  --alto-header: 4rem;
+  --ancho-sidebar: 15.5rem;
+  --ancho-formulario: 23.75rem;
+  --ancho-franja: 0.5rem;
+  --icono-md: 1.25rem;
+
+  --fuente-base: 'Libre Franklin', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --sombra-lg: 0 8px 24px rgb(35 32 28 / 0.18);
 }
 
 *,
@@ -51,44 +87,86 @@ body {
   font-family: var(--fuente-base);
   font-size: 0.9375rem;
   line-height: 1.5;
-  color: var(--gris-800);
-  background: var(--gris-50);
+  color: var(--neutro-900);
+  background: var(--neutro-0);
+}
+
+/* Solo se cargan los pesos 400, 500 y 600: la negrita usa 600 para no sintetizar 700. */
+b,
+strong {
+  font-weight: 600;
 }
 
 h1,
 h2,
 h3 {
   margin: 0 0 var(--espacio-4);
-  line-height: 1.25;
-  color: var(--gris-800);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--neutro-900);
 }
 
 h1 {
-  font-size: 1.5rem;
+  font-size: 1.625rem;
 }
 
 a {
   color: var(--color-primario);
+  text-underline-offset: 0.2em;
 }
 
-.material-icons {
-  font-size: 1.25rem;
+::selection {
+  background: var(--color-primario-claro);
+  color: var(--neutro-900);
+}
+
+/* Foco visible y uniforme: el primario tiene 5,44:1 sobre blanco. */
+:focus-visible {
+  outline: 2px solid var(--color-foco);
+  outline-offset: 2px;
+}
+
+/* Material Symbols Outlined (trazo 300). La clase y la fuente vienen del <link> de index.html. */
+.material-symbols-outlined {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  overflow: hidden; /* mientras la fuente carga, la ligadura no ocupa el ancho de su palabra */
+  font-size: var(--icono-md);
   line-height: 1;
   vertical-align: middle;
+  user-select: none;
 }
 
-/* Botones */
+/* Texto solo para lectores de pantalla */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Datos: números tabulares para que las cifras se alineen */
+.dato,
+.table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Botones: por defecto secundario (borde); .btn-primary es la acción principal */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--espacio-2);
-  min-height: 2.5rem;
+  min-height: var(--alto-control);
   padding: var(--espacio-2) var(--espacio-4);
-  border: 1px solid var(--gris-200);
-  border-radius: var(--radio-md);
-  background: var(--blanco);
-  color: var(--gris-800);
+  border: 1px solid var(--neutro-400);
+  border-radius: var(--radio-sm);
+  background: var(--neutro-0);
+  color: var(--neutro-900);
   font: inherit;
   font-weight: 500;
   text-decoration: none;
@@ -96,12 +174,7 @@ a {
   transition: background-color 0.15s, border-color 0.15s;
 
   &:hover:not(:disabled) {
-    background: var(--gris-100);
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: var(--foco);
+    background: var(--neutro-50);
   }
 
   &:disabled {
@@ -113,10 +186,12 @@ a {
 .btn-primary {
   border-color: var(--color-primario);
   background: var(--color-primario);
-  color: var(--blanco);
+  color: var(--neutro-0);
+  font-weight: 600;
 
   &:hover:not(:disabled) {
-    background: var(--color-primario-oscuro);
+    border-color: var(--color-primario-hover);
+    background: var(--color-primario-hover);
   }
 }
 
@@ -124,38 +199,90 @@ a {
   width: 100%;
 }
 
+/* Botón sobre superficies oscuras (hoy sin uso; se conserva por compatibilidad) */
+.btn-invertido {
+  border-color: rgb(255 255 255 / 0.7);
+  background: transparent;
+  color: var(--neutro-0);
+
+  &:hover:not(:disabled) {
+    background: rgb(255 255 255 / 0.14);
+  }
+}
+
+/* Botón de solo ícono: siempre con aria-label */
+.btn-icono {
+  width: var(--alto-control);
+  padding: 0;
+}
+
+.btn-sin-borde {
+  border-color: transparent;
+  background: transparent;
+  color: var(--neutro-500);
+
+  &:hover:not(:disabled) {
+    background: var(--neutro-100);
+    color: var(--neutro-900);
+  }
+}
+
 /* Formularios */
 .form-field {
   display: flex;
   flex-direction: column;
   gap: var(--espacio-1);
-  margin-bottom: var(--espacio-4);
+  margin-bottom: var(--espacio-5);
 
   label {
-    font-weight: 500;
     font-size: 0.875rem;
+    font-weight: 600;
   }
 }
 
 .input {
   width: 100%;
-  min-height: 2.5rem;
+  min-height: var(--alto-control);
   padding: var(--espacio-2) var(--espacio-3);
-  border: 1px solid var(--gris-200);
-  border-radius: var(--radio-md);
-  background: var(--blanco);
-  color: var(--gris-800);
+  border: 1px solid var(--neutro-400);
+  border-radius: var(--radio-sm);
+  background: var(--neutro-0);
+  color: var(--neutro-900);
+  caret-color: var(--color-primario);
   font: inherit;
+  font-size: 1rem; /* 16px evita el zoom automático de iOS */
 
-  &:focus {
-    outline: none;
+  &:focus-visible {
+    outline-offset: 0;
     border-color: var(--color-primario);
-    box-shadow: var(--foco);
   }
 
   &.ng-invalid.ng-touched {
     border-color: var(--color-error);
+    outline-color: var(--color-error);
   }
+}
+
+/* Input con un botón dentro (por ejemplo, mostrar contraseña) */
+.input-con-accion {
+  position: relative;
+
+  .input {
+    padding-right: calc(var(--alto-control) + var(--espacio-1));
+  }
+
+  .btn-icono {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-height: var(--alto-control);
+  }
+}
+
+.form-ayuda {
+  margin: 0;
+  color: var(--neutro-500);
+  font-size: 0.8125rem;
 }
 
 .error-text {
@@ -164,12 +291,19 @@ a {
   font-size: 0.8125rem;
 }
 
-/* Avisos dentro de formularios o páginas */
+/* Avisos: el ícono de estado acompaña al texto, nunca lo sustituye */
 .alert {
-  margin-bottom: var(--espacio-4);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-2);
+  margin-bottom: var(--espacio-5);
   padding: var(--espacio-3) var(--espacio-4);
   border-radius: var(--radio-md);
   font-size: 0.875rem;
+
+  .material-symbols-outlined {
+    flex: none;
+  }
 }
 
 .alert-error {
@@ -182,51 +316,60 @@ a {
   color: var(--color-exito);
 }
 
+.alert-advertencia {
+  background: var(--color-advertencia-claro);
+  color: var(--color-advertencia);
+}
+
 /* Contenedores */
 .card {
   padding: var(--espacio-5);
-  border: 1px solid var(--gris-200);
+  border: 1px solid var(--neutro-200);
   border-radius: var(--radio-lg);
-  background: var(--blanco);
-  box-shadow: var(--sombra-sm);
+  background: var(--neutro-0);
 }
 
 /* Tablas */
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--blanco);
+  background: var(--neutro-0);
 
   th,
   td {
-    padding: var(--espacio-3) var(--espacio-4);
-    border-bottom: 1px solid var(--gris-200);
+    height: 3rem;
+    padding: 0 var(--espacio-3);
+    border-bottom: 1px solid var(--neutro-100);
     text-align: left;
   }
 
   th {
-    background: var(--gris-100);
-    color: var(--gris-600);
+    height: 2.5rem;
+    border-bottom-color: var(--neutro-200);
+    color: var(--neutro-500);
     font-size: 0.8125rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
   }
 
   tbody tr:hover {
-    background: var(--gris-50);
+    background: var(--neutro-50);
   }
 }
 
-/* Etiquetas de estado */
+/* Etiquetas. Estados: .badge-exito/-error/-advertencia.
+   Tipo de certificado (tinturas): .badge-participacion/-practicas/-reconocimiento. */
 .badge {
-  display: inline-block;
-  padding: 0.125rem var(--espacio-2);
-  border-radius: 999px;
-  background: var(--gris-100);
-  color: var(--gris-600);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 1.5rem;
+  padding: 0 var(--espacio-2);
+  border-radius: var(--radio-sm);
+  background: var(--neutro-100);
+  color: var(--neutro-700);
   font-size: 0.75rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .badge-exito {
@@ -239,31 +382,75 @@ a {
   color: var(--color-error);
 }
 
-/* Páginas públicas centradas (login, recuperación, acceso denegado) */
-.auth-page {
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
-  padding: var(--espacio-4);
+.badge-advertencia {
+  background: var(--color-advertencia-claro);
+  color: var(--color-advertencia);
 }
 
-.auth-card {
-  width: 100%;
-  max-width: 400px;
-
-  h1 {
-    font-size: 1.25rem;
+.badge-participacion,
+.badge-practicas,
+.badge-reconocimiento {
+  &::before {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: var(--radio-xs);
+    background: var(--muestra);
   }
 }
 
-.auth-subtitulo {
-  margin: calc(var(--espacio-3) * -1) 0 var(--espacio-5);
-  color: var(--gris-600);
-  font-size: 0.875rem;
+.badge-participacion {
+  --muestra: var(--tintura-celeste);
+  background: var(--tintura-celeste-claro);
+  color: var(--tintura-celeste-texto);
+}
+
+.badge-practicas {
+  --muestra: var(--tintura-verde);
+  background: var(--tintura-verde-claro);
+  color: var(--tintura-verde-texto);
+}
+
+.badge-reconocimiento {
+  --muestra: var(--tintura-sol);
+  background: var(--tintura-sol-claro);
+  color: var(--tintura-sol-texto);
+}
+
+/* Franja de tinturas: identidad del escudo en el panel de marca */
+.franja-tinturas {
+  display: grid;
+  grid-template-rows: repeat(5, 1fr);
+
+  > span:nth-child(1) { background: var(--tintura-celeste); }
+  > span:nth-child(2) { background: var(--tintura-verde); }
+  > span:nth-child(3) { background: var(--tintura-sol); }
+  > span:nth-child(4) { background: var(--tintura-ocre); }
+  > span:nth-child(5) { background: var(--escudo-rojo); }
+}
+
+/* Contenido de las páginas de acceso (dentro de app-auth-layout) */
+.auth-titulo {
+  margin-bottom: var(--espacio-2);
+}
+
+.auth-texto {
+  margin: 0 0 var(--espacio-6);
+  color: var(--neutro-500);
 }
 
 .auth-enlaces {
-  margin: var(--espacio-4) 0 0;
-  text-align: center;
+  margin: var(--espacio-5) 0 0;
   font-size: 0.875rem;
+
+  a {
+    display: inline-block;
+    padding: var(--espacio-2) 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
 }

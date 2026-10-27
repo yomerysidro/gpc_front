@@ -1,43 +1,65 @@
-<div class="auth-page">
-  <section class="card auth-card" aria-labelledby="titulo-login">
-    <span class="material-icons marca" aria-hidden="true">workspace_premium</span>
-    <h1 id="titulo-login">Sistema de Certificados</h1>
-    <p class="auth-subtitulo">Municipalidad de Morales</p>
+<app-auth-layout>
+  <section aria-labelledby="titulo-login">
+    <h1 id="titulo-login" class="auth-titulo">Iniciar sesión</h1>
+    <p class="auth-texto">Ingresa con tu correo institucional.</p>
 
-    @if (resultado(); as error) {
-      <div class="alert alert-error" role="alert">
-        @if (error.tipo === 'bloqueado' && error.bloqueadoHasta) {
-          Cuenta bloqueada hasta {{ error.bloqueadoHasta | date: 'HH:mm' : zonaLima }}
-        } @else {
-          {{ error.mensaje }}
-        }
-      </div>
-    }
-    @if (errorInesperado()) {
-      <div class="alert alert-error" role="alert">
-        No se pudo iniciar sesión. Intenta nuevamente en unos minutos.
-      </div>
-    }
+    <div role="alert">
+      @if (resultado(); as error) {
+        <div class="alert alert-error">
+          <span class="material-symbols-outlined" aria-hidden="true">error</span>
+          <span>
+            @if (error.tipo === 'bloqueado' && error.bloqueadoHasta) {
+              Cuenta bloqueada hasta {{ error.bloqueadoHasta | date: 'HH:mm' : zonaLima }}
+            } @else {
+              {{ error.mensaje }}
+            }
+          </span>
+        </div>
+      }
+      @if (errorInesperado()) {
+        <div class="alert alert-error">
+          <span class="material-symbols-outlined" aria-hidden="true">error</span>
+          <span>No se pudo iniciar sesión. Intenta nuevamente en unos minutos.</span>
+        </div>
+      }
+    </div>
 
     <form [formGroup]="form" (ngSubmit)="ingresar()" novalidate>
       <div class="form-field">
         <label for="email">Correo electrónico</label>
-        <input id="email" class="input" type="email" formControlName="email" autocomplete="username" />
-        @if (form.controls.email.touched && form.controls.email.invalid) {
-          <p class="error-text">Ingresa un correo válido.</p>
-        }
+        <input id="email" class="input" type="email" formControlName="email" autocomplete="username"
+          inputmode="email" aria-required="true" aria-describedby="email-error"
+          [attr.aria-invalid]="form.controls.email.touched && form.controls.email.invalid" />
+        <div id="email-error" aria-live="polite">
+          @if (form.controls.email.touched && form.controls.email.invalid) {
+            <p class="error-text">Ingresa un correo válido.</p>
+          }
+        </div>
       </div>
 
       <div class="form-field">
         <label for="password">Contraseña</label>
-        <input id="password" class="input" type="password" formControlName="password"
-          autocomplete="current-password" />
-        @if (form.controls.password.touched && form.controls.password.invalid) {
-          <p class="error-text">Ingresa tu contraseña.</p>
-        }
+        <div class="input-con-accion">
+          <input #campoPassword id="password" class="input" type="password" formControlName="password"
+            autocomplete="current-password" aria-required="true" aria-describedby="password-error"
+            [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid" />
+          <button type="button" class="btn btn-icono btn-sin-borde"
+            [attr.aria-pressed]="campoPassword.type === 'text'" aria-label="Mostrar contraseña"
+            (click)="campoPassword.type = campoPassword.type === 'password' ? 'text' : 'password'">
+            <span class="material-symbols-outlined" aria-hidden="true">
+              {{ campoPassword.type === 'password' ? 'visibility' : 'visibility_off' }}
+            </span>
+          </button>
+        </div>
+        <div id="password-error" aria-live="polite">
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <p class="error-text">Ingresa tu contraseña.</p>
+          }
+        </div>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" [disabled]="enviando()">
+      <button type="submit" class="btn btn-primary btn-block" [disabled]="enviando()"
+        [attr.aria-busy]="enviando()">
         {{ enviando() ? 'Ingresando…' : 'Ingresar' }}
       </button>
     </form>
@@ -46,4 +68,4 @@
       <a routerLink="/recuperar-password">¿Olvidaste tu contraseña?</a>
     </p>
   </section>
-</div>
+</app-auth-layout>

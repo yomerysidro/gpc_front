@@ -58,16 +58,19 @@ describe('Componentes de la estructura base', () => {
     expect(fixture.nativeElement.querySelectorAll('a').length).toBe(0);
   });
 
-  it('el sidebar muestra el ícono solo cuando la entrada lo trae', () => {
+  it('el sidebar muestra el ícono solo si la entrada lo trae y está en la fuente', () => {
     const fixture = TestBed.createComponent(SidebarComponent);
     fixture.componentRef.setInput('items', [
       { label: 'Actividades', path: '/actividades', icon: 'event' },
       { label: 'Inicio', path: '/inicio' },
+      { label: 'Nuevo módulo', path: '/nuevo', icon: 'icono_fuera_de_la_fuente' },
     ]);
     fixture.detectChanges();
-    const [conIcono, sinIcono]: HTMLAnchorElement[] = Array.from(fixture.nativeElement.querySelectorAll('a'));
-    expect(conIcono.querySelector('.material-icons')?.textContent).toBe('event');
-    expect(sinIcono.querySelector('.material-icons')).toBeNull();
+    const [conIcono, sinIcono, desconocido]: HTMLAnchorElement[] = Array.from(fixture.nativeElement.querySelectorAll('a'));
+    expect(conIcono.querySelector('.material-symbols-outlined')?.textContent).toBe('event');
+    expect(sinIcono.querySelector('.material-symbols-outlined')).toBeNull();
+    expect(desconocido.querySelector('.material-symbols-outlined')).toBeNull();
+    expect(desconocido.textContent?.trim()).toBe('Nuevo módulo');
   });
 
 });

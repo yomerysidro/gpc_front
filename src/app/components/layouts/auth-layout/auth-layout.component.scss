@@ -1,0 +1,133 @@
+:host {
+  display: block;
+}
+
+.dividido {
+  display: grid;
+  grid-template-columns: minmax(26rem, 46%) 1fr;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.marca {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-6);
+  padding: var(--espacio-8) 3.5rem;
+  background: var(--neutro-100);
+}
+
+.franja-tinturas {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--ancho-franja);
+}
+
+// Escudo y nombres forman un solo bloque, centrado en el alto del panel.
+.presentacion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-6);
+  margin-block: auto;
+}
+
+// Fuentes WebP recortadas a 160 px de alto (320 px para pantallas 2x).
+.escudo {
+  display: block;
+  width: auto;
+  height: 10rem;
+}
+
+.sistema {
+  max-width: 12ch;
+  margin: 0 0 var(--espacio-2);
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.municipalidad {
+  margin: 0 0 var(--espacio-4);
+  color: var(--neutro-700);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.descripcion {
+  max-width: 36ch;
+  margin: 0;
+  color: var(--neutro-700);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.verificar {
+  margin: 0;
+  padding-top: var(--espacio-5);
+  border-top: 1px solid var(--neutro-200);
+  color: var(--neutro-700);
+  font-size: 0.875rem;
+
+  .badge {
+    margin-left: var(--espacio-1);
+    background: var(--neutro-0);
+  }
+}
+
+.contenido {
+  display: grid;
+  place-items: center;
+  padding: var(--espacio-8) var(--espacio-6);
+}
+
+.formulario {
+  width: 100%;
+  max-width: var(--ancho-formulario);
+}
+
+// Celular: el panel se reduce a un encabezado con el escudo y los nombres.
+@media (max-width: 800px) {
+  .dividido {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .marca {
+    padding: var(--espacio-3) var(--espacio-4) var(--espacio-3) var(--espacio-5);
+    border-bottom: 1px solid var(--neutro-200);
+  }
+
+  .presentacion {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--espacio-3);
+    margin: 0;
+  }
+
+  .escudo {
+    height: 3rem;
+  }
+
+  .sistema {
+    max-width: none;
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .municipalidad {
+    margin: 0;
+    font-size: 0.8125rem;
+  }
+
+  .descripcion,
+  .verificar {
+    display: none;
+  }
+
+  .contenido {
+    place-items: start center;
+    padding: var(--espacio-6) var(--espacio-4);
+  }
+}

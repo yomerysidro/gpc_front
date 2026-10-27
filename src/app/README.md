@@ -11,6 +11,8 @@ Base Angular 18 standalone con SSR e hidratación. AppComponent solo contiene
 - components/layouts/main-layout: MainLayoutComponent compone header, sidebar y
   router-outlet. Es de **presentación**: recibe `navigation` por input y proyecta
   `[layout-header]`; no inyecta servicios.
+- components/layouts/auth-layout: AuthLayoutComponent, login dividido de las páginas de
+  acceso (panel de marca y contenido proyectado). Solo presentación.
 - components/layouts/private-layout: PrivateLayoutComponent es el **contenedor**
   de las rutas privadas. Inyecta AuthService, mapea modulos → NavigationItem
   (nombre → label, url → path, imagen → icon), muestra nombre, rol y el botón de
@@ -113,12 +115,13 @@ Crear los componentes nuevos con, por ejemplo:
 npx ng generate component pages/certificados/detalle-certificado --skip-tests
 ```
 
-src/styles.scss define los tokens (`--color-primario`, `--color-error`,
-`--color-exito`, `--gris-*`, `--radio-*`, `--espacio-*`) y las clases base
-`.btn`, `.btn-primary`, `.form-field`, `.input`, `.error-text`, `.alert`, `.card`,
-`.table`, `.badge` y `.auth-page`/`.auth-card`. Los SCSS de componente solo
-contienen su disposición y usan esos tokens; el presupuesto avisa desde 2 kB.
-Los íconos son Material Icons cargados con `<link>` en index.html (`display=block`).
+El sistema visual ("Tinturas del escudo") está documentado en DESIGN.md, en la
+raíz: tokens, tinturas por tipo de certificado, reglas de íconos, clases base y
+accesibilidad. src/styles.scss define esos tokens (`--color-primario`,
+`--neutro-*`, `--tintura-*`, estados, `--radio-*`, `--espacio-*`) y las clases base.
+Los SCSS de componente solo contienen disposición y usan tokens; el presupuesto
+avisa desde 2 kB. Las páginas de acceso se envuelven en `app-auth-layout`
+(components/layouts/auth-layout), que es solo de presentación.
 
 Se conserva public/ para los recursos raíz, incluido favicon.ico. src/assets está
 registrado en build y tests; evitar colisiones con public/assets.

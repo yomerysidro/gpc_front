@@ -8,6 +8,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { AuthLayoutComponent } from '../../../components/layouts/auth-layout/auth-layout.component';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 
 /** Mismo mínimo que ResetPasswordRequest del backend (min:8, confirmed). */
@@ -22,7 +23,7 @@ function coincidenPasswords(grupo: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-restablecer-password',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, AuthLayoutComponent],
   templateUrl: './restablecer-password.component.html',
   styleUrl: './restablecer-password.component.scss'
 })

@@ -1,12 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { AuthLayoutComponent } from '../../../components/layouts/auth-layout/auth-layout.component';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 
 @Component({
   selector: 'app-recuperar-password',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, AuthLayoutComponent],
   templateUrl: './recuperar-password.component.html',
   styleUrl: './recuperar-password.component.scss'
 })

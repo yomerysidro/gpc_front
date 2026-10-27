@@ -3,12 +3,11 @@
 }
 
 .aviso {
-  display: flex;
-  align-items: center;
-  gap: var(--espacio-3);
-  color: var(--gris-600);
+  max-width: 40rem;
+  background: var(--neutro-50);
 
   p {
     margin: 0;
+    color: var(--neutro-700);
   }
 }

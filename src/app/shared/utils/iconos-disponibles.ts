@@ -1,0 +1,10 @@
+/**
+ * Íconos incluidos en el subconjunto de Material Symbols que carga index.html
+ * (parámetro icon_names). Debe coincidir con esa lista: un nombre que no esté
+ * en la fuente se dibujaría como texto literal.
+ */
+export const ICONOS_DISPONIBLES: ReadonlySet<string> = new Set([
+  'admin_panel_settings', 'bar_chart', 'campaign', 'check_circle', 'dashboard', 'error',
+  'event', 'group', 'logout', 'menu', 'military_tech', 'people', 'school', 'visibility',
+  'visibility_off', 'workspace_premium',
+]);

@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ResultadoLogin } from '../../../core/interfaces/autenticacion/auth.interface';
+import { AuthLayoutComponent } from '../../../components/layouts/auth-layout/auth-layout.component';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 
 /** Perú no tiene horario de verano: Lima es siempre UTC-5. */
@@ -11,7 +12,7 @@ export const ZONA_HORARIA_LIMA = '-0500';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, DatePipe],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, AuthLayoutComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })

@@ -1,8 +1,7 @@
-<div class="auth-page">
-  <section class="card auth-card" aria-labelledby="titulo-denegado">
-    <span class="material-icons icono" aria-hidden="true">lock</span>
-    <h1 id="titulo-denegado">Acceso denegado</h1>
-    <p class="auth-subtitulo">No tienes permiso para ver esta página. Si crees que es un error, comunícate con el administrador del sistema.</p>
+<app-auth-layout>
+  <section aria-labelledby="titulo-denegado">
+    <h1 id="titulo-denegado" class="auth-titulo">Acceso denegado</h1>
+    <p class="auth-texto">No tienes permiso para ver esta página. Si crees que es un error, comunícate con el administrador del sistema.</p>
     <a routerLink="/" class="btn btn-primary btn-block">Ir al inicio</a>
   </section>
-</div>
+</app-auth-layout>
