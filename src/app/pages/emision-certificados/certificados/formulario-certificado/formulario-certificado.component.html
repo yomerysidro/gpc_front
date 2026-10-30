@@ -1,0 +1,4 @@
+<app-page-title [title]="id() === null ? 'Nuevo certificado' : 'Editar certificado'" />
+@if (id() === null || (id()! > 0 && id()! % 1 === 0)) {
+<app-formulario-emision recurso="certificados" [id]="id()" (guardado)="volver()" (cancelar)="volver()" />
+} @else { <p class="alert alert-error" role="alert">El identificador no es válido.</p> }

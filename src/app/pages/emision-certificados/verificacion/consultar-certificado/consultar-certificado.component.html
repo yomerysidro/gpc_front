@@ -1,0 +1,37 @@
+<app-page-title title="Verificación" />
+<p class="nota">Consulta documentos registrados por su código. Esta búsqueda no verifica criptográficamente un PDF ni su firma digital; esa función aún no está disponible.</p>
+<form class="filtros" [formGroup]="form" (ngSubmit)="consultar()">
+  <div class="form-field">
+    <label for="codigo-verificacion">Código de verificación</label>
+    <input class="input" id="codigo-verificacion" formControlName="codigo" maxlength="30" autocomplete="off"
+      [attr.aria-invalid]="form.controls.codigo.touched && form.controls.codigo.invalid" aria-describedby="codigo-error" />
+    <small class="errores" id="codigo-error">{{ form.controls.codigo.touched && form.controls.codigo.invalid ? 'Ingresa un código de hasta 30 caracteres.' : '' }}</small>
+  </div>
+  <button class="btn btn-primary" type="submit" [disabled]="cargando()">Consultar</button>
+</form>
+@if (cargando()) { <p role="status">Buscando documento…</p> }
+@if (error(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
+@if (consultado() && !documentos().length) { <p class="card" role="status">No se encontró un documento con ese código.</p> }
+@for (documento of documentos(); track documento.id_certificado_documento) {
+  <section class="card detalle" aria-label="Documento encontrado">
+    <h2>Documento #{{ documento.id_certificado_documento }}</h2>
+    <dl>
+      <dt>Certificado</dt><dd>{{ documento.id_certificado }}</dd>
+      <dt>Código</dt><dd>{{ documento.codigo_verificacion }}</dd>
+      <dt>Estado registrado</dt><dd>{{ documento.estado }}</dd>
+      <dt>Fecha de generación</dt><dd>{{ documento.fecha_generacion }}</dd>
+      <dt>Hash SHA-256 registrado</dt><dd>{{ documento.hash_certificado }}</dd>
+    </dl>
+    @if (documento.estado === 'ANULADO') { <p class="alert alert-advertencia">Este documento está anulado.</p> }
+    <h3>Firmas aplicadas registradas</h3>
+    <app-listado-emision recurso="certificados-firmas" [soloLectura]="true"
+      [filtrosFijos]="{ id_certificado_documento: documento.id_certificado_documento }" />
+  </section>
+}
+<button type="button" class="btn" (click)="historial.set(!historial())" [attr.aria-expanded]="historial()" aria-controls="historial-consultas">Historial de consultas</button>
+@if (historial()) {
+  <section id="historial-consultas" class="detalle">
+    <h2>Historial de consultas</h2>
+    <app-listado-emision recurso="consultas-certificado" [soloLectura]="true" />
+  </section>
+}
