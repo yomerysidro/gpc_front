@@ -1,0 +1,4 @@
+<app-page-title [title]="id() === null ? 'Nuevo reconocimiento' : 'Editar reconocimiento'" />
+@if (id() === null || (id()! > 0 && id()! % 1 === 0)) {
+<app-formulario-emision recurso="reconocimientos" [id]="id()" (guardado)="volver()" (cancelar)="volver()" />
+} @else { <p class="alert alert-error" role="alert">El identificador no es válido.</p> }
