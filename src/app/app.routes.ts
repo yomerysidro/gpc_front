@@ -19,6 +19,42 @@ import { MODULOS_NAVEGACION } from './components/sidebar/modulos-navegacion';
 import { VistaTemporalComponent } from './pages/vista-temporal/vista-temporal.component';
 import { EMISION_CERTIFICADOS_ROUTES } from './pages/emision-certificados/emision-certificados.routes';
 
+const gestionRoutes: Routes = [
+  { path: 'practicantes', pathMatch: 'full', redirectTo: '/gestion/practicas?pestana=practicantes' },
+  {
+    path: 'personas',
+    loadComponent: () => import('./shared/components/gestion-tabs/gestion-tabs.component').then(pagina => pagina.GestionTabsComponent),
+    canActivate: [permissionGuard],
+    runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+    data: { titulo: 'Gestión de Personas', seccion: 'personas', permiso: 'personas.verpersonas' },
+  },
+  {
+    path: 'trabajadores',
+    loadComponent: () => import('./pages/person-worker/person-worker').then(pagina => pagina.PersonWorkerComponent),
+    canActivate: [permissionGuard],
+    data: { titulo: 'Gestión de Trabajadores', permiso: 'ponentes-firmantes.ver' },
+  },
+  {
+    path: 'practicas',
+    loadComponent: () => import('./shared/components/gestion-tabs/gestion-tabs.component').then(pagina => pagina.GestionTabsComponent),
+    canActivate: [permissionGuard],
+    data: { titulo: 'Gestión de Prácticas', seccion: 'practicas', permiso: 'practicantes.ver' },
+  },
+  {
+    path: 'ponentes',
+    loadComponent: () => import('./pages/person-speaker/person-speaker').then(pagina => pagina.PersonSpeakerComponent),
+    canActivate: [permissionGuard],
+    data: { titulo: 'Gestión de Ponentes', permiso: 'ponentes-firmantes.ver' },
+  },
+  {
+    path: 'configuracion',
+    loadComponent: () => import('./shared/components/gestion-tabs/gestion-tabs.component').then(pagina => pagina.GestionTabsComponent),
+    // Sin ámbito confirmado para los catálogos: authGuard protege el layout y cada GET exige autorización Laravel.
+    data: { titulo: 'Configuración de Gestión', seccion: 'configuracion' },
+  },
+];
+
+
 export const routes: Routes = [
   // Sin componente: en el navegador inicioGuard redirige al primer módulo o a /login.
   { path: '', pathMatch: 'full', canActivate: [inicioGuard], children: [] },
@@ -72,12 +108,13 @@ export const routes: Routes = [
       },
       ...MODULOS_NAVEGACION.map(modulo => ({
         path: modulo.path,
-        children: [...modulo.opciones.filter(opcion => modulo.path !== 'certificaciones'
+        children: modulo.path === 'gestion' ? gestionRoutes : [...modulo.opciones.filter(opcion => modulo.path !== 'certificaciones'
           || !['certificados', 'firmas', 'verificacion', 'configuracion'].includes(opcion.path)).map(opcion => ({
           path: opcion.path,
           component: VistaTemporalComponent,
           data: { titulo: opcion.label },
         })), ...(modulo.path === 'certificaciones' ? EMISION_CERTIFICADOS_ROUTES : [])],
+
       })),
       // Destino de las demás opciones del menú sin pantalla todavía.
       { path: '**', component: EnConstruccionComponent },
