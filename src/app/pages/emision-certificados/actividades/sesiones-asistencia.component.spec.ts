@@ -200,4 +200,149 @@ describe('Sesiones y asistencia con pestañas y CRUD existentes', () => {
     expect(vista().querySelectorAll('app-listado-emision').length).toBe(0);
     expect(vista().querySelector('[role="tablist"]')).toBeNull();
   });
+
+  function completarNuevaSesion(): void {
+    const valores: Record<string, string> = { id_actividad: '7', nombre: 'Nueva sesión', fecha: '2026-11-02',
+      hora_inicio: '08:00', hora_fin: '09:00', lugar: '', estado: 'Activa' };
+    for (const [nombre, valor] of Object.entries(valores)) {
+      const campo = vista().querySelector<HTMLInputElement | HTMLSelectElement>('#activity-session-' + nombre)!;
+      campo.value = valor;
+      campo.dispatchEvent(new Event(campo.tagName === 'SELECT' ? 'change' : 'input'));
+    }
+    vista().querySelector('app-formulario-emision form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    harness.detectChanges();
+  }
+
+  it('muestra solo el formulario de sesión y Cancelar restaura el listado sin guardar', async () => {
+    await iniciar(); cargarSesiones([sesiones[0]]);
+    expect(vista().querySelector('table')).not.toBeNull();
+    boton('Nuevo registro').click(); harness.detectChanges(); catalogos(); harness.detectChanges();
+    expect(vista().querySelectorAll('app-formulario-emision').length).toBe(1);
+    expect(vista().querySelectorAll('app-formulario-emision form').length).toBe(1);
+    expect(vista().querySelector('legend')?.textContent?.trim()).toBe('Nuevo registro');
+    expect(vista().querySelector('app-listado-emision .filtros')).toBeNull();
+    expect(vista().querySelector('table')).toBeNull();
+    expect(vista().querySelector('.paginacion')).toBeNull();
+    expect(vista().querySelector('main app-page-title')).toBeNull();
+    expect(vista().querySelector('[role="tablist"]')).toBeNull();
+    expect(Array.from(vista().querySelectorAll('button')).some(elemento => elemento.textContent?.trim() === 'Nuevo registro')).toBeFalse();
+    expect(vista().textContent).not.toContain('Cambios guardados');
+    expect(vista().querySelectorAll('app-sidebar').length).toBe(1);
+    expect(vista().querySelectorAll('app-header').length).toBe(1);
+    boton('Cancelar', 'app-formulario-emision .acciones').click(); harness.detectChanges();
+    expect(vista().querySelector('app-formulario-emision')).toBeNull();
+    expect(vista().querySelector('table')).not.toBeNull();
+    expect(vista().querySelector('.filtros')).not.toBeNull();
+    expect(vista().querySelector('.paginacion')).not.toBeNull();
+    expect(vista().querySelector('main h2')?.textContent).toBe('Sesiones registradas');
+    http.expectNone(req => req.method !== 'GET');
+  });
+
+  it('tras guardar vuelve al listado actualizado y limpia el éxito al abrir otro formulario', async () => {
+    await iniciar(); cargarSesiones([sesiones[0]]);
+    boton('Nuevo registro').click(); harness.detectChanges(); catalogos(); harness.detectChanges();
+    completarNuevaSesion();
+    const registro = { ...sesiones[0], id_actividad_sesion: 99, nombre: 'Nueva sesión' };
+    const guardar = http.expectOne(req => req.url === base + '/activity-session' && req.method === 'POST');
+    guardar.flush({ success: true, data: registro }); harness.detectChanges(); cargarSesiones([registro]);
+    expect(vista().querySelector('app-formulario-emision')).toBeNull();
+    expect(vista().querySelector('tbody')?.textContent).toContain('Nueva sesión');
+    expect(vista().textContent).toContain('Cambios guardados.');
+    boton('Nuevo registro').click(); harness.detectChanges(); catalogos(); harness.detectChanges();
+    expect(vista().querySelectorAll('app-formulario-emision').length).toBe(1);
+    expect(vista().textContent).not.toContain('Cambios guardados');
+    expect(vista().querySelector('table')).toBeNull();
+  });
+
+  it('si guardar falla conserva el formulario y sus datos sin mostrar el listado', async () => {
+    await iniciar(); cargarSesiones([sesiones[0]]);
+    boton('Nuevo registro').click(); harness.detectChanges(); catalogos(); harness.detectChanges();
+    completarNuevaSesion();
+    http.expectOne(req => req.url === base + '/activity-session' && req.method === 'POST')
+      .flush({ message: 'No se pudo guardar la sesión.', errors: { nombre: ['Revisa el nombre.'] } }, { status: 422, statusText: 'Unprocessable Entity' });
+    harness.detectChanges();
+    expect(vista().querySelectorAll('app-formulario-emision').length).toBe(1);
+    expect(vista().querySelector<HTMLInputElement>('#activity-session-nombre')?.value).toBe('Nueva sesión');
+    expect(vista().querySelector('#activity-session-nombre-error')?.textContent).toContain('Revisa el nombre.');
+    expect(vista().querySelector('table')).toBeNull();
+    expect(vista().querySelector('.filtros')).toBeNull();
+    expect(vista().querySelector('.paginacion')).toBeNull();
+    http.expectNone(req => req.url === base + '/activity-session' && req.method === 'GET');
+  });
+
+  function completarNuevaAsistencia(): void {
+    const valores: Record<string, string> = { id_participacion: '50', id_actividad_sesion: '3',
+      hora_entrada: '09:15', hora_salida: '10:30', estado: 'Registrada' };
+    for (const [nombre, valor] of Object.entries(valores)) {
+      const campo = vista().querySelector<HTMLInputElement | HTMLSelectElement>('#attendance-' + nombre)!;
+      campo.value = valor;
+      campo.dispatchEvent(new Event(campo.tagName === 'SELECT' ? 'change' : 'input'));
+    }
+    vista().querySelector('app-formulario-emision form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    harness.detectChanges();
+  }
+
+  it('Asistencias alterna vistas excluyentes y Cancelar restaura el listado sin guardar', async () => {
+    await iniciar('?pestana=asistencias'); cargarAsistencias([asistencias[0]]);
+    expect(vista().querySelector('app-formulario-emision')).toBeNull();
+    expect(vista().querySelector('table')).not.toBeNull();
+    boton('Nuevo registro').click(); harness.detectChanges(); catalogos(); harness.detectChanges();
+    expect(vista().querySelectorAll('app-formulario-emision').length).toBe(1);
+    expect(vista().querySelectorAll('app-formulario-emision form').length).toBe(1);
+    expect(vista().querySelectorAll('app-formulario-emision .grid > .form-field').length).toBe(5);
+    expect(vista().querySelector('#attendance-id_asistencia')).toBeNull();
+    expect(vista().querySelector('legend')?.textContent?.trim()).toBe('Nuevo registro');
+    expect(vista().querySelector('table')).toBeNull();
+    expect(vista().querySelector('.filtros')).toBeNull();
+    expect(vista().querySelector('.paginacion')).toBeNull();
+    expect(vista().querySelector('[role="tablist"]')).toBeNull();
+    expect(vista().querySelector('main app-page-title')).toBeNull();
+    expect(Array.from(vista().querySelectorAll('button')).some(elemento => elemento.textContent?.trim() === 'Nuevo registro')).toBeFalse();
+    expect(vista().textContent).not.toContain('Cambios guardados');
+    boton('Cancelar', 'app-formulario-emision .acciones').click(); harness.detectChanges();
+    expect(vista().querySelector('app-formulario-emision')).toBeNull();
+    expect(vista().querySelector('table')).not.toBeNull();
+    expect(vista().querySelector('.filtros')).not.toBeNull();
+    expect(vista().querySelector('.paginacion')).not.toBeNull();
+    expect(vista().querySelector('main h2')?.textContent).toBe('Asistencias registradas');
+    expect(vista().querySelector('#actividad-tab-asistencias')?.getAttribute('aria-selected')).toBe('true');
+    expect(vista().querySelectorAll('app-sidebar').length).toBe(1);
+    expect(vista().querySelectorAll('app-header').length).toBe(1);
+    http.expectNone(req => req.method !== 'GET');
+  });
+
+  it('Asistencias regresa al listado actualizado tras guardar y limpia el aviso al volver a crear', async () => {
+    await iniciar('?pestana=asistencias'); cargarAsistencias([asistencias[0]]);
+    boton('Nuevo registro').click(); harness.detectChanges(); catalogos(); harness.detectChanges();
+    completarNuevaAsistencia();
+    const guardar = http.expectOne(req => req.url === base + '/attendance/create' && req.method === 'POST');
+    expect(guardar.request.body).toEqual({ ID_PARTICIPACION: 50, ID_ACTIVIDAD_SESION: 3, HORA_ENTRADA: '09:15', HORA_SALIDA: '10:30', ESTADO: 'Registrada' });
+    const registro = { ...asistencias[0], ID_ASISTENCIA: 99, HORA_ENTRADA: '09:15', HORA_SALIDA: '10:30' };
+    guardar.flush({ success: true, data: registro }); harness.detectChanges(); cargarAsistencias([registro]);
+    expect(vista().querySelector('app-formulario-emision')).toBeNull();
+    expect(vista().querySelector('tbody')?.textContent).toContain('09:15');
+    expect(vista().textContent).toContain('Cambios guardados.');
+    boton('Nuevo registro').click(); harness.detectChanges(); catalogos(); harness.detectChanges();
+    expect(vista().querySelectorAll('app-formulario-emision').length).toBe(1);
+    expect(vista().querySelector('table')).toBeNull();
+    expect(vista().textContent).not.toContain('Cambios guardados');
+  });
+
+  it('Asistencias conserva formulario y datos cuando el servidor rechaza el guardado', async () => {
+    await iniciar('?pestana=asistencias'); cargarAsistencias([asistencias[0]]);
+    boton('Nuevo registro').click(); harness.detectChanges(); catalogos(); harness.detectChanges();
+    completarNuevaAsistencia();
+    http.expectOne(req => req.url === base + '/attendance/create' && req.method === 'POST')
+      .flush({ message: 'No se puede registrar esta asistencia.' }, { status: 409, statusText: 'Conflict' });
+    harness.detectChanges();
+    expect(vista().querySelectorAll('app-formulario-emision').length).toBe(1);
+    expect(vista().querySelector<HTMLInputElement>('#attendance-hora_entrada')?.value).toBe('09:15');
+    expect(vista().querySelector<HTMLSelectElement>('#attendance-id_participacion')?.value).toBe('50');
+    expect(vista().querySelector('app-formulario-emision')?.textContent).toContain('No se puede registrar esta asistencia.');
+    expect(vista().querySelector('table')).toBeNull();
+    expect(vista().querySelector('.filtros')).toBeNull();
+    expect(vista().querySelector('.paginacion')).toBeNull();
+    expect(vista().textContent).not.toContain('Cambios guardados');
+    http.expectNone(req => req.url === base + '/attendance/list');
+  });
 });
