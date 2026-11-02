@@ -1,0 +1,18 @@
+<section [attr.aria-label]="seccion.titulo">
+  <app-page-title [title]="seccion.titulo" />
+  <div class="pestanas" role="tablist" [attr.aria-label]="seccion.titulo" (keydown)="alTeclear($event)">
+    @for (opcion of seccion.pestanas; track opcion.id) {
+      <button type="button" role="tab" [id]="'gestion-tab-' + opcion.id" [attr.aria-controls]="'gestion-panel-' + opcion.id"
+        [attr.aria-selected]="pestana() === opcion.id" [attr.tabindex]="pestana() === opcion.id ? 0 : -1"
+        (click)="seleccionar(opcion.id)">{{ opcion.etiqueta }}</button>
+    }
+  </div>
+  @for (opcion of seccion.pestanas; track opcion.id) {
+    <div role="tabpanel" [id]="'gestion-panel-' + opcion.id" [attr.aria-labelledby]="'gestion-tab-' + opcion.id"
+      [hidden]="pestana() !== opcion.id" tabindex="0">
+      @if (pestana() === opcion.id) {
+        <ng-container *ngComponentOutlet="opcion.componente; inputs: entradas" />
+      }
+    </div>
+  }
+</section>
