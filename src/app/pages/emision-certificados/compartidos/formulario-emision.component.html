@@ -17,6 +17,17 @@
             <label [for]="recurso() + '-' + campo.nombre">{{ campo.titulo }}{{ opcional(campo) ? ' (opcional)' : '' }}</label>
             @if (campo.tipo === 'booleano') {
               <input [id]="recurso() + '-' + campo.nombre" type="checkbox" [formControlName]="campo.nombre" />
+            } @else if (recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador') {
+              <label for="buscar-trabajador-form">Buscar por cargo o ID de trabajador</label>
+              <input class="input" id="buscar-trabajador-form" type="search" [value]="busquedaTrabajador()" (input)="busquedaTrabajador.set($any($event.target).value)" />
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
+                <option value="">Seleccionar trabajador registrado</option>
+                @if (trabajadorSinOpcion(); as actual) { <option [value]="actual">Trabajador #{{ actual }} · selección actual</option> }
+                @for (opcion of opcionesTrabajador(); track opcion.id) { <option [value]="opcion.id">{{ opcion.texto }}</option> }
+              </select>
+              @if (!puedeLeerTrabajadores) { <p class="nota">Se requiere el permiso institucional de lectura de trabajadores para seleccionar uno. No se pueden registrar personas desde este formulario.</p> }
+              @else if (!cargandoRelacion().has(campo.nombre) && !errorRelacion()[campo.nombre] && !opcionesTrabajador().length) { <p class="nota" role="status">No hay trabajadores con esta búsqueda. Los trabajadores se registran exclusivamente desde Gestión.</p> }
             } @else if (campo.opciones) {
               <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
                 [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
@@ -27,31 +38,42 @@
               <textarea class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
                 [attr.maxlength]="campo.max" [attr.aria-invalid]="!!errorCampo(campo)"
                 [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'"></textarea>
+            } @else if (campo.relacion) {
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre">
+                <option value="">Seleccionar registro existente</option>
+                @for (opcion of opciones()[campo.nombre] ?? []; track opcion.id) { <option [value]="opcion.id">{{ opcion.texto }}</option> }
+              </select>
             } @else {
               <input class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
-                [type]="campo.tipo === 'secreto' ? 'password' : campo.tipo === 'numero' ? 'number' : campo.tipo === 'fecha' ? 'date' : campo.tipo === 'fecha-hora' ? 'datetime-local' : 'text'"
+                [type]="campo.tipo === 'secreto' ? 'password' : campo.tipo === 'numero' ? 'number' : campo.tipo === 'fecha' ? 'date' : campo.tipo === 'hora' ? 'time' : campo.tipo === 'fecha-hora' ? 'datetime-local' : 'text'"
                 [attr.min]="campo.tipo === 'numero' ? 1 : null" [attr.maxlength]="campo.max"
                 [attr.autocomplete]="campo.tipo === 'secreto' ? 'new-password' : 'off'"
                 [attr.list]="campo.relacion ? recurso() + '-' + campo.nombre + '-opciones' : null"
                 [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'" />
             }
-            @if (campo.relacion) {
-              <button type="button" class="btn" [disabled]="cargandoRelacion().has(campo.nombre)"
+            @if (campo.relacion && !(recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador')) {
+              <button type="button" class="btn btn-consulta" [disabled]="cargandoRelacion().has(campo.nombre)"
                 (click)="cargarOpciones(campo)">{{ cargandoRelacion().has(campo.nombre) ? 'Cargando…' : 'Ver registros disponibles' }}</button>
               <datalist [id]="recurso() + '-' + campo.nombre + '-opciones'">
                 @for (opcion of opciones()[campo.nombre] ?? []; track opcion.id) {
                   <option [value]="opcion.id">{{ opcion.texto }}</option>
                 }
               </datalist>
-              <small class="nota">Usa el ID de un registro existente. Las sugerencias muestran hasta 100 registros de Emisión.</small>
+              <small class="nota">Selecciona un registro existente. Los catálogos se administran en su módulo de origen.</small>
               @if (errorRelacion()[campo.nombre]; as error) { <small class="errores" role="alert">{{ error }}</small> }
+            }
+            @if (recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador') {
+              @if (cargandoRelacion().has(campo.nombre)) { <p role="status">Cargando trabajadores…</p> }
+              @if (errorRelacion()[campo.nombre]; as error) {
+                <p class="errores" role="alert">{{ error }}</p><button class="btn btn-consulta" type="button" (click)="cargarOpciones(campo)">Reintentar</button>
+              }
             }
             <small class="errores" [id]="recurso() + '-' + campo.nombre + '-error'">{{ errorCampo(campo) }}</small>
           </div>
         }
       </div>
       <div class="acciones">
-        <button type="submit" class="btn btn-primary" [disabled]="enviando()">{{ enviando() ? 'Guardando…' : 'Guardar' }}</button>
+        <button type="submit" class="btn btn-primary" [disabled]="enviando()">{{ enviando() ? 'Guardando…' : recurso() === 'reconocimientos' && id() === null ? 'Registrar reconocimiento' : 'Guardar' }}</button>
         <button type="button" class="btn" [disabled]="enviando()" (click)="cancelar.emit()">Cancelar</button>
       </div>
     </fieldset>

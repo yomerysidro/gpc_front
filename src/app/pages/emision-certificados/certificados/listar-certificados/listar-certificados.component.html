@@ -1,8 +1,38 @@
-<section>
-<app-page-title title="Certificados" />
-<nav class="acciones" aria-label="Opciones de certificados">
-<a class="btn" routerLink="/certificaciones/certificados/reconocimientos">Reconocimientos</a>
-<a class="btn" routerLink="/certificaciones/certificados/documentos">Documentos</a>
-</nav>
-<app-listado-emision recurso="certificados" nuevoUrl="/certificaciones/certificados/nuevo" editarBase="/certificaciones/certificados" detalleBase="/certificaciones/certificados" />
-</section>
+<div class="encabezado"><app-page-title title="Gestión de Certificados" />
+@if (auth.tienePermiso('emision.crear')) { <a class="btn btn-primary" routerLink="/certificaciones/certificados/nuevo">Nuevo certificado</a> }
+<button class="btn" type="button" (click)="cargar()" [disabled]="cargando()">Actualizar</button></div>
+<form class="card filtros-certificados" role="search" (submit)="$event.preventDefault()">
+  <div class="form-field"><label for="beneficiario">Beneficiario, DNI o código</label><input id="beneficiario" class="input" type="search" [formControl]="filtroBeneficiario" /></div>
+  <div class="form-field"><label for="tipo">Tipo de certificado</label><select id="tipo" class="input" [formControl]="filtroTipo"><option value="">Todos</option>@for (tipo of tipos(); track tipo.id_tipo_certificado) { <option [value]="tipo.id_tipo_certificado">{{ tipo.nombre_tipo }}</option> }</select></div>
+  <div class="form-field"><label for="origen">Origen</label><select id="origen" class="input" [formControl]="filtroOrigen"><option value="">Todos</option><option>Participación</option><option>Reconocimiento</option><option>Prácticas</option></select></div>
+  <div class="form-field"><label for="estado">Estado</label><select id="estado" class="input" [formControl]="filtroEstado"><option value="">Todos</option>@for (estado of estados(); track estado) { <option>{{ estado }}</option> }</select></div>
+  <button class="btn" type="button" (click)="limpiar()">Limpiar</button>
+</form>
+@if (cargando()) { <p role="status">Cargando certificados y sus relaciones…</p> }
+@if (error(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
+@if (errorDni(); as mensaje) { <p class="alert alert-advertencia" role="alert">No se pudieron consultar los DNI: {{ mensaje }}</p> }
+@if (!cargando() && !error()) {
+  <div class="encabezado resultados"><h2>Certificados registrados</h2><p role="status">{{ certificados().length }} registros</p></div>
+  @if (!certificados().length) { <p class="card vacio">No hay certificados con estos filtros.</p> }
+  <div class="tarjetas-certificados">
+  @for (item of visibles(); track item.registro.id_certificado) {
+    <article class="certificado-card">
+      <header class="cabecera-card"><span class="material-symbols-outlined icono-tipo" aria-hidden="true">workspace_premium</span><span class="tipo">{{ item.tipo }}</span></header>
+      <div class="contenido-card">
+        <p class="etiqueta">Certificado #{{ item.registro.id_certificado }}</p><h3>{{ item.beneficiario }}</h3>
+        <dl><dt>DNI</dt><dd>{{ dni()[item.registro.id_persona] || 'No disponible' }}</dd>
+        <dt>Origen</dt><dd>{{ nombreOrigen(item.registro) }}</dd>
+        <dt>Fecha de emisión</dt><dd>{{ item.registro.fecha_emision ? (item.registro.fecha_emision | date:'dd/MM/yyyy') : 'No informada' }}</dd>
+        <dt>Estado</dt><dd>{{ estadoRegistro(item.registro.estado) }}</dd>
+        <dt>Firmas registradas en documentos</dt><dd>{{ item.firmas === null ? 'No se pudieron consultar' : item.firmas ? item.firmas + ' registros; validez criptográfica no informada' : 'Sin firmas registradas' }}</dd>
+        <dt>Documentos y códigos</dt><dd>@for (documento of item.documentos; track documento.id_certificado_documento) { <p class="codigo">{{ documento.codigo_verificacion }} · {{ documento.estado }}</p> } @empty { Sin documento generado }</dd></dl>
+        @if (item.errorDocumentos; as mensaje) { <p role="alert">{{ mensaje }}</p> }
+      </div>
+      <footer><a class="btn btn-consulta" [routerLink]="['/certificaciones/certificados', item.registro.id_certificado]">Ver detalle e historial</a>
+      @if (auth.tienePermiso('emision.editar')) { <a class="btn" [routerLink]="['/certificaciones/certificados', item.registro.id_certificado, 'editar']">Editar</a> }</footer>
+    </article>
+  }
+  </div>
+  <nav class="acciones" aria-label="Paginación"><button class="btn" [disabled]="pagina() <= 1" (click)="pagina.set(pagina() - 1)">Anterior</button><span>Página {{ pagina() }} de {{ totalPaginas() }}</span><button class="btn" [disabled]="pagina() >= totalPaginas()" (click)="pagina.set(pagina() + 1)">Siguiente</button></nav>
+}
+<p class="nota">La generación del PDF oficial, QR y firma digital está pendiente de implementación en Laravel.</p>

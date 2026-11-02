@@ -162,7 +162,7 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
     http.expectNone(r => r.url.endsWith('/institutions/list'));
   });
   for (const [clave, config] of Object.entries(GESTION_CONFIG).filter(([, config]) => config.campos.some(c => c.clave === 'estado'))) {
-    it('Estado usa un selector tipado, conserva Inactivo y rechaza valores libres en ' + clave, () => {
+    it('Estado conserva el tipo y las restricciones reales de Laravel en ' + clave, () => {
       const campo = config.campos.find(c => c.clave === 'estado')!;
       const valor = campo.tipo === 'boolean' ? false : 'Inactivo';
       permisos.set(Object.values(config.permisos).filter((p): p is string => !!p));
@@ -172,15 +172,21 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
       componente.abrirFormulario('editar', actual);
       for (const consulta of http.match(r => r.method === 'GET')) consulta.flush({ success: true, message: '', data: [] });
       fixture.detectChanges();
-      const selector = vista().querySelector<HTMLSelectElement>('#' + clave + '-estado')!;
+      const selector = vista().querySelector<HTMLInputElement | HTMLSelectElement>('#' + clave + '-estado')!;
       expect(selector).not.toBeNull();
-      expect(selector.selectedOptions[0].textContent?.trim()).toBe('Inactivo');
-      expect(vista().querySelector('input#' + clave + '-estado')).toBeNull();
+      if (campo.tipo === 'boolean') {
+        expect((selector as HTMLSelectElement).selectedOptions[0].textContent?.trim()).toBe('Inactivo');
+        expect(selector.tagName).toBe('SELECT');
+      } else {
+        expect(selector.tagName).toBe('INPUT');
+        expect(selector.value).toBe('Inactivo');
+      }
       const control = componente.formulario.get('estado')!;
       expect(control.value).toBe(valor);
       expect(control.valid).toBeTrue();
       control.setValue(null); expect(control.invalid).toBeTrue();
-      control.setValue('Otro estado'); expect(control.invalid).toBeTrue();
+      control.setValue('Otro estado'); expect(control.invalid).toBe(campo.tipo === 'boolean');
+      control.setValue(null);
       componente.validar(); componente.ejecutar(); expect(servicio.actualizar).not.toHaveBeenCalled();
     });
   }
@@ -212,7 +218,7 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
     fixture.detectChanges();
     expect(vista().querySelector<HTMLSelectElement>('#id_persona_documento-id_persona')?.selectedOptions[0].textContent).toContain('Persona del test');
     expect(vista().querySelector<HTMLSelectElement>('#id_persona_documento-id_tipo_documento')?.selectedOptions[0].textContent).toContain('DNI');
-    expect(vista().querySelector<HTMLSelectElement>('#id_persona_documento-estado')?.selectedOptions[0].textContent?.trim()).toBe('Inactivo');
+    expect(vista().querySelector<HTMLInputElement>('#id_persona_documento-estado')?.value).toBe('Inactivo');
     componente.validar(); componente.ejecutar();
     expect(servicio.actualizar).toHaveBeenCalledOnceWith(6, { id_persona: 2, id_tipo_documento: 3, numero_documento: '12345678', estado: 'Inactivo' });
   });

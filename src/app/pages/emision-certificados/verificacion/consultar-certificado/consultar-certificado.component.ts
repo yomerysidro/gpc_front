@@ -1,16 +1,19 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { afterNextRender } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { ErrorApi } from '../../../../core/interfaces/api/api-response.interface';
 import { CertificadoDocumento } from '../../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { EmisionCertificadosService } from '../../../../core/services/emision-certificados/emision-certificados.service';
 import { PageTitleComponent } from '../../../../shared/components/page-title/page-title.component';
 import { ListadoEmisionComponent } from '../../compartidos/listado-emision.component';
+import { documentoAnulado } from '../../compartidos/estado-emision';
 
 @Component({
   selector: 'app-consultar-certificado', standalone: true,
-  imports: [ReactiveFormsModule, PageTitleComponent, ListadoEmisionComponent],
+  imports: [ReactiveFormsModule, PageTitleComponent, ListadoEmisionComponent, RouterLink],
   templateUrl: './consultar-certificado.component.html', styleUrl: '../../compartidos/emision.scss',
 })
 export class ConsultarCertificadoComponent {
@@ -23,6 +26,15 @@ export class ConsultarCertificadoComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly documentos = signal<readonly CertificadoDocumento[]>([]);
   protected readonly historial = signal(false);
+  protected readonly anulado = documentoAnulado;
+
+  constructor() {
+    const route = inject(ActivatedRoute);
+    afterNextRender(() => route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      const codigo = params.get('codigo');
+      if (codigo) { this.form.controls.codigo.setValue(codigo); this.consultar(); }
+    }));
+  }
 
   protected consultar(): void {
     if (this.form.invalid || !this.form.controls.codigo.value.trim()) { this.form.markAllAsTouched(); return; }

@@ -118,7 +118,9 @@ export class GestionTableComponent implements OnInit {
   protected estados(campo: GestionCampo): readonly { etiqueta: string; valor: string | boolean }[] {
     return campo.tipo === 'boolean'
       ? [{ etiqueta: 'Activo', valor: true }, { etiqueta: 'Inactivo', valor: false }]
-      : [{ etiqueta: 'Activo', valor: 'Activo' }, { etiqueta: 'Inactivo', valor: 'Inactivo' }];
+      : [...new Set([...this.registros().map(registro => registro[campo.clave]), this.seleccion?.[campo.clave]]
+        .filter((valor): valor is string => typeof valor === 'string' && valor.trim().length > 0))]
+        .map(valor => ({ etiqueta: valor, valor }));
   }
 
   protected relacionActual(campo: GestionCampo): unknown {
@@ -180,7 +182,7 @@ export class GestionTableComponent implements OnInit {
     const controles: Record<string, FormControl> = {};
     for (const campo of this.config().campos) {
       const validadores = [];
-      if (campo.clave === 'estado') validadores.push((control: AbstractControl) =>
+      if (campo.clave === 'estado' && campo.tipo === 'boolean') validadores.push((control: AbstractControl) =>
         this.estados(campo).some(opcion => opcion.valor === control.value) ? null : { estado: true });
       if (campo.obligatorio && campo.tipo !== 'boolean') validadores.push(Validators.required);
       if (campo.tipo === 'text' && campo.obligatorio) validadores.push(Validators.pattern(/\S/));
@@ -191,7 +193,7 @@ export class GestionTableComponent implements OnInit {
         const fecha = new Date(`${c.value}T00:00:00Z`);
         return !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === c.value ? null : { fecha: true };
       });
-      controles[campo.clave] = new FormControl(campo.relacion ? null : campo.tipo === 'boolean' ? true : campo.clave === 'estado' ? 'Activo' : '', validadores);
+      controles[campo.clave] = new FormControl(campo.relacion ? null : campo.tipo === 'boolean' ? true : '', validadores);
     }
     this.formulario = new FormGroup(controles, { validators: grupo => {
       const inicio = grupo.get('fecha_inicio')?.value || grupo.get('fecha_ingreso')?.value;

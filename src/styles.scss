@@ -4,6 +4,17 @@
  */
 
 :root {
+  /* Paleta exclusiva de botones; no altera formularios ni navegacion. */
+  --boton-azul: #075A9B;
+  --boton-azul-hover: #064A80;
+  --boton-dorado: #E8AD24;
+  --boton-dorado-hover: #C58B13;
+  --boton-texto: #172B41;
+  --boton-blanco: #FFFFFF;
+  --boton-borde-neutro: #8b929a;
+  --boton-hover-suave: #edf4fa;
+  --boton-disabled-fondo: #efece8;
+  --boton-disabled-texto: #45403a;
   /* Primario: el teal del logotipo. Solo para lo que se puede presionar
      (botones, enlaces, navegación activa) y el foco. */
   --color-primario: #047488; /* 5,44:1 sobre blanco */
@@ -164,10 +175,10 @@ a {
   gap: var(--espacio-2);
   min-height: var(--alto-control);
   padding: var(--espacio-2) var(--espacio-4);
-  border: 1px solid var(--neutro-400);
+  border: 1px solid var(--boton-azul);
   border-radius: var(--radio-sm);
-  background: var(--neutro-0);
-  color: var(--neutro-900);
+  background: var(--boton-blanco);
+  color: var(--boton-azul);
   font: inherit;
   font-weight: 500;
   text-decoration: none;
@@ -175,7 +186,11 @@ a {
   transition: background-color 0.15s, border-color 0.15s;
 
   &:hover:not(:disabled) {
-    background: var(--neutro-50);
+    background: var(--boton-hover-suave);
+  }
+
+  &:focus-visible {
+    outline-color: var(--boton-azul);
   }
 
   &:disabled {
@@ -185,14 +200,62 @@ a {
 }
 
 .btn-primary {
-  border-color: var(--color-primario);
-  background: var(--color-primario);
-  color: var(--neutro-0);
+  border-color: var(--boton-dorado);
+  background: var(--boton-dorado);
+  color: var(--boton-texto);
   font-weight: 600;
 
   &:hover:not(:disabled) {
-    border-color: var(--color-primario-hover);
-    background: var(--color-primario-hover);
+    border-color: var(--boton-dorado-hover);
+    background: var(--boton-dorado-hover);
+  }
+}
+
+.btn-consulta {
+  border-color: var(--boton-azul);
+  background: var(--boton-azul);
+  color: var(--boton-blanco);
+
+  &:hover:not(:disabled) {
+    border-color: var(--boton-azul-hover);
+    background: var(--boton-azul-hover);
+  }
+}
+
+.btn-neutro {
+  border-color: var(--boton-borde-neutro);
+  color: var(--boton-texto);
+
+  &:hover:not(:disabled) {
+    background: var(--neutro-50);
+  }
+}
+
+.btn-danger {
+  border-color: var(--color-error);
+  background: var(--color-error);
+  color: var(--boton-blanco);
+
+  &:hover:not(:disabled) {
+    background: var(--color-error);
+  }
+
+  &:focus-visible {
+    outline-color: var(--color-error);
+  }
+}
+
+/* Mantiene el contraste del texto sin atenuar todo el control. */
+.btn:disabled:not(.salir):not(.menu-toggle):not(.cerrar-menu) {
+  opacity: 1;
+  border-color: var(--boton-borde-neutro);
+  background: var(--boton-disabled-fondo);
+  color: var(--boton-disabled-texto);
+
+  &.btn-danger {
+    border-color: var(--color-error);
+    background: var(--color-error-claro);
+    color: var(--color-error);
   }
 }
 
@@ -720,5 +783,25 @@ input[type='checkbox'].interruptor {
   .interruptor,
   .interruptor::after {
     transition: none;
+  }
+}
+
+/* Solo imprime el borrador visible, conservando su advertencia y estado real. */
+@media print {
+  body:has(app-visor-certificado) {
+    /* Retira los hermanos del visor del flujo para evitar paginas en blanco. */
+    *:not(:has(.certificado-borrador)):not(.certificado-borrador):not(.certificado-borrador *) { display: none !important; }
+    *:has(.certificado-borrador) {
+      display: block !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: visible !important;
+    }
+    app-visor-certificado .certificado-borrador {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+    }
   }
 }
