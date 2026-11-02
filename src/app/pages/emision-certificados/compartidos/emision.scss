@@ -11,3 +11,5 @@ dd { margin: 0 0 var(--espacio-3); overflow-wrap: anywhere; }
 .nota { color: var(--neutro-700); font-size: .875rem; }
 .table td { overflow-wrap: anywhere; }
 .errores { color: var(--color-error); }
+.reconocimiento { border-top: 3px solid var(--boton-dorado); overflow-wrap: anywhere; }
+.reconocimiento h2 { margin-top: var(--espacio-4); font-size: 1.25rem; }

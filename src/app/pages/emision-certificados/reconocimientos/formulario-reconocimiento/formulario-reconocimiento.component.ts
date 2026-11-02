@@ -12,5 +12,5 @@ export class FormularioReconocimientoComponent {
   private readonly router = inject(Router);
   private readonly parametros = toSignal(inject(ActivatedRoute).paramMap, { requireSync: true });
   protected readonly id = computed(() => this.parametros().has('id') ? Number(this.parametros().get('id')) : null);
-  protected volver(): void { void this.router.navigateByUrl('/certificaciones/certificados/reconocimientos'); }
+  protected volver(): void { void this.router.navigateByUrl('/certificaciones/reconocimientos'); }
 }

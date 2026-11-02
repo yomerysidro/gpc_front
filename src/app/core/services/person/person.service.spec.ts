@@ -33,7 +33,7 @@ describe('PersonService: contrato HTTP de Gestión', () => {
     const consulta = http.expectOne(`${url}/detail/1`);
     expect(consulta.request.method).toBe('GET');
     expect(consulta.request.context.get(AUTHENTICATED_REQUEST)).toBeTrue();
-    consulta.flush({ success: true, message: '', data: null });
+    consulta.flush({ success: true, message: '', data: { id_persona: 1, nombres: 'Persona', apellido_paterno: 'Registrada', apellido_materno: null } });
   });
 
   for (const estado of [401, 403, 404, 500]) {

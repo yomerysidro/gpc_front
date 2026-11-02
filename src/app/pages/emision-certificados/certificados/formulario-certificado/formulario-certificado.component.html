@@ -1,4 +1,60 @@
-<app-page-title [title]="id() === null ? 'Nuevo certificado' : 'Editar certificado'" />
-@if (id() === null || (id()! > 0 && id()! % 1 === 0)) {
-<app-formulario-emision recurso="certificados" [id]="id()" (guardado)="volver()" (cancelar)="volver()" />
-} @else { <p class="alert alert-error" role="alert">El identificador no es válido.</p> }
+<app-page-title [title]="editarId ? 'Editar certificado' : 'Nuevo certificado'" />
+<a class="btn" routerLink="/certificaciones/certificados">Volver al listado</a>
+
+@if (cargando()) { <p role="status">Cargando tipos de certificado…</p> }
+@if (error()) { <p class="alert alert-error" role="alert">{{ error() }}</p> }
+@if (mensajesValidacion().length) { <div class="alert alert-error" role="alert"><p>Laravel rechazó algunos datos:</p><ul>@for (mensaje of mensajesValidacion(); track $index) { <li>{{ mensaje }}</li> }</ul></div> }
+
+@if (accesible()) {
+  @if (!revision()) {
+    <form class="card formulario" [formGroup]="formulario" (ngSubmit)="prepararRevision()" novalidate>
+      <h2>Datos del certificado</h2>
+      <label for="origen">Origen del certificado</label>
+      <select id="origen" class="input" formControlName="origen">
+        <option value="">Selecciona un origen</option>
+        @if (auth.tienePermiso('participantes.ver')) { <option value="participacion">Participación</option> }
+        @if (auth.tienePermiso('practicantes.ver')) { <option value="practica">Práctica</option> }
+        @if (auth.tienePermiso('reconocimientos.ver')) { <option value="reconocimiento">Reconocimiento</option> }
+      </select>
+      @if (formulario.controls.origen.touched && formulario.controls.origen.invalid) { <small>Selecciona un origen.</small> }
+
+      @if (formulario.controls.origen.value) {
+        <label for="registro">Registro existente</label>
+        @if (cargandoOrigen()) { <p role="status">Consultando registros autorizados…</p> }
+        <select id="registro" class="input" formControlName="registro">
+          <option [ngValue]="null">Selecciona un registro</option>
+          @for (opcion of opciones(); track opcion.id) { <option [ngValue]="opcion.id">{{ opcion.titulo }} · #{{ opcion.id }}</option> }
+        </select>
+        @if (beneficiario()) { <p class="card"><strong>Beneficiario:</strong> {{ beneficiario() }}</p> }
+        @else if (formulario.controls.registro.value) { <p role="status">Validando el beneficiario asociado…</p> }
+      }
+
+      <label for="tipo">Tipo de certificado</label>
+      <select id="tipo" class="input" formControlName="tipo">
+        <option [ngValue]="null">Selecciona un tipo</option>
+        @for (tipo of tipos(); track tipo.id_tipo_certificado) { <option [ngValue]="tipo.id_tipo_certificado">{{ tipo.nombre_tipo }}</option> }
+      </select>
+      @if (!cargando() && tipos().length === 0) { <p>No hay tipos activos disponibles.</p> }
+
+      <label for="fecha">Fecha de emisión</label>
+      <input id="fecha" class="input" type="date" formControlName="fechaEmision" />
+      @if (erroresValidacion()['fecha_emision']; as mensajes) { <small>{{ mensajes.join(' ') }}</small> }
+
+      <p class="nota">Se registra el certificado sin generar un documento oficial. Laravel aún no expone la elegibilidad para emisión: la asistencia, aprobación o culminación del origen no quedan acreditadas por este registro.</p>
+      <div class="acciones"><button class="btn btn-primary" type="submit" [disabled]="cargando() || cargandoOrigen() || comprobando()">{{ comprobando() ? 'Comprobando duplicados…' : 'Revisar datos' }}</button><button class="btn" type="button" (click)="cancelar()">Cancelar</button></div>
+    </form>
+  } @else {
+    <section class="card">
+      <h2>Revisa antes de registrar</h2>
+      <dl>
+        <dt>Origen</dt><dd>{{ nombreOrigen(formulario.controls.origen.value) }}</dd>
+        <dt>Registro</dt><dd>{{ tituloSeleccionado() }} · #{{ formulario.controls.registro.value }}</dd>
+        <dt>Beneficiario</dt><dd>{{ beneficiario() }}</dd>
+        <dt>Tipo de certificado</dt><dd>{{ nombreTipo(formulario.controls.tipo.value) }}</dd>
+        <dt>Fecha de emisión</dt><dd>{{ formulario.controls.fechaEmision.value }}</dd>
+        <dt>Estado inicial</dt><dd>Activo · No notificado</dd>
+      </dl>
+      <div class="acciones"><button class="btn btn-primary" type="button" (click)="guardar()" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : editarId ? 'Guardar cambios' : 'Registrar certificado' }}</button><button class="btn" type="button" (click)="volverEditar()">Volver a editar</button></div>
+    </section>
+  }
+}

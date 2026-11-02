@@ -1,0 +1,12 @@
+:host { display: block; margin-block: var(--espacio-5); }
+.acciones { display: flex; flex-wrap: wrap; gap: var(--espacio-3); }
+.nota, footer { color: var(--neutro-700); font-size: .875rem; }
+.certificado-borrador { max-width: 62rem; margin: var(--espacio-5) auto; padding: clamp(1rem, 4vw, 3rem); border: 2px solid #075a9b; background: #fff; color: #172b41; overflow-wrap: anywhere; }
+header { text-align: center; border-bottom: 2px solid #e8ad24; padding-bottom: var(--espacio-4); margin-bottom: var(--espacio-5); }
+header img { object-fit: contain; }
+header strong { display: block; }
+h2 { text-align: center; }
+dt { font-weight: 600; }
+dd { margin: 0 0 var(--espacio-3); white-space: pre-line; }
+.codigo { font-weight: 600; }
+footer { border-top: 1px solid var(--neutro-200); padding-top: var(--espacio-4); }

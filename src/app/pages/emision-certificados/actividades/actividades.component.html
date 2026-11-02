@@ -1,0 +1,22 @@
+<app-page-title [title]="configuracion().titulo" />
+@if (configuracion().pestanas; as opciones) {
+  <div class="pestanas" role="tablist" [attr.aria-label]="configuracion().titulo" (keydown)="alTeclear($event)">
+    @for (opcion of opciones; track opcion.id) {
+      <button type="button" role="tab" [id]="'actividad-tab-' + opcion.id"
+        [attr.aria-controls]="'actividad-panel-' + opcion.recurso"
+        [attr.aria-selected]="pestana()?.id === opcion.id" [attr.tabindex]="pestana()?.id === opcion.id ? 0 : -1"
+        (click)="seleccionar(opcion.id)">{{ opcion.etiqueta }}</button>
+    }
+  </div>
+}
+@for (seccion of configuracion().secciones; track seccion.recurso) {
+  <section class="card" [id]="'actividad-panel-' + seccion.recurso"
+    [attr.role]="configuracion().pestanas ? 'tabpanel' : null" [attr.aria-labelledby]="etiquetaPanel(seccion.recurso)"
+    [attr.tabindex]="configuracion().pestanas ? 0 : null"
+    [hidden]="!!configuracion().pestanas && pestana()?.recurso !== seccion.recurso">
+    @if (!configuracion().pestanas || pestana()?.recurso === seccion.recurso) {
+      <h2>{{ seccion.titulo }}</h2>
+      <app-listado-emision [recurso]="seccion.recurso" [estadoInicial]="estados.get(seccion.recurso) ?? null" />
+    }
+  </section>
+}

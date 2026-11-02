@@ -1,0 +1,31 @@
+@if (!permitido) { <p class="alert alert-error" role="alert">No tienes permiso para administrar esta credencial.</p> }
+@else {
+  <p class="nota">Selecciona un trabajador registrado en Gestión. Registrar la credencial no firma documentos ni acredita su vigencia.</p>
+  @if (error(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
+  <form [formGroup]="form" (ngSubmit)="guardar()" [attr.aria-busy]="enviando()">
+    <fieldset [disabled]="enviando()">
+      <div class="form-field"><label for="firmante-trabajador">Trabajador municipal</label>
+        <select id="firmante-trabajador" class="input" formControlName="trabajador" aria-describedby="firmante-trabajador-error">
+          <option value="">Seleccionar trabajador existente</option>
+          @if (firma(); as actual) { <option [value]="actual.id_persona_trabajador">Trabajador vinculado a la credencial</option> }
+          @for (trabajador of trabajadores(); track trabajador.id_persona_trabajador) {
+            @if (trabajador.id_persona_trabajador !== firma()?.id_persona_trabajador) { <option [value]="trabajador.id_persona_trabajador">{{ nombres()[trabajador.id_persona] || 'Trabajador #' + trabajador.id_persona_trabajador }} · {{ trabajador.cargo }}</option> }
+          }
+        </select>
+        <small id="firmante-trabajador-error" class="error-text">{{ errores()['id_persona_trabajador']?.[0] || (form.controls.trabajador.touched && form.controls.trabajador.invalid ? 'Selecciona un trabajador.' : '') }}</small>
+      </div>
+      <div class="form-field"><label for="firmante-fecha">Fecha de registro de la credencial</label><input id="firmante-fecha" class="input" type="date" formControlName="fecha" aria-describedby="firmante-fecha-error" />
+        <small id="firmante-fecha-error" class="error-text">{{ errores()['fecha_firma']?.[0] || (form.controls.fecha.touched && form.controls.fecha.invalid ? 'Indica una fecha válida.' : '') }}</small>
+      </div>
+      <p class="nota">La API solo admite un PFX previamente disponible en el almacenamiento privado autorizado. No hay una operación de carga de archivos disponible.</p>
+      <div class="form-field"><label for="firmante-referencia">Referencia del PFX privado {{ firma() ? '(opcional)' : '' }}</label><input id="firmante-referencia" class="input" formControlName="referencia" maxlength="255" autocomplete="off" aria-describedby="firmante-referencia-error" />
+        <small id="firmante-referencia-error" class="error-text">{{ errores()['ruta_archivo_pfx']?.[0] || (form.controls.referencia.touched && form.controls.referencia.invalid ? 'Completa la referencia privada autorizada.' : '') }}</small>
+      </div>
+      <div class="form-field"><label for="firmante-clave">Contraseña de la credencial {{ firma() ? '(opcional)' : '' }}</label><input id="firmante-clave" class="input" type="password" formControlName="clave" maxlength="255" autocomplete="new-password" aria-describedby="firmante-clave-error" />
+        <small id="firmante-clave-error" class="error-text">{{ errores()['passphrase']?.[0] || (form.controls.clave.touched && form.controls.clave.invalid ? 'Completa la contraseña de la credencial.' : '') }}</small>
+      </div>
+      @if (firma()) { <p class="nota">Las referencias privadas y contraseñas existentes no se consultan ni se muestran. Deja esos campos vacíos para conservarlas.</p> }
+      <div class="acciones"><button class="btn btn-primary" type="submit">{{ enviando() ? 'Guardando…' : firma() ? 'Guardar cambios' : 'Registrar firmante' }}</button><button class="btn" type="button" (click)="salir()">Cancelar</button></div>
+    </fieldset>
+  </form>
+}

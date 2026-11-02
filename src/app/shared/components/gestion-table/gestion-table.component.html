@@ -101,6 +101,12 @@
               </select>
               @if (erroresRelacion()[campo.clave]) { <p class="error-text" role="alert">{{ erroresRelacion()[campo.clave] }} En edición se conserva la relación actual si no la cambias.</p> }
               @if (!cargandoRelaciones() && !erroresRelacion()[campo.clave] && !(opcionesRelacion()[campo.clave] || []).length) { <p class="form-ayuda">No hay registros disponibles en este catálogo.</p> }
+            } @else if (campo.clave === 'estado' && campo.tipo !== 'boolean') {
+              <input class="input" [id]="clavePrimaria() + '-' + campo.clave" [formControlName]="campo.clave" [attr.maxlength]="campo.maximo ?? null" [attr.list]="clavePrimaria() + '-estados'" required />
+              <datalist [id]="clavePrimaria() + '-estados'">
+                @for (opcion of estados(campo); track opcion.valor) { <option [value]="opcion.valor">{{ opcion.etiqueta }}</option> }
+              </datalist>
+              <small class="form-ayuda">Laravel valida el estado. Las sugerencias corresponden a registros existentes.</small>
             } @else if (campo.clave === 'estado') {
               <select class="input" [id]="clavePrimaria() + '-' + campo.clave" [formControlName]="campo.clave" required>
                 <option [ngValue]="null" disabled>Selecciona un estado</option>

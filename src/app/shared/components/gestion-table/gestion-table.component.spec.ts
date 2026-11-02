@@ -162,7 +162,7 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
     http.expectNone(r => r.url.endsWith('/institutions/list'));
   });
   for (const [clave, config] of Object.entries(GESTION_CONFIG).filter(([, config]) => config.campos.some(c => c.clave === 'estado'))) {
-    it('Estado usa un selector tipado, conserva Inactivo y rechaza valores libres en ' + clave, () => {
+    it('Estado conserva el tipo y las restricciones reales de Laravel en ' + clave, () => {
       const campo = config.campos.find(c => c.clave === 'estado')!;
       const valor = campo.tipo === 'boolean' ? false : 'Inactivo';
       permisos.set(Object.values(config.permisos).filter((p): p is string => !!p));
@@ -180,7 +180,8 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
       expect(control.value).toBe(valor);
       expect(control.valid).toBeTrue();
       control.setValue(null); expect(control.invalid).toBeTrue();
-      control.setValue('Otro estado'); expect(control.invalid).toBeTrue();
+      control.setValue('Otro estado'); expect(control.invalid).toBe(campo.tipo === 'boolean');
+      control.setValue(null);
       componente.validar(); componente.ejecutar(); expect(servicio.actualizar).not.toHaveBeenCalled();
     });
   }

@@ -1,6 +1,7 @@
 @if (config().aviso) { <p class="nota">{{ config().aviso }}</p> }
 @if (aviso(); as mensaje) { <p class="alert alert-exito" role="status">{{ mensaje }}</p> }
 @if (errorOperacion(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
+@for (mensaje of erroresRelaciones(); track mensaje) { <p class="alert alert-advertencia" role="alert">{{ mensaje }}</p> }
 @if (editable(); as recursoEditable) {
   @if (!soloLectura() && permitido('crear')) {
     <div class="acciones">
@@ -28,8 +29,8 @@
     <label [for]="recurso() + '-filtro-valor'">Valor exacto (booleanos: 1 o 0)</label>
     <input class="input" [id]="recurso() + '-filtro-valor'" formControlName="valor" />
   </div>
-  <button type="submit" class="btn" [disabled]="cargando()">Buscar</button>
-  <button type="button" class="btn" [disabled]="cargando()" (click)="filtro.reset(); cargar(1)">Limpiar</button>
+  <button type="submit" class="btn btn-consulta" [disabled]="cargando()">Buscar</button>
+  <button type="button" class="btn btn-neutro" [disabled]="cargando()" (click)="filtro.reset(); cargar(1)">Limpiar</button>
 </form>
 <div [attr.aria-busy]="cargando()">
   @if (cargando()) { <p role="status">Cargando registros…</p> }
@@ -50,7 +51,7 @@
           <tbody>
             @for (registro of paginaActual.data; track identificar(registro)) {
               <tr><th scope="row">{{ identificar(registro) }}</th>
-                @for (campo of config().columnas; track campo.nombre) { <td>{{ mostrar(registro[campo.nombre]) }}</td> }
+                @for (campo of config().columnas; track campo.nombre) { <td>{{ mostrarCampo(registro, campo.nombre) }}</td> }
                 <td><div class="acciones">
                   @if (detalleBase(); as base) {
                     <a class="btn" [routerLink]="[base, identificar(registro)]">Ver detalle</a>
@@ -65,7 +66,7 @@
                     }
                   }
                   @if (puedeEliminar()) {
-                    <button class="btn" type="button" [disabled]="eliminando()" (click)="eliminar(registro)">Eliminar</button>
+                    <button class="btn btn-danger" type="button" [disabled]="eliminando()" (click)="eliminar(registro)">Eliminar</button>
                   }
                 </div></td>
               </tr>
@@ -90,7 +91,6 @@
       @for (campo of camposDetalle(); track campo.nombre) {
         <dt>{{ campo.titulo }}</dt><dd>{{ mostrar(registro[campo.nombre]) }}</dd>
       }
-      @if (recurso() === 'certificados-documentos') { <dt>Hash SHA-256 registrado</dt><dd>{{ mostrar(registro['hash_certificado']) }}</dd> }
     </dl>
     <button class="btn" type="button" (click)="detalle.set(null)">Cerrar detalle</button>
   </section>
