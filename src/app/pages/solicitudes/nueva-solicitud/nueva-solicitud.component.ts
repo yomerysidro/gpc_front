@@ -1,13 +1,14 @@
-import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, OnInit, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { distinctUntilChanged, map, Subscription } from 'rxjs';
+import { distinctUntilChanged, EMPTY, map, of, startWith, Subscription, switchMap, throwError } from 'rxjs';
+import { UsuarioSesion } from '../../../core/interfaces/autenticacion/auth.interface';
 import { ContextoSolicitud, DatosSolicitud, Solicitud } from '../../../core/interfaces/solicitudes/solicitud.interface';
 import { SolicitudesService, mensajeSolicitudes } from '../../../core/services/solicitudes/solicitudes.service';
 import { EmisionCertificadosService } from '../../../core/services/emision-certificados/emision-certificados.service';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
-import { AreaService } from '../../../core/services/area/area.service';
+import { ActivityRequestsApiService } from '../../../core/services/solicitudes/activity-requests-api.service';
 import { LIMITES_SOLICITUD } from '../../../core/interfaces/solicitudes/activity-requests-api.interface';
 import { PageTitleComponent } from '../../../shared/components/page-title/page-title.component';
 import { IntegracionAvisoComponent } from '../compartidos/integracion-aviso.component';
@@ -30,17 +31,22 @@ const textoObligatorio = (maximo: number) => [Validators.required, Validators.pa
 export class NuevaSolicitudComponent implements OnInit {
   protected readonly api = inject(SolicitudesService);
   private readonly catalogos = inject(EmisionCertificadosService);
-  private readonly areasApi = inject(AreaService);
+  private readonly solicitudesHttp = inject(ActivityRequestsApiService);
   protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private cargaRegistro?: Subscription;
+  private cargaAreas?: Subscription;
+  private operacion?: Subscription;
+  private usuarioAreas = this.auth.usuario();
+  private permisoAreas = this.auth.tienePermiso('solicitudes.crear');
+  private readonly areasUsuario = signal<UsuarioSesion | null>(null);
   protected readonly contexto = signal<ContextoSolicitud | null>(null);
   protected readonly registro = signal<Solicitud | null>(null);
   protected readonly tipos = signal<readonly { id: string; nombre: string }[]>([]);
   protected readonly areasCatalogo = signal<readonly { id: string; nombre: string }[]>([]);
-  protected readonly areasDisponibles = computed(() => this.api.integrado ? this.contexto()?.areasAutorizadas ?? [] : this.areasCatalogo());
+  protected readonly areasDisponibles = computed(() => this.areasCatalogo());
   protected readonly cargandoTipos = signal(false);
   protected readonly cargandoAreas = signal(false);
   protected readonly errorTipos = signal<string | null>(null);
@@ -50,8 +56,10 @@ export class NuevaSolicitudComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly aviso = signal<string | null>(null);
   protected readonly confirmar = signal<DatosSolicitud | null>(null);
+  protected readonly erroresCampos = signal<Readonly<Record<string, string>>>({});
   protected puedeGuardar(): boolean {
-    if (this.form.invalid || this.form.pending || this.cargando() || this.ocupado() || this.cargandoTipos() || this.cargandoAreas()) return false;
+    if (this.form.invalid || this.form.pending || Object.keys(this.erroresCampos()).length || this.cargando() || this.ocupado() || this.cargandoTipos() || this.cargandoAreas()
+      || !!this.errorAreas() || !this.areaAutorizada()) return false;
     return this.api.integrado ? !!this.contexto() && (this.registro()?.puedeEditar ?? this.contexto()?.puedeCrear ?? false)
       : false;
   }
@@ -69,7 +77,38 @@ export class NuevaSolicitudComponent implements OnInit {
     { clave: 'objetivo', label: 'Objetivo o justificación', obligatorio: true, maximo: null },
   ] as const;
 
+  constructor() {
+    effect(() => {
+      const usuario = this.auth.usuario();
+      const permiso = this.auth.tienePermiso('solicitudes.crear');
+      if (usuario === this.usuarioAreas && permiso === this.permisoAreas) return;
+      const cambioPrincipal = usuario?.id !== this.usuarioAreas?.id;
+      this.usuarioAreas = usuario; this.permisoAreas = permiso;
+      untracked(() => {
+        if (cambioPrincipal) { this.cargaRegistro?.unsubscribe(); this.registro.set(null); this.cargando.set(false); }
+        if (cambioPrincipal || !permiso) { this.operacion?.unsubscribe(); this.ocupado.set(false); }
+        this.confirmar.set(null); this.contexto.set(null);
+        this.erroresCampos.set({}); this.aviso.set(null);
+        this.cargarAreasAutorizadas();
+        if (usuario && this.api.integrado) this.api.contexto().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: contexto => this.contexto.set(contexto), error: error => this.error.set(mensajeSolicitudes(error)),
+        });
+      });
+    }, { allowSignalWrites: true });
+  }
+
+  private areaAutorizada(): boolean {
+    return !!this.auth.usuario() && this.areasUsuario() === this.auth.usuario() && this.auth.tienePermiso('solicitudes.crear')
+      && this.areasDisponibles().some(area => area.id === this.form.controls.areaId.value);
+  }
+
   ngOnInit(): void {
+    for (const [clave, control] of Object.entries(this.form.controls)) {
+      control.valueChanges.pipe(startWith(control.value), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+        if (!this.erroresCampos()[clave]) return;
+        this.erroresCampos.update(errores => { const nuevos = { ...errores }; delete nuevos[clave]; return nuevos; });
+      });
+    }
     this.cargarCatalogos();
     if (!this.api.integrado) {
       this.route.queryParamMap.pipe(map(parametros => parametros.get('editar')), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef)).subscribe(id => {
@@ -85,26 +124,18 @@ export class NuevaSolicitudComponent implements OnInit {
         this.contexto.set(contexto);
         this.route.queryParamMap.pipe(map(parametros => parametros.get('editar')), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef)).subscribe(id => {
           this.cargaRegistro?.unsubscribe(); this.registro.set(null); this.confirmar.set(null); this.form.reset(); this.aviso.set(null); this.error.set(null);
-          if (contexto.areasAutorizadas.length === 1) this.form.controls.areaId.setValue(contexto.areasAutorizadas[0].id);
+          this.seleccionarArea();
           if (id) { this.cargando.set(true); this.cargarRegistro(id); } else this.cargando.set(false);
         });
       }, error: error => { this.error.set(mensajeSolicitudes(error)); this.cargando.set(false); },
     });
   }
   protected cargarCatalogos(): void {
-    if (!this.api.integrado && !this.cargandoAreas()) {
-      this.errorAreas.set(null);
-      if (this.auth.tienePermiso('areas.ver')) {
-        this.cargandoAreas.set(true);
-        this.areasApi.listar().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-          next: filas => { this.areasCatalogo.set(filas.filter(fila => Number.isSafeInteger(fila.id_area) && fila.id_area > 0 && typeof fila.nombre === 'string' && !!fila.nombre.trim()).map(fila => ({ id: String(fila.id_area), nombre: fila.nombre }))); this.cargandoAreas.set(false); },
-          error: error => { this.areasCatalogo.set([]); this.errorAreas.set(mensajeSolicitudes(error)); this.cargandoAreas.set(false); },
-        });
-      } else this.errorAreas.set('La consulta del catálogo requiere el permiso de Áreas.');
-    }
+    const permisoCatalogos = this.api.integrado && ['crear', 'consultar', 'propias'].some(clave => this.auth.tienePermiso(`solicitudes.${clave}`));
+    if (!this.cargandoAreas()) this.cargarAreasAutorizadas();
     if (this.cargandoTipos()) return;
     this.errorTipos.set(null);
-    if (this.auth.tienePermiso('actividades.ver')) {
+    if (this.auth.tienePermiso('actividades.ver') || permisoCatalogos) {
       this.cargandoTipos.set(true);
       this.catalogos.listarTodos('ativicty-type', { estado: 1 }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: filas => { this.tipos.set(filas.flatMap(fila => {
@@ -116,24 +147,69 @@ export class NuevaSolicitudComponent implements OnInit {
       });
     } else this.errorTipos.set('La consulta de tipos requiere el permiso de Actividades.');
   }
+  private seleccionarArea(anterior = this.form.controls.areaId.value): void {
+    const areas = this.areasDisponibles();
+    this.form.controls.areaId.setValue(areas.length === 1 ? areas[0].id : areas.some(area => area.id === anterior) ? anterior : '');
+  }
+  private cargarAreasAutorizadas(): void {
+    this.cargaAreas?.unsubscribe();
+    const anterior = this.form.controls.areaId.value;
+    this.areasUsuario.set(null); this.areasCatalogo.set([]); this.form.controls.areaId.setValue('');
+    this.errorAreas.set(null); this.cargandoAreas.set(false);
+    const usuario = this.auth.usuario();
+    if (!usuario) { this.errorAreas.set('Sesión no autenticada o caducada. Inicia sesión para continuar.'); return; }
+    if (!this.auth.tienePermiso('solicitudes.crear')) { this.errorAreas.set('Tu usuario no tiene permiso para crear solicitudes'); return; }
+    this.cargandoAreas.set(true);
+    this.cargaAreas = this.solicitudesHttp.areasAutorizadas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: filas => {
+        if (this.auth.usuario() !== usuario || !this.auth.tienePermiso('solicitudes.crear')) return;
+        this.areasCatalogo.set(filas.map(fila => ({ id: String(fila.id_area), nombre: fila.nombre })));
+        this.areasUsuario.set(usuario); this.cargandoAreas.set(false); this.seleccionarArea(anterior || this.registro()?.areaId || '');
+      },
+      error: error => {
+        this.cargandoAreas.set(false);
+        this.errorAreas.set(error?.status === 403 ? 'Tu usuario no tiene permiso para crear solicitudes' : mensajeSolicitudes(error));
+      },
+    });
+  }
   private cargarRegistro(id: string): void {
     this.cargaRegistro = this.api.detalle(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: fila => {
         this.registro.set(fila); this.cargando.set(false);
-        if (fila.puedeEditar) this.form.patchValue(fila);
+        if (fila.puedeEditar) { this.form.patchValue(fila); this.seleccionarArea(); }
         else this.error.set('El servidor no autoriza la edición de esta solicitud.');
       }, error: error => { this.error.set(mensajeSolicitudes(error)); this.cargando.set(false); },
     });
   }
   protected revisar(): void {
     this.form.markAllAsTouched(); this.error.set(null);
-    if (this.form.invalid || this.form.pending || this.cargandoAreas() || this.cargandoTipos()) { this.error.set('Completa los campos obligatorios y revisa las fechas y catálogos.'); return; }
-    if (!this.areasDisponibles().some(area => area.id === this.form.controls.areaId.value) || !this.tipos().some(tipo => tipo.id === this.form.controls.tipoId.value)) {
+    if (this.form.invalid || this.form.pending || Object.keys(this.erroresCampos()).length || this.cargandoAreas() || this.cargandoTipos()) { this.error.set('Completa los campos obligatorios y revisa las fechas y catálogos.'); return; }
+    if (!this.areaAutorizada() || !this.tipos().some(tipo => tipo.id === this.form.controls.tipoId.value)) {
       this.error.set('Selecciona un área y un tipo de actividad de los catálogos disponibles.'); return;
     }
     this.confirmar.set(this.datos());
   }
   protected editar(): void { this.confirmar.set(null); }
+  protected puedeEnviar(): boolean {
+    return this.puedeGuardar() && this.auth.tienePermiso('solicitudes.enviar');
+  }
+  private erroresServidor(error: unknown): void {
+    this.error.set(mensajeSolicitudes(error));
+    if (typeof error === 'object' && error && 'codigo' in error && ['SOLICITUD_AREA_NO_AUTORIZADA', 'SOLICITUD_SIN_AREA_VIGENTE'].includes(String(error.codigo))) {
+      this.confirmar.set(null); this.cargarAreasAutorizadas();
+    }
+    if (typeof error !== 'object' || !error || !('errores' in error) || typeof error.errores !== 'object' || !error.errores) return;
+    const campos = { id_area: 'areaId', id_tipo_actividad: 'tipoId', nombre: 'nombre', descripcion: 'descripcion', justificacion: 'objetivo', fecha_inicio_propuesta: 'inicio', fecha_fin_propuesta: 'fin', sede_propuesta: 'lugar' } as const;
+    for (const [campo, control] of Object.entries(campos)) {
+      const mensajes: unknown = (error.errores as Record<string, unknown>)[campo];
+      if (Array.isArray(mensajes) && mensajes.every(mensaje => typeof mensaje === 'string')) {
+        this.erroresCampos.update(errores => ({ ...errores, [control]: mensajes.join(' ') }));
+        this.form.controls[control].setErrors({ servidor: mensajes.join(' ') });
+        this.form.controls[control].markAsTouched();
+        this.confirmar.set(null);
+      }
+    }
+  }
   protected nombreArea(id: string): string { return this.areasDisponibles().find(area => area.id === id)?.nombre ?? 'Área pendiente de consulta'; }
   protected nombreTipo(id: string): string { return this.tipos().find(tipo => tipo.id === id)?.nombre ?? 'Tipo pendiente de consulta'; }
   private datos(): DatosSolicitud {
@@ -141,11 +217,12 @@ export class NuevaSolicitudComponent implements OnInit {
     return { ...datos, nombre: datos.nombre.trim(), lugar: datos.lugar.trim(), descripcion: datos.descripcion.trim(), objetivo: datos.objetivo.trim(), observaciones: '' };
   }
   protected guardar(enviar = false): void {
+    if (this.ocupado()) return;
     this.form.markAllAsTouched();
     if (this.form.invalid) {
       this.error.set('Completa los campos obligatorios del borrador y revisa las longitudes y fechas. Laravel exige los mismos datos al crear un borrador.'); return;
     }
-    if (!this.puedeGuardar()) return;
+    if (!this.puedeGuardar() || enviar && !this.puedeEnviar()) return;
     const datos = this.datos();
     if (!this.areasDisponibles().some(area => area.id === datos.areaId) || !this.tipos().some(tipo => tipo.id === datos.tipoId)) {
       this.error.set('Selecciona un área autorizada y un tipo activo.'); return;
@@ -153,19 +230,29 @@ export class NuevaSolicitudComponent implements OnInit {
     if (enviar && !this.confirmar()) return;
     this.ocupado.set(true); this.error.set(null); this.aviso.set(null);
     const existente = this.registro();
-    this.api.guardar(datos, existente ? { id: existente.id, version: existente.version } : null).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: fila => {
-        this.registro.set(fila);
-        if (enviar && fila.acciones.includes('Enviar')) {
-          this.api.decidir(fila.id, fila.version, 'Enviar', '').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-            next: () => { this.ocupado.set(false); void this.router.navigateByUrl('/solicitudes/mis-solicitudes'); },
-            error: error => { this.ocupado.set(false); this.error.set((fila.estado === 'Observada' ? 'La corrección' : 'El borrador') + ' se guardó, pero no se confirmó el envío. ' + mensajeSolicitudes(error)); },
-          });
-        } else {
-          this.ocupado.set(false);
-          this.aviso.set(enviar ? 'Cambios confirmados por el servidor. No se autorizó su envío.' : fila.estado === 'Observada' ? 'Corrección guardada y confirmada por el servidor.' : 'Borrador guardado y confirmado por el servidor.');
-        }
-      }, error: error => { this.ocupado.set(false); this.error.set(mensajeSolicitudes(error)); },
+    const usuarioOperacion = this.auth.usuario();
+    let guardado: Solicitud | null = null;
+    this.operacion = this.api.guardar(datos, existente ? { id: existente.id, version: existente.version } : null).pipe(
+      switchMap(fila => {
+        if (this.auth.usuario()?.id !== usuarioOperacion?.id) return EMPTY;
+        guardado = fila; this.registro.set(fila);
+        if (enviar && !this.areaAutorizada()) return throwError(() => new Error('Las áreas de tu sesión cambiaron. Revisa el área autorizada antes de enviar.'));
+        return enviar && fila.acciones.includes('Enviar')
+          ? this.api.decidir(fila.id, fila.version, 'Enviar', '').pipe(map(enviada => ({ fila: enviada, enviada: true })))
+          : of({ fila, enviada: false });
+      }), takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: ({ fila, enviada }) => {
+        if (this.auth.usuario()?.id !== usuarioOperacion?.id) return;
+        this.registro.set(fila); this.ocupado.set(false);
+        if (enviada) void this.router.navigate(['/solicitudes/mis-solicitudes'], { state: { solicitudEnviada: fila.id } });
+        else this.aviso.set(enviar ? 'Cambios confirmados por el servidor. No se autorizó su envío.' : fila.estado === 'Observada' ? 'Corrección guardada y confirmada por el servidor.' : 'Borrador guardado y confirmado por el servidor.');
+      },
+      error: error => {
+        if (this.auth.usuario()?.id !== usuarioOperacion?.id) return;
+        this.ocupado.set(false); this.erroresServidor(error);
+        if (enviar && guardado) this.error.set((guardado.estado === 'Observada' ? 'La corrección' : 'El borrador') + ' se guardó, pero no se confirmó el envío. ' + mensajeSolicitudes(error));
+      },
     });
   }
 }

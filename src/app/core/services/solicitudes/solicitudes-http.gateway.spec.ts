@@ -16,15 +16,16 @@ describe('Adaptación del contrato a las cinco pantallas existentes', () => {
   const filtro: FiltroSolicitudes = { busqueda: '', estado: '', desde: '', hasta: '', pagina: 1 };
   let http: HttpTestingController; let gateway: SolicitudesHttpGateway;
   function iniciar(autorizado = true, activa = true, administrativo = true): void {
-    const acceso: AutorizacionSolicitudes = { contexto: () => of({ areasAutorizadas: [{ id: '2', nombre: 'Área autorizada de prueba' }], responsable: 'Usuario de prueba', puedeCrear: true }),
-      consultaRevision: administrativo, consultaGerencia: administrativo, capacidades: () => ({ propia: true, puedeEditar: true, acciones: ['Enviar', 'Iniciar revisión', 'Observar', 'Derivar', 'Aprobar', 'Rechazar'] }) };
+    const acceso: AutorizacionSolicitudes = { contexto: () => of({ areasDisponibles: [{ id: '2', nombre: 'Área autorizada de prueba' }], responsable: 'Usuario de prueba', puedeCrear: true }),
+      consultaRevision: administrativo, consultaGerencia: administrativo, consultaHistorial: administrativo, consultaDetalle: administrativo, consultaPropias: true,
+      capacidades: () => ({ propia: true, puedeEditar: true, acciones: ['Enviar', 'Iniciar revisión', 'Observar', 'Derivar', 'Aprobar', 'Rechazar'] }) };
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), { provide: ACTIVITY_REQUESTS_API_ACTIVA, useValue: activa }, { provide: AUTORIZACION_SOLICITUDES, useValue: autorizado ? acceso : null }] });
     http = TestBed.inject(HttpTestingController); gateway = TestBed.inject(SolicitudesHttpGateway);
   }
   afterEach(() => http?.verify());
   it('mantiene el servicio pendiente si falta autorizacion aunque las rutas se marquen activas', () => {
     iniciar(false); const fachada = TestBed.inject(SolicitudesService); expect(fachada.integrado).toBeFalse(); expect(fachada.modo).toBe('pendiente');
-    gateway.listar('gerencia', filtro).subscribe({ error: error => expect(error.message).toContain('facultades') }); http.expectNone(() => true);
+    gateway.listar('gerencia', filtro).subscribe({ error: error => expect(error.message).toContain('temporalmente no disponible') }); http.expectNone(() => true);
   });
   it('conecta el gateway solo con ambas dependencias explícitas y mapea sin inventar capacidades de estados', () => {
     iniciar(); expect(TestBed.inject(SolicitudesService).integrado).toBeTrue(); let vista: Solicitud | undefined;
@@ -58,7 +59,8 @@ describe('Adaptación del contrato a las cinco pantallas existentes', () => {
     http.expectOne(base + '/4/submit').flush({ success: true, data: { ...fila, estado: 'Enviada' } });
   });
   it('usa review-detail en la consulta administrativa sin cambiar el detalle del propietario', () => {
-    iniciar(); gateway.detalle('4', true).subscribe(); http.expectOne(base + '/4/review-detail').flush({ success: true, data: fila });
+    iniciar(); gateway.detalle('4', true).subscribe(); const detalle = http.expectOne(base + '/4/review-detail');
+    expect(detalle.request.method).toBe('GET'); detalle.flush({ success: true, data: fila });
     gateway.detalle('4').subscribe(); http.expectOne(base + '/4').flush({ success: true, data: fila });
   });
   it('transmite filtros globales exactos y conserva la paginación del servidor', () => {

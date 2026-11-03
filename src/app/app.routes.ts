@@ -35,7 +35,7 @@ const gestionRoutes: Routes = [
     path: 'trabajadores',
     loadComponent: () => import('./pages/person-worker/person-worker').then(pagina => pagina.PersonWorkerComponent),
     canActivate: [permissionGuard],
-    data: { titulo: 'Gestión de Trabajadores', permiso: 'ponentes-firmantes.ver' },
+    data: { titulo: 'Gestión de Trabajadores', permiso: 'trabajadores.ver' },
   },
   {
     path: 'practicas',
@@ -84,6 +84,14 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: 'inicio', component: HomeComponent },
+      { path: 'solicitudes', pathMatch: 'full', redirectTo: '/solicitudes/mis-solicitudes' },
+      ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.filter(entrada => entrada.habilitado && !!VISTAS_SOLICITUDES[entrada.id])
+        .map(entrada => ({
+          path: entrada.path!.slice(1), loadComponent: VISTAS_SOLICITUDES[entrada.id],
+          canActivate: [permissionGuard], runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
+          data: { titulo: entrada.label, permiso: entrada.permiso, capacidadSolicitud: entrada.capacidadSolicitud, permisos: entrada.permisos, requiere: entrada.requiere,
+            ...(entrada.id === 'solicitud-nueva' ? { permisoEdicion: 'solicitudes.editar' } : {}) },
+        }))),
       { path: 'pendientes/generar-emitir', pathMatch: 'full', redirectTo: '/certificaciones/generar-emitir' },
       // Solo páginas informativas: authGuard del layout y guard de consulta administrativa.
       ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.filter(entrada => !entrada.habilitado && !!entrada.pendiente)

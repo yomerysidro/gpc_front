@@ -3,6 +3,7 @@ import { Signal } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   ModuloMenu,
+  CapacidadesSolicitudes,
   ResultadoLogin,
   UsuarioSesion,
 } from '../../interfaces/autenticacion/auth.interface';
@@ -15,6 +16,7 @@ export abstract class AuthService {
   abstract readonly usuario: Signal<UsuarioSesion | null>;
   abstract readonly modulos: Signal<readonly ModuloMenu[]>;
   abstract readonly permisos: Signal<readonly string[]>;
+  abstract readonly capacidadesSolicitudes: Signal<CapacidadesSolicitudes | null>;
   abstract readonly isAuthenticated: Signal<boolean>;
 
   abstract login(email: string, password: string): Observable<ResultadoLogin>;

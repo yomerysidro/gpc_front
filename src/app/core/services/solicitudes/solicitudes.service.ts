@@ -7,6 +7,7 @@ import { AccionSolicitud, BandejaSolicitud, ContextoSolicitud, DatosSolicitud, D
 
 /** Puerto de integración: modelos de vista, no rutas ni DTO HTTP inventados. */
 export interface SolicitudesGateway {
+  accionesPermitidas?(fila: Solicitud): readonly AccionSolicitud[];
   contexto(): Observable<ContextoSolicitud>;
   listar(bandeja: BandejaSolicitud, filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<Solicitud>>;
   detalle(id: string, administrativo?: boolean): Observable<Solicitud>;
@@ -26,9 +27,14 @@ export class IntegracionSolicitudesPendiente extends Error {
 export function mensajeSolicitudes(error: unknown): string {
   if (error instanceof HttpErrorResponse) return mensajeSolicitudes(aErrorApi(error));
   if (typeof error === 'object' && error !== null && 'status' in error) {
+    if ('codigo' in error && error.codigo === 'SOLICITUD_AREA_NO_AUTORIZADA') return 'El área seleccionada ya no está autorizada para tu usuario. Consulta tus áreas habilitadas nuevamente.';
+    if ('codigo' in error && error.codigo === 'SOLICITUD_SIN_AREA_VIGENTE') return 'No tienes un área habilitada para registrar solicitudes';
     if (error.status === 401) return 'Sesión no autenticada o caducada. Inicia sesión para continuar.';
-    if (error.status === 403) return 'No tienes permiso para realizar esta operación.';
+    if (error.status === 403) return 'Laravel rechazó el acceso (403). ' + ('mensaje' in error && typeof error.mensaje === 'string' ? error.mensaje : 'No tienes permiso para realizar esta operación en el ámbito solicitado.');
     if (error.status === 0) return 'No se pudo conectar con el servidor. Comprueba la conexión.';
+    if (error.status === 404) return 'La solicitud no existe o ya no está disponible para tu sesión.';
+    if (error.status === 409) return 'La solicitud cambió o la transición ya no es compatible. Actualiza los datos antes de reintentar.';
+    if (typeof error.status === 'number' && error.status >= 500) return 'No se pudo completar la operación en el servidor. El servicio está temporalmente no disponible. Intenta nuevamente.';
   }
   if (error instanceof Error) return error.message;
   if (typeof error === 'object' && error !== null && 'mensaje' in error && typeof error.mensaje === 'string') return error.mensaje;
@@ -39,6 +45,7 @@ export class SolicitudesService {
   private readonly gateway = inject(SOLICITUDES_GATEWAY);
   readonly integrado = this.gateway !== null;
   readonly modo = this.integrado ? 'api' : 'pendiente';
+  accionesPermitidas(fila: Solicitud): readonly AccionSolicitud[] { return this.gateway ? this.gateway.accionesPermitidas?.(fila) ?? fila.acciones : []; }
   private ejecutar<T>(operacion: (gateway: SolicitudesGateway) => Observable<T>): Observable<T> {
     return defer(() => this.gateway ? operacion(this.gateway) : throwError(() => new IntegracionSolicitudesPendiente()));
   }

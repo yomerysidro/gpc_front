@@ -1,3 +1,4 @@
+import { SIN_CAPACIDADES_SOLICITUDES_TEST } from '../../core/interfaces/autenticacion/auth-fixtures.spec';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -70,6 +71,7 @@ describe('Autorización institucional y navegación de Emisión', () => {
 
   async function sesion(permisos: readonly string[], rol = 'Administrador'): Promise<void> {
     const respuesta: SesionResponse = {
+    capacidades_solicitudes: SIN_CAPACIDADES_SOLICITUDES_TEST,
       user: { id: 1, nombre: 'Usuario de prueba', email: 'prueba@example.test', rol },
       modulos: [], permisos,
     };

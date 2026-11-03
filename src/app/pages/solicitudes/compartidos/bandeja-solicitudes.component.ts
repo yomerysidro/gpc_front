@@ -1,8 +1,8 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, Location } from '@angular/common';
 import { Component, computed, DestroyRef, inject, input, OnInit, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AccionSolicitud, BandejaSolicitud, ESTADOS_SOLICITUD, PaginaSolicitudes, Solicitud } from '../../../core/interfaces/solicitudes/solicitud.interface';
 import { SolicitudesService, mensajeSolicitudes } from '../../../core/services/solicitudes/solicitudes.service';
@@ -22,6 +22,8 @@ export class BandejaSolicitudesComponent implements OnInit {
   readonly titulo = input.required<string>();
   protected readonly api = inject(SolicitudesService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
   protected readonly filtros = inject(NonNullableFormBuilder).group({ busqueda: [''], estado: [''], desde: [''], hasta: [''] });
   protected readonly estados = ESTADOS_SOLICITUD;
   protected readonly pagina = signal<PaginaSolicitudes<Solicitud> | null>(null);
@@ -41,6 +43,10 @@ export class BandejaSolicitudesComponent implements OnInit {
   private cargaDetalle?: Subscription;
   protected operativo(): boolean { return this.api.integrado; }
   ngOnInit(): void {
+    const estado = this.router.getCurrentNavigation()?.extras.state ?? this.location.getState() as Record<string, unknown>;
+    if (this.bandeja() === 'propias' && estado?.['solicitudEnviada']) {
+      this.aviso.set('Solicitud enviada y confirmada por Laravel.');
+    }
     this.cargar();
     if (this.bandeja() === 'propias' && this.api.integrado) this.api.contexto().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: contexto => this.puedeCrear.set(contexto.puedeCrear), error: error => this.error.set(mensajeSolicitudes(error)),
@@ -60,7 +66,7 @@ export class BandejaSolicitudesComponent implements OnInit {
   protected acciones(fila: Solicitud): readonly AccionSolicitud[] {
     const permitidas: readonly AccionSolicitud[] = this.bandeja() === 'propias' ? ['Enviar'] : this.bandeja() === 'revision'
       ? ['Iniciar revisión', 'Observar', 'Derivar'] : ['Aprobar', 'Observar', 'Rechazar'];
-    return fila.acciones.filter(accion => permitidas.includes(accion));
+    return this.api.accionesPermitidas(fila).filter(accion => permitidas.includes(accion));
   }
   protected ver(fila: Solicitud): void {
     if (fila.puedeVerDetalle === false) return;

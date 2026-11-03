@@ -1,3 +1,4 @@
+import { SIN_CAPACIDADES_SOLICITUDES_TEST } from './core/interfaces/autenticacion/auth-fixtures.spec';
 import { environment } from '../environments/environment';
 import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -201,6 +202,7 @@ describe('SessionAuthService', () => {
   let service: SessionAuthService;
   let http: HttpTestingController;
   const sesion: SesionResponse = {
+    capacidades_solicitudes: SIN_CAPACIDADES_SOLICITUDES_TEST,
     user: { id: 2, nombre: 'Maria Perez', email: 'maria.rrhh@moralesmuni.pe', rol: 'Digitador' },
     modulos: [{ id: 4, nombre: 'Actividades', url: '/actividades', imagen: 'event' }],
     permisos: ['actividades.ver'],
@@ -274,14 +276,16 @@ describe('SessionAuthService', () => {
     expect(service.modulos()).toEqual([]);
   });
 
-  it('logout limpia la sesión aunque el backend falle y vuelve a /login', () => {
+  it('logout no simula cierre si el backend falla', () => {
     const navigateByUrl = spyOn(TestBed.inject(Router), 'navigateByUrl').and.resolveTo(true);
     service.cargarSesion().subscribe();
     http.expectOne(environment.apiBaseUrl + '/auth/me').flush(sesion);
-    service.logout().subscribe();
+    let errorRecibido = false;
+    service.logout().subscribe({ error: () => errorRecibido = true });
     http.expectOne(environment.apiBaseUrl + '/auth/logout').flush(null, { status: 500, statusText: '' });
-    expect(service.isAuthenticated()).toBeFalse();
-    expect(navigateByUrl).toHaveBeenCalledOnceWith('/login');
+    expect(errorRecibido).toBeTrue();
+    expect(service.isAuthenticated()).toBeTrue();
+    expect(navigateByUrl).not.toHaveBeenCalled();
     service.cargarSesion().subscribe();
     http.expectNone(environment.apiBaseUrl + '/auth/me');
   });

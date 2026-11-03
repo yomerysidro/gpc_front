@@ -1,3 +1,4 @@
+import { TODAS_CAPACIDADES_SOLICITUDES_TEST } from '../../core/interfaces/autenticacion/auth-fixtures.spec';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
@@ -11,6 +12,7 @@ import { Solicitud, PaginaSolicitudes } from '../../core/interfaces/solicitudes/
 import { AuthService } from '../../core/services/autenticacion/auth.service';
 import { IntegracionSolicitudesPendiente, SOLICITUDES_GATEWAY, SolicitudesGateway, SolicitudesService } from '../../core/services/solicitudes/solicitudes.service';
 import { environment } from '../../../environments/environment';
+import { ACTIVITY_REQUESTS_API_ACTIVA } from '../../core/services/solicitudes/activity-requests-api.service';
 import { fechasSolicitud, NuevaSolicitudComponent } from './nueva-solicitud/nueva-solicitud.component';
 
 /** Datos exclusivos de pruebas, inyectados en el puerto; nunca se incluyen en las vistas productivas. */
@@ -26,16 +28,17 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   let harness: RouterTestingHarness;
   function configurar(integrado = true, consultarCatalogos = integrado): void {
     gateway = jasmine.createSpyObj<SolicitudesGateway>('gateway', ['contexto', 'listar', 'detalle', 'guardar', 'decidir', 'historial', 'documentos', 'documento']);
-    gateway.contexto.and.returnValue(of({ responsable: 'Usuario de prueba', areasAutorizadas: [{ id: '9', nombre: 'Área de prueba unitaria' }], puedeCrear: true }));
+    gateway.contexto.and.returnValue(of({ responsable: 'Usuario de prueba', areasDisponibles: [{ id: '9', nombre: 'Área de prueba unitaria' }], puedeCrear: true }));
     gateway.listar.and.returnValue(of(pagina)); gateway.detalle.and.returnValue(of(solicitud));
     gateway.guardar.and.returnValue(of({ ...solicitud, estado: 'Borrador', puedeEditar: true, acciones: ['Enviar'] }));
     gateway.decidir.and.returnValue(of({ ...solicitud, estado: 'Aprobada', acciones: [] }));
     gateway.historial.and.returnValue(of({ registros: [], total: 0, pagina: 1, ultimaPagina: 1 }));
     gateway.documentos.and.returnValue(of({ registros: [], total: 0, pagina: 1, ultimaPagina: 1 }));
     TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(),
+      { provide: ACTIVITY_REQUESTS_API_ACTIVA, useValue: integrado || consultarCatalogos },
       { provide: SOLICITUDES_GATEWAY, useValue: integrado ? gateway : null },
       { provide: AuthService, useValue: { cargarSesion: () => of(true), tienePermiso: (clave: string) => !['areas.ver', 'actividades.ver'].includes(clave) || consultarCatalogos,
-        usuario: signal({ id: 1, nombre: 'Usuario de prueba', email: 'prueba@example.test', rol: 'Administrador' }), modulos: signal([]) } },
+        capacidadesSolicitudes: signal(TODAS_CAPACIDADES_SOLICITUDES_TEST), usuario: signal({ id: 1, nombre: 'Usuario de prueba', email: 'prueba@example.test', rol: 'Administrador' }), modulos: signal([]) } },
     ] });
     http = TestBed.inject(HttpTestingController);
   }
@@ -52,7 +55,7 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     const control = vista().querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(selector)!;
     control.value = valor; control.dispatchEvent(new Event(control instanceof HTMLSelectElement ? 'change' : 'input')); harness.detectChanges();
   }
-  function catalogos(): void { http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1').flush({ success: true, data: [{ id_tipo_actividad: 3, nombre: 'Tipo de prueba', estado: true }] }); harness.detectChanges(); }
+  function catalogos(): void { for (const req of http.match(environment.apiBaseUrl + '/activity-requests/authorized-areas')) req.flush({ success: true, data: [{ id_area: 9, nombre: 'Area HTTP de prueba' }] }); http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1').flush({ success: true, data: [{ id_tipo_actividad: 3, nombre: 'Tipo de prueba', estado: true }] }); harness.detectChanges(); }
   function completar(): void {
     cambiar('#solicitud-nombre', solicitud.nombre); cambiar('#solicitud-lugar', solicitud.lugar);
     cambiar('#solicitud-tipo', '3'); cambiar('#solicitud-inicio', solicitud.inicio); cambiar('#solicitud-fin', solicitud.fin);
@@ -70,7 +73,7 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     configurar(false, true); await navegar('/solicitudes/nueva');
     expect(boton('Guardar borrador').disabled).toBeTrue();
     const areas = [{ id_area: 9, nombre: 'Area de prueba HTTP' }, { id_area: 27, nombre: 'Otra area de prueba HTTP' }];
-    http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ success: true, message: '', data: areas });
+    http.expectOne(environment.apiBaseUrl + '/activity-requests/authorized-areas').flush({ success: true, message: '', data: areas });
     const tipos = http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1');
     expect(tipos.request.method).toBe('GET');
     tipos.flush({ success: true, data: [{ id_tipo_actividad: 3, nombre: 'Tipo activo HTTP', estado: 1 }, { id_tipo_actividad: 77, nombre: 'Inactivo', estado: false }] });
@@ -91,13 +94,13 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   });
   it('distingue error y carga de catálogos y permite reintentar sin sustituirlos por datos ficticios', async () => {
     configurar(false, true); await navegar('/solicitudes/nueva');
-    http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ message: 'Área restringida' }, { status: 403, statusText: 'Forbidden' });
+    http.expectOne(environment.apiBaseUrl + '/activity-requests/authorized-areas').flush({ message: 'Área restringida' }, { status: 403, statusText: 'Forbidden' });
     http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1').flush({ message: 'Catálogo no disponible' }, { status: 503, statusText: 'Unavailable' }); harness.detectChanges();
-    expect(vista().textContent).toContain('No tienes permiso'); expect(boton('Guardar borrador').disabled).toBeTrue();
+    expect(vista().textContent).toContain('Tu usuario no tiene permiso para crear solicitudes'); expect(boton('Guardar borrador').disabled).toBeTrue();
     expect(vista().querySelector<HTMLSelectElement>('#solicitud-area')?.options.length).toBe(1);
     await pulsar('Actualizar catálogos');
-    http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ success: true, data: [] }); catalogos();
-    expect(vista().textContent).toContain('No hay áreas disponibles');
+    http.expectOne(environment.apiBaseUrl + '/activity-requests/authorized-areas').flush({ success: true, data: [] }); catalogos();
+    expect(vista().textContent).toContain('No tienes un área habilitada para registrar solicitudes');
   });
   it('valida fechas imposibles, años bisiestos e intervalos invertidos', () => {
     configurar(false);
@@ -108,11 +111,11 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   });
   it('muestra catálogos vacíos sin opciones de respaldo ni acceso a Solicitudes', async () => {
     configurar(false, true); await navegar('/solicitudes/nueva');
-    http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ success: true, data: [] });
+    http.expectOne(environment.apiBaseUrl + '/activity-requests/authorized-areas').flush({ success: true, data: [] });
     http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1').flush({ success: true, data: [] }); harness.detectChanges();
     expect(vista().querySelector<HTMLSelectElement>('#solicitud-area')!.options.length).toBe(1);
     expect(vista().querySelector<HTMLSelectElement>('#solicitud-tipo')!.options.length).toBe(1);
-    expect(vista().textContent).toContain('No hay áreas disponibles');
+    expect(vista().textContent).toContain('No tienes un área habilitada para registrar solicitudes');
     expect(vista().textContent).toContain('No hay tipos activos disponibles');
     await pulsar('Revisar datos');
     for (const campo of ['area', 'tipo', 'nombre', 'inicio', 'fin', 'objetivo']) expect(vista().querySelector('#error-' + campo)).not.toBeNull();
@@ -120,15 +123,15 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   });
   it('rechaza una respuesta de catálogo mal formada y permite reintentar', async () => {
     configurar(false, true); await navegar('/solicitudes/nueva');
-    http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ success: true, data: {} });
+    http.expectOne(environment.apiBaseUrl + '/activity-requests/authorized-areas').flush({ success: true, data: {} });
     http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1').flush({ success: true, data: {} }); harness.detectChanges();
     expect(vista().querySelector<HTMLSelectElement>('#solicitud-area')!.options.length).toBe(1);
     expect(vista().querySelector<HTMLSelectElement>('#solicitud-tipo')!.options.length).toBe(1);
     expect(vista().querySelectorAll('.error').length).toBeGreaterThanOrEqual(2);
     await pulsar('Actualizar catálogos');
-    http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ success: true, data: [{ id_area: 9, nombre: 'Área HTTP de prueba' }] });
+    http.expectOne(environment.apiBaseUrl + '/activity-requests/authorized-areas').flush({ success: true, data: [{ id_area: 9, nombre: 'Área HTTP de prueba' }] });
     catalogos();
-    expect(vista().querySelector<HTMLSelectElement>('#solicitud-area')!.options.length).toBe(2);
+    expect(vista().querySelector<HTMLSelectElement>('#solicitud-area')!.options.length).toBe(1);
   });
   it('mantiene el formulario sin desbordamiento en un contenedor estrecho y ancho', () => {
     configurar(false); const fixture = TestBed.createComponent(NuevaSolicitudComponent);
@@ -245,7 +248,7 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     expect(gateway.decidir).not.toHaveBeenCalled();
     gateway.decidir.and.returnValue(throwError(() => ({ status: 409, mensaje: 'La solicitud ya fue decidida.' })));
     await pulsar('Aprobar'); await pulsar('Confirmar Aprobar');
-    expect(vista().textContent).toContain('La solicitud ya fue decidida.'); expect(vista().textContent).not.toContain('Operación confirmada por el servidor');
+    expect(vista().textContent).toContain('transición ya no es compatible'); expect(vista().textContent).not.toContain('Operación confirmada por el servidor');
   });
   it('no duplica decisiones mientras el servidor responde', async () => {
     configurar(); const respuesta = new Subject<Solicitud>(); gateway.decidir.and.returnValue(respuesta);

@@ -2,6 +2,7 @@ import { Component, computed, inject, input, output, signal, viewChild } from '@
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AccionSolicitud, Solicitud } from '../../../core/interfaces/solicitudes/solicitud.interface';
 import { DialogoComponent } from '../../../shared/components/dialogo/dialogo.component';
+import { SolicitudesService } from '../../../core/services/solicitudes/solicitudes.service';
 export interface ConfirmacionDecision { readonly registro: Solicitud; readonly accion: AccionSolicitud; readonly motivo: string; }
 @Component({
   selector: 'app-decision-modal', standalone: true, imports: [DialogoComponent, ReactiveFormsModule],
@@ -13,16 +14,19 @@ export interface ConfirmacionDecision { readonly registro: Solicitud; readonly a
         <div class="form-field"><label for="motivo-decision">{{ requiereMotivo() ? 'Motivo obligatorio' : 'Observación opcional' }}</label>
           <textarea id="motivo-decision" class="input" formControlName="motivo" rows="4" [required]="requiereMotivo()"
             [attr.aria-invalid]="form.controls.motivo.touched && form.controls.motivo.invalid" aria-describedby="error-motivo"></textarea>
-          <p id="error-motivo" class="error" role="alert">@if (form.controls.motivo.touched && form.controls.motivo.invalid) { Escribe un motivo válido, no solo espacios. }</p>
+          @if (form.controls.motivo.touched && form.controls.motivo.invalid) {
+            <p id="error-motivo" class="error" role="alert">Escribe un motivo válido, no solo espacios.</p>
+          }
         </div>
       } @else { <p>Enviar cambia el estado de la solicitud; no registra una decisión ni una observación en el historial.</p> }
       <p>¿Deseas confirmar «{{ accion() }}» para esta solicitud?</p>
       <div class="acciones"><button class="btn" type="button" autofocus [disabled]="ocupado()" (click)="dialogo().cerrar()">Cancelar</button>
-        <button class="btn btn-primary" type="submit" [disabled]="ocupado() || !registro() || !integrado()">Confirmar {{ accion() }}</button></div>
+        <button class="btn btn-primary" type="submit" [disabled]="ocupado() || !autorizado() || !integrado()">Confirmar {{ accion() }}</button></div>
     </form>
   </app-dialogo>`, styleUrl: './solicitudes.scss',
 })
 export class DecisionModalComponent {
+  private readonly api = inject(SolicitudesService);
   readonly confirmado = output<ConfirmacionDecision>();
   readonly ocupado = input(false);
   readonly integrado = input(false);
@@ -31,8 +35,12 @@ export class DecisionModalComponent {
   protected readonly requiereMotivo = computed(() => ['Observar', 'Rechazar'].includes(this.accion()));
   protected readonly dialogo = viewChild.required(DialogoComponent);
   protected readonly form = inject(NonNullableFormBuilder).group({ motivo: [''] });
+  protected autorizado(): boolean {
+    const registro = this.registro();
+    return !!registro && this.api.accionesPermitidas(registro).includes(this.accion());
+  }
   abrir(accion: AccionSolicitud, registro: Solicitud): void {
-    if (!registro.acciones.includes(accion) || !this.integrado()) return;
+    if (!this.api.accionesPermitidas(registro).includes(accion) || !this.integrado()) return;
     this.accion.set(accion); this.registro.set(registro); this.form.reset();
     this.form.controls.motivo.setValidators(this.requiereMotivo() ? [Validators.required, Validators.pattern(/\S/)] : []);
     this.form.controls.motivo.updateValueAndValidity(); this.dialogo().abrir();
@@ -41,7 +49,7 @@ export class DecisionModalComponent {
   protected confirmar(): void {
     this.form.markAllAsTouched();
     const registro = this.registro();
-    if (!registro || this.form.invalid || this.ocupado() || !this.integrado()) return;
+    if (!registro || !this.autorizado() || this.form.invalid || this.ocupado() || !this.integrado()) return;
     this.confirmado.emit({ registro, accion: this.accion(), motivo: this.form.controls.motivo.value.trim() });
   }
 }

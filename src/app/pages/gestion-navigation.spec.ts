@@ -106,8 +106,8 @@ describe('Las diez tablas de Gestión y su navegación', () => {
       expect(vista.querySelector(caso.tag)).not.toBeNull();
       expect(vista.querySelectorAll('main table').length).toBe(1);
       expect(vista.querySelectorAll('main h1').length).toBe(1);
-      expect(vista.querySelector('app-sidebar a.active')?.getAttribute('href')).toBe('/gestion/' + caso.path
-        + (caso.path === 'configuracion' ? '?pestana=' + (caso.tab || 'areas') : ''));
+      // El Sidebar apunta al grupo; la pestaña activa permanece en la URL de la página.
+      expect(vista.querySelector('app-sidebar a.active')?.getAttribute('href')).toBe('/gestion/' + caso.path);
       expect(vista.querySelector<HTMLInputElement>('main input[type="search"]')).not.toBeNull();
       expect(vista.querySelector<HTMLButtonElement>('main .encabezado button')?.disabled).toBeFalse();
       http.expectNone(peticion => peticion.method !== 'GET');

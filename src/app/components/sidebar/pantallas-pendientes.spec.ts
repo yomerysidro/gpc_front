@@ -1,6 +1,7 @@
+import { CAPACIDADES_ADMIN_SOLICITUDES_TEST, SIN_CAPACIDADES_SOLICITUDES_TEST } from '../../core/interfaces/autenticacion/auth-fixtures.spec';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -8,6 +9,7 @@ import { of } from 'rxjs';
 import { routes } from '../../app.routes';
 import { UsuarioSesion } from '../../core/interfaces/autenticacion/auth.interface';
 import { AuthService } from '../../core/services/autenticacion/auth.service';
+import { SOLICITUDES_GATEWAY } from '../../core/services/solicitudes/solicitudes.service';
 import { DASHBOARD_SIDEBAR, resolverGruposSidebar, rutaPantallaPendiente, SIDEBAR_CONFIG } from './modulos-navegacion';
 import { pantallasPendientesGuard, puedeConsultarPantallasPendientes } from './pantallas-pendientes.guard';
 
@@ -23,20 +25,21 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     usuario = signal<UsuarioSesion | null>(administrador);
     permisos = signal<readonly string[]>([
       ...[DASHBOARD_SIDEBAR.permiso, ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.map(entrada => entrada.permiso))]
-        .filter((clave): clave is string => clave !== undefined), 'roles.editar',
+        .filter((clave): clave is string => clave !== undefined), 'roles.editar', 'solicitudes.revisar',
     ]);
     autenticado = true;
     TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(),
+      { provide: SOLICITUDES_GATEWAY, useValue: null },
       { provide: AuthService, useValue: {
         usuario, permisos, modulos: signal([]), cargarSesion: () => of(autenticado),
-        tienePermiso: (clave: string) => permisos().includes(clave),
+        capacidadesSolicitudes: computed(() => permisos().includes('solicitudes.consultar') ? CAPACIDADES_ADMIN_SOLICITUDES_TEST : SIN_CAPACIDADES_SOLICITUDES_TEST), tienePermiso: (clave: string) => permisos().includes(clave),
       } },
     ] });
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
   function resolverCatalogos(): void {
-    for (const peticion of http.match(req => req.method === 'GET' && (req.url.endsWith('/areas/list') || req.url.endsWith('/ativicty-type')))) {
+    for (const peticion of http.match(req => req.method === 'GET' && (req.url.endsWith('/authorized-areas') || req.url.endsWith('/ativicty-type')))) {
       peticion.flush({ success: true, data: [] });
     }
   }
@@ -51,7 +54,7 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     expect(solicitudes.textContent).toContain('Nueva solicitud de actividad');
     expect(solicitudes.textContent).toContain('Mis solicitudes');
     expect(solicitudes.textContent).toContain('Revisión de solicitudes');
-    expect(vista.querySelectorAll('app-sidebar a').length).toBe(30);
+    expect(vista.querySelectorAll('app-sidebar a').length).toBe(26);
     for (const entrada of pendientes.filter(entrada => entrada.interfazDisponible)) {
       const enlace = vista.querySelector(`app-sidebar a[href="${rutaPantallaPendiente(entrada)}"]`)!;
       expect(enlace.querySelector('.texto-enlace')?.textContent?.trim()).toBe(entrada.label);
@@ -72,7 +75,7 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
       const vista = harness.routeNativeElement!;
       if (entrada.interfazDisponible) {
         expect(vista.querySelector('app-vista-temporal')).toBeNull();
-        expect(vista.querySelector('app-integracion-solicitudes')?.textContent?.trim()).toBe('');
+        expect(vista.querySelector('app-integracion-solicitudes')?.textContent).toContain('pendiente de habilitación');
         expect(vista.querySelector('h1')).not.toBeNull();
         expect(vista.querySelectorAll('tbody tr, app-documento-pendiente-card').length).toBe(0);
       } else {
@@ -107,10 +110,11 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
   it('oculta preliminares a otros usuarios aunque tengan las mismas capacidades y conserva sus enlaces reales', async () => {
     usuario.set({ ...administrador, rol: 'Digitador' });
     const harness = await RouterTestingHarness.create('/inicio');
-    expect(harness.routeNativeElement!.querySelector('#submenu-solicitudes')).toBeNull();
+    expect(harness.routeNativeElement!.querySelector('#submenu-solicitudes')).not.toBeNull();
     expect(harness.routeNativeElement!.querySelector('a[href="/certificaciones/actividades"]')).not.toBeNull();
     await harness.navigateByUrl('/solicitudes/nueva');
-    expect(TestBed.inject(Router).url).toBe('/acceso-denegado');
+    resolverCatalogos();
+    expect(TestBed.inject(Router).url).toBe('/solicitudes/nueva');
     http.expectNone(() => true);
   });
 
@@ -125,8 +129,8 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
 
   it('consultar una página preliminar no concede acceso a Usuarios ni a otros CRUD', async () => {
     permisos.set(['roles.ver', 'roles.editar']);
-    const harness = await RouterTestingHarness.create('/solicitudes/nueva');
-    expect(harness.routeNativeElement!.querySelector('app-nueva-solicitud')).not.toBeNull();
+    const harness = await RouterTestingHarness.create('/pendientes/indicadores');
+    expect(harness.routeNativeElement!.querySelector('app-vista-temporal')).not.toBeNull();
     await harness.navigateByUrl('/usuarios');
     expect(TestBed.inject(Router).url).toBe('/acceso-denegado');
     http.expectNone(() => true);

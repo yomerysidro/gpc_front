@@ -22,16 +22,46 @@ describe('Contrato HTTP preparado de ActivityRequestWorkflow', () => {
   afterEach(() => http?.verify());
   it('no hace ninguna petición mientras faltan rutas y autenticación', () => {
     iniciar(false); let errores = 0;
-    const operaciones: Observable<unknown>[] = [api.crearBorrador(BORRADOR_API_TEST), api.editarBorrador(4, { nombre: 'Cambio' }), api.enviar(4), api.listar(), api.detalle(4), api.historial(4), api.revisar(4), api.observar(4, 'Motivo'), api.derivar(4), api.aprobar(4), api.rechazar(4, 'Motivo'), api.historialGlobal(), api.detalleRevision(4)];
+    const operaciones: Observable<unknown>[] = [api.areasAutorizadas(), api.crearBorrador(BORRADOR_API_TEST), api.editarBorrador(4, { nombre: 'Cambio' }), api.enviar(4), api.listar(), api.detalle(4), api.historial(4), api.revisar(4), api.observar(4, 'Motivo'), api.derivar(4), api.aprobar(4), api.rechazar(4, 'Motivo'), api.historialGlobal(), api.detalleRevision(4)];
     for (const operacion of operaciones) {
       operacion.subscribe({ error: error => { expect(error.message).toContain('pendiente de habilitaci\u00f3n'); errores++; } });
     }
-    expect(errores).toBe(13); http.expectNone(() => true);
+    expect(errores).toBe(14); http.expectNone(() => true);
   });
   it('crea con lista blanca y nunca transmite identidad, estado, actividad ni versión del cliente', () => {
     iniciar(); api.crearBorrador({ ...BORRADOR_API_TEST, id_usuario_solicitante: 999, id_usuario_responsable: 999, estado: 'Aprobada', id_actividad: 99, version: 'falsa' } as ActivityRequestDraft).subscribe();
     const req = http.expectOne(base); expect(req.request.method).toBe('POST'); expect(req.request.body).toEqual(BORRADOR_API_TEST);
     expect(req.request.context.get(AUTHENTICATED_REQUEST)).toBeTrue(); req.flush({ success: true, message: 'Confirmado', data: SOLICITUD_API_TEST }, { status: 201, statusText: 'Created' });
+  });
+  it('consulta únicamente authorized-areas con credenciales, sin identidad ni filtros', () => {
+    iniciar(); let areas: readonly unknown[] = [];
+    api.areasAutorizadas().subscribe(valor => areas = valor);
+    const req = http.expectOne(base + '/authorized-areas');
+    expect(req.request.method).toBe('GET'); expect(req.request.withCredentials).toBeTrue();
+    expect(req.request.params.keys()).toEqual([]); expect(req.request.body).toBeNull();
+    expect(req.request.context.get(AUTHENTICATED_REQUEST)).toBeTrue();
+    const data = [{ id_area: 5, nombre: 'Oficina General de Administración' }];
+    req.flush({ success: true, message: 'Confirmado', data }); expect(areas).toEqual(data);
+    http.expectNone(environment.apiBaseUrl + '/areas/list');
+  });
+  for (const status of [401, 403, 500, 0]) {
+    it('no transforma el error de áreas ' + status + ' en una lista vacía', () => {
+      iniciar(); let recibido = -1;
+      api.areasAutorizadas().subscribe({ next: () => fail('No debe fabricar áreas'), error: error => recibido = error.status });
+      const req = http.expectOne(base + '/authorized-areas');
+      if (status === 0) req.error(new ProgressEvent('error'));
+      else req.flush({ success: false, data: null }, { status, statusText: 'Error' });
+      expect(recibido).toBe(status);
+    });
+  }
+  it('distingue una lista autorizada vacía de una respuesta mal formada', () => {
+    iniciar(); api.areasAutorizadas().subscribe(areas => expect(areas).toEqual([]));
+    http.expectOne(base + '/authorized-areas').flush({ success: true, data: [] });
+    for (const data of [{}, [{ id_area: 0, nombre: 'Inválido' }], [{ id_area: 5 }]]) {
+      let fallo = false;
+      api.areasAutorizadas().subscribe({ next: () => fail('No debe aceptar el catálogo'), error: () => fallo = true });
+      http.expectOne(base + '/authorized-areas').flush({ success: true, data }); expect(fallo).toBeTrue();
+    }
   });
   it('edita por PUT solo con los campos presentes y envía sin cuerpo', () => {
     iniciar(); api.editarBorrador(4, { nombre: 'Cambio' }).subscribe(); const editar = http.expectOne(base + '/4');
@@ -85,5 +115,13 @@ describe('Contrato HTTP preparado de ActivityRequestWorkflow', () => {
     api.aprobar(4).subscribe({ next: () => fail('No debe confirmar'), error: () => errores++ });
     http.expectOne(base + '/4/approve').flush({ success: false, message: 'No confirmado', data: null });
     api.detalle(NaN).subscribe({ error: () => errores++ }); expect(errores).toBe(2);
+  });
+  it('no confirma una creación sin ID ni un submit con un estado no confirmado', () => {
+    iniciar(); let errores = 0;
+    api.crearBorrador(BORRADOR_API_TEST).subscribe({ next: () => fail('No debe confirmar'), error: () => errores++ });
+    http.expectOne(base).flush({ success: true, data: { ...SOLICITUD_API_TEST, id_solicitud_actividad: null } });
+    api.enviar(4).subscribe({ next: () => fail('No debe confirmar'), error: () => errores++ });
+    http.expectOne(base + '/4/submit').flush({ success: true, data: SOLICITUD_API_TEST });
+    expect(errores).toBe(2);
   });
 });

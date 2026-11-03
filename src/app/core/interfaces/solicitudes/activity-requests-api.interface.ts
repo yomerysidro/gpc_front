@@ -1,6 +1,12 @@
 import { EstadoSolicitud } from './solicitud.interface';
 export const LIMITES_SOLICITUD = { nombre: 100, sede: 100, descripcion: 255 } as const;
 
+/** Área laboral habilitada por Laravel para el principal de la cookie. */
+export interface ActivityRequestAuthorizedArea {
+  readonly id_area: number;
+  readonly nombre: string;
+}
+
 /** DTO verificados en docs/activity-requests-api-contracts.md y ActivityRequestWorkflow. */
 export interface ActivityRequestDraft {
   readonly id_area: number;
@@ -40,6 +46,7 @@ export interface ActivityRequestGlobalDecisionRow extends ActivityRequestDecisio
   readonly solicitud_nombre: string;
 }
 export interface ActivityRequestHistoryFilters {
+  readonly id_area?: number;
   readonly id_solicitud_actividad?: number;
   /** Filtro de auditoría, nunca identidad autenticada para una escritura. */
   readonly id_usuario_responsable?: number;

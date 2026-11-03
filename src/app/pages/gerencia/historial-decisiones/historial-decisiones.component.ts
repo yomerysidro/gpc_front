@@ -5,6 +5,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { DecisionSolicitud, PaginaSolicitudes, Solicitud } from '../../../core/interfaces/solicitudes/solicitud.interface';
 import { SolicitudesService, mensajeSolicitudes } from '../../../core/services/solicitudes/solicitudes.service';
+import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { PageTitleComponent } from '../../../shared/components/page-title/page-title.component';
 import { DialogoComponent } from '../../../shared/components/dialogo/dialogo.component';
 import { IntegracionAvisoComponent } from '../../solicitudes/compartidos/integracion-aviso.component';
@@ -17,6 +18,7 @@ import { SolicitudEstadoBadgeComponent } from '../../solicitudes/compartidos/sol
 })
 export class HistorialDecisionesComponent implements OnInit {
   protected readonly api = inject(SolicitudesService);
+  protected readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly filtros = inject(NonNullableFormBuilder).group({ solicitudId: [''], responsableId: [''], busqueda: [''], estado: [''], desde: [''], hasta: [''] });
   protected readonly pagina = signal<PaginaSolicitudes<DecisionSolicitud> | null>(null);
@@ -30,6 +32,11 @@ export class HistorialDecisionesComponent implements OnInit {
   private carga?: Subscription;
   private cargaDetalle?: Subscription;
   ngOnInit(): void { this.cargar(); }
+  protected puedeConsultarDetalle(): boolean {
+    const capacidades = this.auth.capacidadesSolicitudes?.();
+    return this.auth.tienePermiso('solicitudes.consultar') || capacidades?.consulta_administrativa_global === true
+      || capacidades?.consultar_revision === true || capacidades?.consultar_gerencia === true;
+  }
   protected cargar(numero = 1): void {
     if (!this.api.integrado) { this.pagina.set(null); this.cargando.set(false); this.error.set(null); return; }
     const filtros = this.filtros.getRawValue();
@@ -40,6 +47,7 @@ export class HistorialDecisionesComponent implements OnInit {
     });
   }
   protected ver(decision: DecisionSolicitud): void {
+    if (!this.puedeConsultarDetalle()) return;
     this.cargaDetalle?.unsubscribe(); this.detalle.set(null); this.decision.set(decision); this.errorDetalle.set(null); this.cargandoDetalle.set(true); this.dialogo().abrir();
     this.cargaDetalle = this.api.detalle(decision.solicitudId, true).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: detalle => { this.detalle.set(detalle); this.cargandoDetalle.set(false); }, error: error => { this.errorDetalle.set(mensajeSolicitudes(error)); this.cargandoDetalle.set(false); },

@@ -1,6 +1,7 @@
+import { CAPACIDADES_ADMIN_SOLICITUDES_TEST, SIN_CAPACIDADES_SOLICITUDES_TEST } from '../../core/interfaces/autenticacion/auth-fixtures.spec';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Component, signal } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -14,7 +15,7 @@ import { SidebarComponent } from './sidebar.component';
 @Component({ standalone: true, template: '' })
 class DestinoPruebaComponent {}
 
-const permisosLectura = [DASHBOARD_SIDEBAR.permiso, ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.flatMap(hijo => hijo.catalogos?.map(catalogo => catalogo.permiso) ?? [hijo.permiso]))]
+const permisosLectura = ['solicitudes.revisar', DASHBOARD_SIDEBAR.permiso, ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.flatMap(hijo => hijo.catalogos?.map(catalogo => catalogo.permiso) ?? [hijo.permiso]))]
   .filter((clave): clave is string => clave !== undefined);
 
 describe('Configuración única del Sidebar institucional', () => {
@@ -22,9 +23,12 @@ describe('Configuración única del Sidebar institucional', () => {
     expect(SIDEBAR_CONFIG.map(grupo => grupo.id)).toEqual([
       'seguridad', 'recursos-humanos', 'solicitudes', 'actividades', 'emision', 'gerencia', 'reportes', 'configuracion',
     ]);
-    for (const grupo of SIDEBAR_CONFIG.filter(grupo => ['solicitudes', 'gerencia', 'reportes'].includes(grupo.id))) {
-      expect(grupo.hijos.every(hijo => !hijo.habilitado && !hijo.path && !!hijo.pendiente)).toBeTrue();
+    const entradas = SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos);
+    for (const id of ['solicitud-nueva', 'mis-solicitudes', 'revisar-solicitudes', 'pendientes-aprobacion', 'historial-decisiones']) {
+      expect(entradas.find(hijo => hijo.id === id)?.habilitado).toBeTrue();
+      expect(entradas.find(hijo => hijo.id === id)?.permiso).toContain('solicitudes.');
     }
+    expect(entradas.find(hijo => hijo.id === 'documentos-firmar')?.habilitado).toBeFalse();
     expect(SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos).find(hijo => hijo.id === 'generar-emitir')?.path).toBe('/certificaciones/generar-emitir');
     expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'emision')!.hijos.map(hijo => hijo.label)).toEqual(['Generar y emitir', 'Certificados emitidos', 'Firmas digitales']);
   });
@@ -65,7 +69,7 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
   beforeEach(() => {
     permisos = signal<readonly string[]>(permisosLectura);
     TestBed.configureTestingModule({ providers: [provideRouter([{ path: '**', component: DestinoPruebaComponent }]),
-      { provide: AuthService, useValue: { usuario: signal(null), tienePermiso: (clave: string) => permisos().includes(clave) } },
+      { provide: AuthService, useValue: { usuario: signal(null), capacidadesSolicitudes: computed(() => permisos().includes('solicitudes.consultar') ? CAPACIDADES_ADMIN_SOLICITUDES_TEST : SIN_CAPACIDADES_SOLICITUDES_TEST), tienePermiso: (clave: string) => permisos().includes(clave) } },
     ] });
     fixture = TestBed.createComponent(SidebarComponent);
     fixture.detectChanges();
@@ -74,17 +78,18 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
 
   it('muestra una sola navegación para el administrador con las capacidades asignadas', () => {
     const grupos = Array.from(vista().querySelectorAll('button.modulo'), boton => boton.textContent?.replace('expand_more', '').trim());
-    expect(grupos.length).toBe(5);
+    expect(grupos.length).toBe(7);
     expect(vista().querySelectorAll('nav').length).toBe(1);
     expect(vista().querySelector('a[href="/inicio"]')).not.toBeNull();
     for (const id of ['seguridad', 'recursos-humanos', 'actividades', 'emision', 'configuracion']) expect(vista().querySelector('#submenu-' + id)).not.toBeNull();
-    for (const id of ['solicitudes', 'gerencia', 'reportes']) expect(vista().querySelector('#submenu-' + id)).toBeNull();
+    for (const id of ['solicitudes', 'gerencia']) expect(vista().querySelector('#submenu-' + id)).not.toBeNull();
+    expect(vista().querySelector('#submenu-reportes')).toBeNull();
     const enlaces = Array.from(vista().querySelectorAll('a'), enlace => enlace.getAttribute('href'));
     expect(new Set(enlaces).size).toBe(enlaces.length);
   });
 
   it('filtra RR. HH. y no muestra Seguridad ni catálogos sin las capacidades correspondientes', () => {
-    permisos.set(['personas.verpersonas', 'ponentes-firmantes.ver', 'practicantes.ver', 'reconocimientos.ver']);
+    permisos.set(['personas.verpersonas', 'trabajadores.ver', 'ponentes-firmantes.ver', 'practicantes.ver', 'reconocimientos.ver']);
     fixture.detectChanges();
     expect(vista().querySelector('#submenu-recursos-humanos')?.querySelectorAll('a').length).toBe(5);
     expect(vista().querySelector('#submenu-seguridad')).toBeNull();
@@ -179,7 +184,7 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
     TestBed.configureTestingModule({ providers: [
       provideRouter(routes), provideHttpClient(), provideHttpClientTesting(),
       { provide: AuthService, useValue: {
-        cargarSesion: () => of(autenticado), tienePermiso: (clave: string) => permisos().includes(clave),
+        cargarSesion: () => of(autenticado), capacidadesSolicitudes: computed(() => permisos().includes('solicitudes.consultar') ? CAPACIDADES_ADMIN_SOLICITUDES_TEST : SIN_CAPACIDADES_SOLICITUDES_TEST), tienePermiso: (clave: string) => permisos().includes(clave),
         usuario: signal(null), modulos: signal([]),
       } },
       { provide: EmisionCertificadosService, useValue: {

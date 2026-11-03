@@ -92,10 +92,10 @@ export const GESTION_CONFIG: Record<string, GestionConfig> = {
   "id_persona_trabajador": {
     "endpoint": "person-workers",
     "permisos": {
-      "ver": "ponentes-firmantes.ver",
-      "crear": "ponentes-firmantes.crear",
-      "editar": "ponentes-firmantes.editar",
-      "eliminar": "ponentes-firmantes.eliminar"
+      "ver": "trabajadores.ver",
+      "crear": "trabajadores.crear",
+      "editar": "trabajadores.editar",
+      "eliminar": "trabajadores.eliminar"
     },
     "campos": [
       {

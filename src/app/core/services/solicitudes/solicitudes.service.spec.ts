@@ -2,11 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Observable } from 'rxjs';
-import { IntegracionSolicitudesPendiente, SolicitudesService } from './solicitudes.service';
+import { IntegracionSolicitudesPendiente, SOLICITUDES_GATEWAY, SolicitudesService } from './solicitudes.service';
 
 describe('Solicitudes con rutas pendientes y sin almacén temporal', () => {
   it('rechaza todas las operaciones sin HTTP, sin registros ni confirmaciones ficticias', () => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), { provide: SOLICITUDES_GATEWAY, useValue: null }] });
     const api = TestBed.inject(SolicitudesService);
     const http = TestBed.inject(HttpTestingController);
     const filtro = { busqueda: '', estado: '', desde: '', hasta: '', pagina: 1 };

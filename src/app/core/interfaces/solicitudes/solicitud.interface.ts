@@ -16,7 +16,8 @@ export interface DatosSolicitud {
   readonly observaciones: string;
 }
 export interface ContextoSolicitud {
-  readonly areasAutorizadas: readonly { readonly id: string; readonly nombre: string }[];
+  /** Opciones de catálogo; no equivalen a competencia laboral ni autorización de escritura. */
+  readonly areasDisponibles: readonly { readonly id: string; readonly nombre: string }[];
   readonly responsable: string;
   readonly puedeCrear: boolean;
 }
@@ -34,7 +35,7 @@ export interface Solicitud extends DatosSolicitud {
   readonly resultadoRevision: string | null;
   /** Compatibilidad del puerto; el contrato actual no devuelve ni acepta una versión. */
   readonly version: string;
-  /** Capacidades efectivas devueltas por el servidor; no se derivan de nombres de roles. */
+  /** Permisos de sesión y estado; Laravel verifica además competencia y área. */
   readonly puedeEditar: boolean;
   readonly acciones: readonly AccionSolicitud[];
 }

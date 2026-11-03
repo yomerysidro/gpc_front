@@ -19,10 +19,22 @@ export interface ModuloMenu {
 }
 
 /** Respuesta de GET /auth/me. */
+export interface CapacidadesSolicitudes {
+  readonly consultar_revision: boolean;
+  readonly consultar_gerencia: boolean;
+  readonly consultar_historial: boolean;
+  readonly consulta_administrativa_global: boolean;
+  readonly revisar: boolean;
+  readonly derivar: boolean;
+  readonly aprobar: boolean;
+  readonly rechazar: boolean;
+}
+
 export interface SesionResponse {
   readonly user: UsuarioSesion;
   readonly modulos: readonly ModuloMenu[];
   readonly permisos: readonly string[];
+  readonly capacidades_solicitudes: CapacidadesSolicitudes;
 }
 
 /** Respuesta 200 de POST /auth/login; el menú y los permisos llegan por /auth/me. */

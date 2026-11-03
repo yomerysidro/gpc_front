@@ -1,4 +1,5 @@
 import { NavigationItem } from '../../core/interfaces/navigation/navigation-item.interface';
+import { CapacidadesSolicitudes } from '../../core/interfaces/autenticacion/auth.interface';
 import { CATALOGOS_CLASIFICACIONES, CATALOGOS_INSTITUCIONALES } from './catalogos-configuracion';
 
 /** Organización visual. Las capacidades son las que ya exigen las rutas y CRUD. */
@@ -11,6 +12,8 @@ export interface EntradaSidebar {
   readonly queryParams?: Readonly<Record<string, string>>;
   readonly parametrosPredeterminados?: Readonly<Record<string, string>>;
   readonly permiso?: string;
+  readonly capacidadSolicitud?: keyof CapacidadesSolicitudes;
+  readonly permisos?: readonly string[];
   readonly requiere?: readonly string[];
   readonly catalogos?: readonly { readonly id: string; readonly permiso: string }[];
   readonly aliases?: readonly string[];
@@ -47,15 +50,15 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
   ] },
   { id: 'recursos-humanos', label: 'RECURSOS HUMANOS', icon: 'people', hijos: [
     { id: 'personas', label: 'Personas y documentos', icon: 'people', path: '/gestion/personas', permiso: 'personas.verpersonas', aliases: ['/personas'], habilitado: true },
-    { id: 'trabajadores', label: 'Trabajadores', icon: 'group', path: '/gestion/trabajadores', permiso: 'ponentes-firmantes.ver', aliases: ['/trabajadores'], habilitado: true },
+    { id: 'trabajadores', label: 'Trabajadores', icon: 'group', path: '/gestion/trabajadores', permiso: 'trabajadores.ver', aliases: ['/trabajadores'], habilitado: true },
     { id: 'practicas', label: 'Practicantes y prácticas', icon: 'school', path: '/gestion/practicas', permiso: 'practicantes.ver', aliases: ['/practicantes', '/gestion/practicantes'], habilitado: true },
     { id: 'ponentes', label: 'Ponentes', icon: 'campaign', path: '/gestion/ponentes', permiso: 'ponentes-firmantes.ver', aliases: ['/ponentes-firmantes'], habilitado: true },
     { id: 'reconocimientos', label: 'Reconocimientos', icon: 'military_tech', path: '/certificaciones/reconocimientos', permiso: 'reconocimientos.ver', aliases: ['/reconocimientos'], habilitado: true },
   ] },
   { id: 'solicitudes', label: 'SOLICITUDES', icon: 'forward_to_inbox', hijos: [
-    { id: 'solicitud-nueva', interfazDisponible: true, label: 'Nueva solicitud de actividad', icon: 'add', habilitado: false, rutaPreliminar: '/solicitudes/nueva', descripcionPreliminar: 'Permitirá registrar una propuesta de actividad para su evaluación institucional.', pendiente: 'El registro de solicitudes está pendiente de integración.' },
-    { id: 'mis-solicitudes', interfazDisponible: true, label: 'Mis solicitudes', icon: 'event', habilitado: false, rutaPreliminar: '/solicitudes/mis-solicitudes', descripcionPreliminar: 'Permitirá consultar el estado y seguimiento de las solicitudes presentadas.', pendiente: 'La consulta de solicitudes está pendiente de integración.' },
-    { id: 'revisar-solicitudes', interfazDisponible: true, label: 'Revisión de solicitudes', icon: 'check_circle', habilitado: false, rutaPreliminar: '/solicitudes/revision', descripcionPreliminar: 'Permitirá revisar las solicitudes de actividad y conocer su evaluación institucional.', pendiente: 'El flujo de revisión y aprobación está pendiente de integración.' },
+    { id: 'solicitud-nueva', label: 'Nueva solicitud de actividad', icon: 'add', habilitado: true, path: '/solicitudes/nueva', permiso: 'solicitudes.crear' },
+    { id: 'mis-solicitudes', label: 'Mis solicitudes', icon: 'event', habilitado: true, path: '/solicitudes/mis-solicitudes', permiso: 'solicitudes.propias', aliases: ['/solicitudes'] },
+    { id: 'revisar-solicitudes', label: 'Revisión de solicitudes', icon: 'check_circle', habilitado: true, path: '/solicitudes/revision', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_revision' },
   ] },
   { id: 'actividades', label: 'GESTIÓN DE ACTIVIDADES', icon: 'event', hijos: [
     { id: 'actividades', label: 'Actividades', icon: 'event', path: '/certificaciones/actividades', permiso: 'actividades.ver', aliases: ['/actividades'], habilitado: true },
@@ -68,9 +71,9 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
     { id: 'firmas', label: 'Firmas digitales', icon: 'edit', path: '/certificaciones/firmas', permiso: 'ponentes-firmantes.ver', aliases: ['/firmas', '/ponentes-firmantes'], habilitado: true },
   ] },
   { id: 'gerencia', label: 'GERENCIA', icon: 'check_circle', hijos: [
-    { id: 'pendientes-aprobacion', interfazDisponible: true, label: 'Pendientes de aprobación', icon: 'event', habilitado: false, pendiente: 'Las rutas de aprobación siguen comentadas; su uso requiere autenticación y autorización efectivas.' },
+    { id: 'pendientes-aprobacion', label: 'Pendientes de aprobación', icon: 'event', habilitado: true, path: '/pendientes/pendientes-aprobacion', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_gerencia' },
     { id: 'documentos-firmar', interfazDisponible: true, label: 'Documentos por firmar', icon: 'edit', habilitado: false, pendiente: 'No hay bandeja personal ni operación de firma criptográfica.' },
-    { id: 'historial-decisiones', interfazDisponible: true, label: 'Historial de decisiones', icon: 'visibility', habilitado: false, pendiente: 'La consulta global está preparada; su ruta sigue comentada y requiere autorización de Gerencia.' },
+    { id: 'historial-decisiones', label: 'Historial de decisiones', icon: 'visibility', habilitado: true, path: '/pendientes/historial-decisiones', permiso: 'solicitudes.historial', capacidadSolicitud: 'consultar_historial' },
   ] },
   { id: 'reportes', label: 'REPORTES', icon: 'bar_chart', hijos: [
     { id: 'indicadores', label: 'Indicadores generales', icon: 'bar_chart', habilitado: false, pendiente: 'El módulo de menú existe; no hay pantalla ni endpoint de indicadores.' },
@@ -87,14 +90,15 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
 /** Un menú recibido es metadato; nunca sustituye las capacidades efectivas. */
 export function resolverEntradaSidebar(
   entrada: EntradaSidebar, tienePermiso: (clave: string) => boolean, items: readonly NavigationItem[],
-  consultarPendientes = false,
+  consultarPendientes = false, capacidades: CapacidadesSolicitudes | null = null,
 ): EntradaSidebarVisible | null {
   if (!entrada.habilitado && entrada.pendiente && consultarPendientes) {
     return { ...entrada, path: rutaPantallaPendiente(entrada), preliminar: true };
   }
   const path = entrada.path;
   const catalogo = entrada.catalogos?.find(opcion => tienePermiso(opcion.permiso));
-  const autorizado = entrada.catalogos ? !!catalogo : !!entrada.permiso && tienePermiso(entrada.permiso);
+  const autorizado = entrada.capacidadSolicitud ? capacidades?.[entrada.capacidadSolicitud] === true
+    : entrada.catalogos ? !!catalogo : (!!entrada.permiso && tienePermiso(entrada.permiso)) || !!entrada.permisos?.some(clave => tienePermiso(clave));
   if (!entrada.habilitado || !path || !autorizado
     || entrada.requiere?.some(permiso => !tienePermiso(permiso))) return null;
   const rutas = [path, ...(entrada.aliases ?? [])];
@@ -107,11 +111,11 @@ export function rutaPantallaPendiente(entrada: EntradaSidebar): string {
   return entrada.rutaPreliminar ?? `/pendientes/${entrada.id}`;
 }
 
-export function resolverGruposSidebar(tienePermiso: (clave: string) => boolean, items: readonly NavigationItem[], consultarPendientes = false): readonly GrupoSidebarVisible[] {
+export function resolverGruposSidebar(tienePermiso: (clave: string) => boolean, items: readonly NavigationItem[], consultarPendientes = false, capacidades: CapacidadesSolicitudes | null = null): readonly GrupoSidebarVisible[] {
   return SIDEBAR_CONFIG.map(grupo => ({
     ...grupo,
     hijos: grupo.hijos.flatMap(entrada => {
-      const resuelta = resolverEntradaSidebar(entrada, tienePermiso, items, consultarPendientes);
+      const resuelta = resolverEntradaSidebar(entrada, tienePermiso, items, consultarPendientes, capacidades);
       return resuelta ? [resuelta] : [];
     }),
   })).filter(grupo => grupo.hijos.length > 0);

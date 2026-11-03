@@ -118,7 +118,7 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
     });
   }
   it('valida fechas y orden cronologico en Supervisores', () => {
-    permisos.set([...permisos(), 'ponentes-firmantes.ver']);
+    permisos.set([...permisos(), 'trabajadores.ver']);
     fixture.componentRef.setInput('clavePrimaria', 'id_practica_supervisor'); fixture.detectChanges();
     componente.abrirFormulario('nuevo');
     for (const endpoint of ['practices', 'person-workers']) {
@@ -129,7 +129,7 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
     componente.formulario.patchValue({ fecha_fin: '2026-02-30' }); expect(componente.formulario.invalid).toBeTrue();
   });
   it('carga nombres de Personas y Áreas y envía sus IDs en Trabajadores', () => {
-    permisos.set([...permisos(), 'ponentes-firmantes.ver', 'ponentes-firmantes.crear', 'areas.ver']);
+    permisos.set([...permisos(), 'trabajadores.ver', 'trabajadores.crear', 'areas.ver']);
     fixture.componentRef.setInput('clavePrimaria', 'id_persona_trabajador'); fixture.detectChanges();
     componente.abrirFormulario('nuevo'); opcionesPersona();
     http.expectOne(r => r.url.endsWith('/areas/list')).flush({ success: true, message: '', data: [{ id_area: 3, nombre: 'Informática' }] });
@@ -142,7 +142,7 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
     http.expectOne(r => r.url.endsWith('/areas/list')).flush({ success: true, message: '', data: [] });
   });
   it('identifica areas.ver y deshabilita Guardar si falta el catálogo obligatorio', () => {
-    permisos.set([...permisos(), 'ponentes-firmantes.ver', 'ponentes-firmantes.crear']);
+    permisos.set([...permisos(), 'trabajadores.ver', 'trabajadores.crear']);
     fixture.componentRef.setInput('clavePrimaria', 'id_persona_trabajador'); fixture.detectChanges();
     componente.abrirFormulario('nuevo'); opcionesPersona(); fixture.detectChanges();
     expect(vista().querySelector('app-dialogo')?.textContent).toContain('areas.ver');
