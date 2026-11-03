@@ -12,7 +12,6 @@ import { ConfirmacionDecision, DecisionModalComponent } from './decision-modal.c
 import { IntegracionAvisoComponent } from './integracion-aviso.component';
 import { SolicitudDetalleComponent } from './solicitud-detalle.component';
 import { SolicitudEstadoBadgeComponent } from './solicitud-estado-badge.component';
-import { MENSAJE_SOLICITUD_DEMO } from '../../../core/services/solicitudes/solicitudes-demo.service';
 @Component({
   selector: 'app-bandeja-solicitudes', standalone: true,
   imports: [DatePipe, RouterLink, ReactiveFormsModule, PageTitleComponent, DialogoComponent, DecisionModalComponent, IntegracionAvisoComponent, SolicitudDetalleComponent, SolicitudEstadoBadgeComponent],
@@ -22,7 +21,6 @@ export class BandejaSolicitudesComponent implements OnInit {
   readonly bandeja = input.required<BandejaSolicitud>();
   readonly titulo = input.required<string>();
   protected readonly api = inject(SolicitudesService);
-  protected readonly mensajeDemo = MENSAJE_SOLICITUD_DEMO;
   private readonly destroyRef = inject(DestroyRef);
   protected readonly filtros = inject(NonNullableFormBuilder).group({ busqueda: [''], estado: [''], desde: [''], hasta: [''] });
   protected readonly estados = ESTADOS_SOLICITUD;
@@ -41,16 +39,15 @@ export class BandejaSolicitudesComponent implements OnInit {
   protected readonly pendientes = computed(() => this.pagina()?.registros.filter(fila => ['Enviada', 'En revisión', 'Pendiente de aprobación'].includes(fila.estado)).length ?? null);
   private carga?: Subscription;
   private cargaDetalle?: Subscription;
-  protected operativo(): boolean { return this.api.integrado || this.bandeja() === 'propias' && this.api.demostracionDisponible; }
+  protected operativo(): boolean { return this.api.integrado; }
   ngOnInit(): void {
     this.cargar();
-    if (this.bandeja() === 'propias' && this.api.demostracionDisponible) this.puedeCrear.set(true);
     if (this.bandeja() === 'propias' && this.api.integrado) this.api.contexto().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: contexto => this.puedeCrear.set(contexto.puedeCrear), error: error => this.error.set(mensajeSolicitudes(error)),
     });
   }
   protected cargar(numero = 1): void {
-    if (!this.api.integrado && this.bandeja() !== 'propias') { this.pagina.set(null); this.cargando.set(false); this.error.set(null); return; }
+    if (!this.api.integrado) { this.pagina.set(null); this.cargando.set(false); this.error.set(null); return; }
     const filtros = this.filtros.getRawValue();
     if (filtros.desde && filtros.hasta && filtros.hasta < filtros.desde) { this.error.set('La fecha final del filtro no puede preceder a la inicial.'); return; }
     this.carga?.unsubscribe(); this.cargando.set(true); this.error.set(null); this.pagina.set(null);
@@ -75,11 +72,11 @@ export class BandejaSolicitudesComponent implements OnInit {
   }
   protected cerrarDetalle(): void { this.cargaDetalle?.unsubscribe(); this.detalle.set(null); }
   protected decidir(confirmacion: ConfirmacionDecision): void {
-    if (this.ocupado() || (!this.api.integrado && this.bandeja() !== 'propias') || !this.acciones(confirmacion.registro).includes(confirmacion.accion)) return;
+    if (this.ocupado() || (!this.api.integrado) || !this.acciones(confirmacion.registro).includes(confirmacion.accion)) return;
     this.ocupado.set(true); this.error.set(null); this.aviso.set(null);
     const pagina = this.pagina()?.pagina ?? 1;
     this.api.decidir(confirmacion.registro.id, confirmacion.registro.version, confirmacion.accion, confirmacion.motivo).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: fila => { this.ocupado.set(false); this.modal().cerrar(); this.aviso.set(this.api.integrado ? `Operación confirmada por el servidor. Estado: ${fila.estado}.` : MENSAJE_SOLICITUD_DEMO); this.cargar(pagina); },
+      next: fila => { this.ocupado.set(false); this.modal().cerrar(); this.aviso.set(`Operación confirmada por el servidor. Estado: ${fila.estado}.`); this.cargar(pagina); },
       error: error => { this.ocupado.set(false); this.modal().cerrar(); this.error.set(mensajeSolicitudes(error)); },
     });
   }

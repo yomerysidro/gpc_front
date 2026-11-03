@@ -73,8 +73,16 @@ export class EmisionCertificadosService {
   /** Historial completo: no confundir los primeros 100 registros con todo el historial. */
   listarTodos<K extends RecursoEmision>(recurso: K, filtros: FiltrosEmision = {}): Observable<readonly EntidadesEmision[K][]> {
     if (this.esListaSimple(recurso)) {
-      return this.http.get<ApiResponse<readonly EntidadesEmision[K][]>>(this.ruta(recurso, 'listar'), this.opciones())
-        .pipe(map(respuesta => this.datos(respuesta).map(fila => this.registro(recurso, fila))), catchError(error => this.error(error)));
+      let params = new HttpParams();
+      for (const [campo, valor] of Object.entries(filtros)) {
+        if (valor !== undefined && valor !== null && valor !== '') params = params.set(campo, typeof valor === 'boolean' ? Number(valor) : valor);
+      }
+      return this.http.get<ApiResponse<readonly EntidadesEmision[K][]>>(this.ruta(recurso, 'listar'), { ...this.opciones(), params })
+        .pipe(map(respuesta => {
+          const filas = this.datos(respuesta);
+          if (!Array.isArray(filas)) throw new Error('Respuesta de catálogo inválida.');
+          return filas.map(fila => this.registro(recurso, fila));
+        }), catchError(error => this.error(error)));
     }
     return this.listar(recurso, { ...filtros, page: 1, per_page: 100 }).pipe(
       expand(pagina => pagina.current_page < pagina.last_page

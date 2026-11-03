@@ -1,9 +1,8 @@
-import { inject, Injectable, InjectionToken, Injector } from '@angular/core';
+import { inject, Injectable, InjectionToken } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { defer, Observable, throwError } from 'rxjs';
 import { aErrorApi } from '../../../shared/utils/error-api';
 import { SolicitudesHttpGateway } from './solicitudes-http.gateway';
-import { SolicitudesDemoService } from './solicitudes-demo.service';
 import { AccionSolicitud, BandejaSolicitud, ContextoSolicitud, DatosSolicitud, DecisionSolicitud, DocumentoPendiente, FiltroSolicitudes, PaginaSolicitudes, Solicitud } from '../../interfaces/solicitudes/solicitud.interface';
 
 /** Puerto de integración: modelos de vista, no rutas ni DTO HTTP inventados. */
@@ -38,19 +37,16 @@ export function mensajeSolicitudes(error: unknown): string {
 @Injectable({ providedIn: 'root' })
 export class SolicitudesService {
   private readonly gateway = inject(SOLICITUDES_GATEWAY);
-  private readonly injector = inject(Injector);
-  private get demo(): SolicitudesDemoService { return this.injector.get(SolicitudesDemoService); }
   readonly integrado = this.gateway !== null;
-  readonly modo = this.integrado ? 'api' : 'demostracion';
-  get demostracionDisponible(): boolean { return !this.integrado && this.demo.disponible; }
+  readonly modo = this.integrado ? 'api' : 'pendiente';
   private ejecutar<T>(operacion: (gateway: SolicitudesGateway) => Observable<T>): Observable<T> {
     return defer(() => this.gateway ? operacion(this.gateway) : throwError(() => new IntegracionSolicitudesPendiente()));
   }
   contexto(): Observable<ContextoSolicitud> { return this.ejecutar(api => api.contexto()); }
-  listar(bandeja: BandejaSolicitud, filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<Solicitud>> { return !this.integrado && bandeja === 'propias' ? this.demo.listar(filtro) : this.ejecutar(api => api.listar(bandeja, filtro)); }
-  detalle(id: string, administrativo = false): Observable<Solicitud> { return !this.integrado && !administrativo ? this.demo.detalle(id) : this.ejecutar(api => api.detalle(id, administrativo)); }
-  guardar(datos: DatosSolicitud, existente: { id: string; version: string } | null, etiquetas?: { area: string; tipo: string }): Observable<Solicitud> { return !this.integrado ? this.demo.guardar(datos, existente, etiquetas) : this.ejecutar(api => api.guardar(datos, existente)); }
-  decidir(id: string, version: string, accion: AccionSolicitud, motivo: string): Observable<Solicitud> { return !this.integrado && accion === 'Enviar' ? this.demo.enviar(id) : this.ejecutar(api => api.decidir(id, version, accion, motivo)); }
+  listar(bandeja: BandejaSolicitud, filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<Solicitud>> { return this.ejecutar(api => api.listar(bandeja, filtro)); }
+  detalle(id: string, administrativo = false): Observable<Solicitud> { return this.ejecutar(api => api.detalle(id, administrativo)); }
+  guardar(datos: DatosSolicitud, existente: { id: string; version: string } | null): Observable<Solicitud> { return this.ejecutar(api => api.guardar(datos, existente)); }
+  decidir(id: string, version: string, accion: AccionSolicitud, motivo: string): Observable<Solicitud> { return this.ejecutar(api => api.decidir(id, version, accion, motivo)); }
   historial(filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<DecisionSolicitud>> { return this.ejecutar(api => api.historial(filtro)); }
   documentos(pagina: number): Observable<PaginaSolicitudes<DocumentoPendiente>> { return this.ejecutar(api => api.documentos(pagina)); }
   documento(id: string): Observable<Blob> { return this.ejecutar(api => api.documento(id)); }

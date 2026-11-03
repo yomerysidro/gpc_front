@@ -22,8 +22,8 @@ describe('Adaptación del contrato a las cinco pantallas existentes', () => {
     http = TestBed.inject(HttpTestingController); gateway = TestBed.inject(SolicitudesHttpGateway);
   }
   afterEach(() => http?.verify());
-  it('mantiene demostración si falta autorización incluso con las rutas marcadas activas', () => {
-    iniciar(false); const fachada = TestBed.inject(SolicitudesService); expect(fachada.integrado).toBeFalse(); expect(fachada.modo).toBe('demostracion');
+  it('mantiene el servicio pendiente si falta autorizacion aunque las rutas se marquen activas', () => {
+    iniciar(false); const fachada = TestBed.inject(SolicitudesService); expect(fachada.integrado).toBeFalse(); expect(fachada.modo).toBe('pendiente');
     gateway.listar('gerencia', filtro).subscribe({ error: error => expect(error.message).toContain('facultades') }); http.expectNone(() => true);
   });
   it('conecta el gateway solo con ambas dependencias explícitas y mapea sin inventar capacidades de estados', () => {

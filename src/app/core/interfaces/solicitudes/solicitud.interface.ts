@@ -21,8 +21,6 @@ export interface ContextoSolicitud {
   readonly puedeCrear: boolean;
 }
 export interface Solicitud extends DatosSolicitud {
-  /** Marca exclusiva de presentación; jamás forma parte del DTO Laravel. */
-  readonly demostracion?: boolean;
   readonly puedeVerDetalle?: boolean;
   readonly id: string;
   readonly numero: string;

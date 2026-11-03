@@ -6,9 +6,8 @@
 @if (cargando()) { <p class="aviso" role="status">Consultando datos autorizados…</p> }
 @if (confirmar(); as datos) {
   <section class="card" aria-label="Confirmación de datos"><h2>Revisa los datos de tu solicitud</h2>
-    @if (!api.integrado && !aviso()) { <p class="aviso" role="status">{{ mensajeDemo }}</p> }
     <app-solicitud-detalle [datos]="datos" [area]="nombreArea(datos.areaId)" [responsable]="contexto()?.responsable || auth.usuario()?.nombre || 'Pendiente de autenticación'" [tipo]="nombreTipo(datos.tipoId)" />
-    <p class="ayuda">{{ api.integrado ? 'Enviar la solicitud inicia su evaluación. No genera certificados ni acredita una aprobación.' : 'El envío de prueba solo cambia el estado temporal a Enviada. No inicia una evaluación oficial.' }}</p>
+    <p class="ayuda">{{ api.integrado ? 'Enviar la solicitud inicia su evaluación. No genera certificados ni acredita una aprobación.' : 'El servicio de Solicitudes está pendiente de habilitación. No es posible guardar ni enviar.' }}</p>
     <div class="acciones pie-formulario"><button class="btn" type="button" [disabled]="ocupado()" (click)="editar()">Volver al formulario</button><button class="btn" type="button" [disabled]="!puedeGuardar()" (click)="guardar()">{{ registro()?.estado === "Observada" ? "Guardar corrección" : "Guardar borrador" }}</button><button class="btn btn-primary" type="button" [disabled]="!puedeGuardar()" (click)="guardar(true)">{{ ocupado() ? 'Procesando…' : 'Enviar solicitud' }}</button></div>
   </section>
 } @else {

@@ -24,7 +24,7 @@ describe('Contrato HTTP preparado de ActivityRequestWorkflow', () => {
     iniciar(false); let errores = 0;
     const operaciones: Observable<unknown>[] = [api.crearBorrador(BORRADOR_API_TEST), api.editarBorrador(4, { nombre: 'Cambio' }), api.enviar(4), api.listar(), api.detalle(4), api.historial(4), api.revisar(4), api.observar(4, 'Motivo'), api.derivar(4), api.aprobar(4), api.rechazar(4, 'Motivo'), api.historialGlobal(), api.detalleRevision(4)];
     for (const operacion of operaciones) {
-      operacion.subscribe({ error: error => { expect(error.message).toContain('Modo demostración'); errores++; } });
+      operacion.subscribe({ error: error => { expect(error.message).toContain('pendiente de habilitaci\u00f3n'); errores++; } });
     }
     expect(errores).toBe(13); http.expectNone(() => true);
   });

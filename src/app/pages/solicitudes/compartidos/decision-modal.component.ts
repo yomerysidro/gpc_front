@@ -7,8 +7,7 @@ export interface ConfirmacionDecision { readonly registro: Solicitud; readonly a
   selector: 'app-decision-modal', standalone: true, imports: [DialogoComponent, ReactiveFormsModule],
   template: `<app-dialogo [titulo]="accion()" (cerrado)="registro.set(null)">
     @if (registro(); as fila) { <p><strong>{{ fila.numero }}</strong> · {{ fila.nombre }}</p> }
-    @if (demostracion()) { <p>Solicitud de demostración. No registrada en el sistema oficial</p> }
-    @else { <p>La operación solo se confirmará cuando el servidor autorice y registre el resultado.</p> }
+    <p>La operación solo se confirmará cuando el servidor autorice y registre el resultado.</p>
     <form [formGroup]="form" (ngSubmit)="confirmar()">
       @if (accion() !== 'Enviar') {
         <div class="form-field"><label for="motivo-decision">{{ requiereMotivo() ? 'Motivo obligatorio' : 'Observación opcional' }}</label>
@@ -27,7 +26,6 @@ export class DecisionModalComponent {
   readonly confirmado = output<ConfirmacionDecision>();
   readonly ocupado = input(false);
   readonly integrado = input(false);
-  readonly demostracion = input(false);
   protected readonly registro = signal<Solicitud | null>(null);
   protected readonly accion = signal<AccionSolicitud>('Aprobar');
   protected readonly requiereMotivo = computed(() => ['Observar', 'Rechazar'].includes(this.accion()));

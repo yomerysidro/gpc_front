@@ -9,7 +9,6 @@ import { EmisionCertificadosService } from '../../../core/services/emision-certi
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { AreaService } from '../../../core/services/area/area.service';
 import { LIMITES_SOLICITUD } from '../../../core/interfaces/solicitudes/activity-requests-api.interface';
-import { MENSAJE_SOLICITUD_DEMO } from '../../../core/services/solicitudes/solicitudes-demo.service';
 import { PageTitleComponent } from '../../../shared/components/page-title/page-title.component';
 import { IntegracionAvisoComponent } from '../compartidos/integracion-aviso.component';
 import { SolicitudDetalleComponent } from '../compartidos/solicitud-detalle.component';
@@ -54,9 +53,8 @@ export class NuevaSolicitudComponent implements OnInit {
   protected puedeGuardar(): boolean {
     if (this.form.invalid || this.form.pending || this.cargando() || this.ocupado() || this.cargandoTipos() || this.cargandoAreas()) return false;
     return this.api.integrado ? !!this.contexto() && (this.registro()?.puedeEditar ?? this.contexto()?.puedeCrear ?? false)
-      : this.api.demostracionDisponible && (this.registro()?.puedeEditar ?? true);
+      : false;
   }
-  protected readonly mensajeDemo = MENSAJE_SOLICITUD_DEMO;
   protected readonly form = inject(NonNullableFormBuilder).group({
     areaId: ['', Validators.required], nombre: ['', textoObligatorio(LIMITES_SOLICITUD.nombre)], tipoId: ['', Validators.required],
     descripcion: ['', Validators.maxLength(LIMITES_SOLICITUD.descripcion)], objetivo: ['', [Validators.required, Validators.pattern(/\S/)]],
@@ -76,7 +74,8 @@ export class NuevaSolicitudComponent implements OnInit {
     if (!this.api.integrado) {
       this.route.queryParamMap.pipe(map(parametros => parametros.get('editar')), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef)).subscribe(id => {
         this.cargaRegistro?.unsubscribe(); this.registro.set(null); this.confirmar.set(null); this.form.reset(); this.aviso.set(null); this.error.set(null);
-        if (id) { this.cargando.set(true); this.cargarRegistro(id); }
+        this.cargando.set(false);
+        if (id) this.error.set('La consulta y edición de solicitudes están pendientes de habilitación.');
       });
       return;
     }
@@ -98,7 +97,7 @@ export class NuevaSolicitudComponent implements OnInit {
       if (this.auth.tienePermiso('areas.ver')) {
         this.cargandoAreas.set(true);
         this.areasApi.listar().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-          next: filas => { this.areasCatalogo.set(filas.filter(fila => Number.isSafeInteger(fila.id_area) && fila.id_area > 0 && !!fila.nombre.trim()).map(fila => ({ id: String(fila.id_area), nombre: fila.nombre }))); this.cargandoAreas.set(false); },
+          next: filas => { this.areasCatalogo.set(filas.filter(fila => Number.isSafeInteger(fila.id_area) && fila.id_area > 0 && typeof fila.nombre === 'string' && !!fila.nombre.trim()).map(fila => ({ id: String(fila.id_area), nombre: fila.nombre }))); this.cargandoAreas.set(false); },
           error: error => { this.areasCatalogo.set([]); this.errorAreas.set(mensajeSolicitudes(error)); this.cargandoAreas.set(false); },
         });
       } else this.errorAreas.set('La consulta del catálogo requiere el permiso de Áreas.');
@@ -107,10 +106,10 @@ export class NuevaSolicitudComponent implements OnInit {
     this.errorTipos.set(null);
     if (this.auth.tienePermiso('actividades.ver')) {
       this.cargandoTipos.set(true);
-      this.catalogos.listarTodos('ativicty-type').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      this.catalogos.listarTodos('ativicty-type', { estado: 1 }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: filas => { this.tipos.set(filas.flatMap(fila => {
           const nombre = fila['nombre']; const id = fila['id_tipo_actividad'];
-          return fila['estado'] === true && typeof nombre === 'string' && (typeof id === 'number' || typeof id === 'string')
+          return [true, 1, '1'].includes(fila['estado'] as boolean | number | string) && typeof nombre === 'string' && !!nombre.trim() && Number.isSafeInteger(Number(id)) && Number(id) > 0
             ? [{ id: String(id), nombre }] : [];
         })); this.cargandoTipos.set(false); },
         error: error => { this.tipos.set([]); this.errorTipos.set(mensajeSolicitudes(error)); this.cargandoTipos.set(false); },
@@ -128,7 +127,7 @@ export class NuevaSolicitudComponent implements OnInit {
   }
   protected revisar(): void {
     this.form.markAllAsTouched(); this.error.set(null);
-    if (this.form.invalid) { this.error.set('Completa los campos obligatorios y revisa las fechas.'); return; }
+    if (this.form.invalid || this.form.pending || this.cargandoAreas() || this.cargandoTipos()) { this.error.set('Completa los campos obligatorios y revisa las fechas y catálogos.'); return; }
     if (!this.areasDisponibles().some(area => area.id === this.form.controls.areaId.value) || !this.tipos().some(tipo => tipo.id === this.form.controls.tipoId.value)) {
       this.error.set('Selecciona un área y un tipo de actividad de los catálogos disponibles.'); return;
     }
@@ -154,7 +153,7 @@ export class NuevaSolicitudComponent implements OnInit {
     if (enviar && !this.confirmar()) return;
     this.ocupado.set(true); this.error.set(null); this.aviso.set(null);
     const existente = this.registro();
-    this.api.guardar(datos, existente ? { id: existente.id, version: existente.version } : null, { area: this.nombreArea(datos.areaId), tipo: this.nombreTipo(datos.tipoId) }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.guardar(datos, existente ? { id: existente.id, version: existente.version } : null).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: fila => {
         this.registro.set(fila);
         if (enviar && fila.acciones.includes('Enviar')) {
@@ -164,7 +163,7 @@ export class NuevaSolicitudComponent implements OnInit {
           });
         } else {
           this.ocupado.set(false);
-          this.aviso.set(!this.api.integrado ? MENSAJE_SOLICITUD_DEMO : enviar ? 'Cambios confirmados por el servidor. No se autorizó su envío.' : fila.estado === 'Observada' ? 'Corrección guardada y confirmada por el servidor.' : 'Borrador guardado y confirmado por el servidor.');
+          this.aviso.set(enviar ? 'Cambios confirmados por el servidor. No se autorizó su envío.' : fila.estado === 'Observada' ? 'Corrección guardada y confirmada por el servidor.' : 'Borrador guardado y confirmado por el servidor.');
         }
       }, error: error => { this.ocupado.set(false); this.error.set(mensajeSolicitudes(error)); },
     });

@@ -52,7 +52,7 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     const control = vista().querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(selector)!;
     control.value = valor; control.dispatchEvent(new Event(control instanceof HTMLSelectElement ? 'change' : 'input')); harness.detectChanges();
   }
-  function catalogos(): void { http.expectOne(environment.apiBaseUrl + '/ativicty-type').flush({ success: true, data: [{ id_tipo_actividad: 3, nombre: 'Tipo de prueba', estado: true }] }); harness.detectChanges(); }
+  function catalogos(): void { http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1').flush({ success: true, data: [{ id_tipo_actividad: 3, nombre: 'Tipo de prueba', estado: true }] }); harness.detectChanges(); }
   function completar(): void {
     cambiar('#solicitud-nombre', solicitud.nombre); cambiar('#solicitud-lugar', solicitud.lugar);
     cambiar('#solicitud-tipo', '3'); cambiar('#solicitud-inicio', solicitud.inicio); cambiar('#solicitud-fin', solicitud.fin);
@@ -66,32 +66,33 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     api.listar('revision', { busqueda: '', estado: '', desde: '', hasta: '', pagina: 1 }).subscribe({ error: valor => error = valor });
     expect(error instanceof IntegracionSolicitudesPendiente).toBeTrue(); expect(gateway.listar).not.toHaveBeenCalled(); http.expectNone(() => true);
   });
-  it('guarda y envía la demostración en memoria y la muestra en Mis solicitudes sin escrituras HTTP', async () => {
+  it('carga solo las opciones HTTP y permite revisar sin simular persistencia', async () => {
     configurar(false, true); await navegar('/solicitudes/nueva');
-    expect(boton('Actualizar catálogos').disabled).toBeTrue();
-    http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ success: true, data: [{ id_area: 9, nombre: 'Área recibida del catálogo' }] });
-    catalogos(); cambiar('#solicitud-area', '9'); completar();
-    expect(vista().textContent).toContain('Área recibida del catálogo');
-    expect(vista().textContent).toContain('Catálogo real de referencia');
-    expect(vista().querySelector<HTMLInputElement>('#solicitud-responsable')?.readOnly).toBeTrue();
+    expect(boton('Guardar borrador').disabled).toBeTrue();
+    const areas = [{ id_area: 9, nombre: 'Area de prueba HTTP' }, { id_area: 27, nombre: 'Otra area de prueba HTTP' }];
+    http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ success: true, message: '', data: areas });
+    const tipos = http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1');
+    expect(tipos.request.method).toBe('GET');
+    tipos.flush({ success: true, data: [{ id_tipo_actividad: 3, nombre: 'Tipo activo HTTP', estado: 1 }, { id_tipo_actividad: 77, nombre: 'Inactivo', estado: false }] });
+    harness.detectChanges();
+    expect(Array.from(vista().querySelector<HTMLSelectElement>('#solicitud-area')!.options).slice(1).map(o => [o.value, o.text])).toEqual(areas.map(a => [String(a.id_area), a.nombre]));
+    expect(vista().querySelector<HTMLSelectElement>('#solicitud-tipo')!.options.length).toBe(2);
+    cambiar('#solicitud-area', '9'); completar();
     await pulsar('Revisar datos');
     expect(vista().querySelector('app-solicitud-detalle')).not.toBeNull();
-    expect(boton('Enviar solicitud').disabled).toBeFalse(); expect(boton('Guardar borrador').disabled).toBeFalse();
-    await pulsar('Guardar borrador');
-    expect(vista().textContent).toContain('Solicitud de demostración. No registrada en el sistema oficial');
+    expect(boton('Enviar solicitud').disabled).toBeTrue(); expect(boton('Guardar borrador').disabled).toBeTrue();
+    expect(vista().textContent).toContain('pendiente de habilitaci');
     expect(vista().textContent).not.toContain('confirmado por el servidor');
     await pulsar('Volver al formulario'); expect(vista().querySelector<HTMLInputElement>('#solicitud-nombre')?.value).toBe(solicitud.nombre);
-    await pulsar('Revisar datos'); await pulsar('Enviar solicitud');
-    expect(TestBed.inject(Router).url).toBe('/solicitudes/mis-solicitudes');
-    expect(vista().querySelectorAll('tbody tr').length).toBe(1);
-    expect(vista().querySelector('tbody')?.textContent).toContain('DEMOSTRACIÓN'); expect(vista().querySelector('tbody')?.textContent).toContain('Enviada');
-    expect(vista().querySelector('tbody')?.textContent).toContain(solicitud.nombre);
-    expect(gateway.guardar).not.toHaveBeenCalled(); http.expectNone(req => req.method !== 'GET');
+    await harness.navigateByUrl('/solicitudes/mis-solicitudes'); harness.detectChanges();
+    expect(vista().querySelector('tbody')).toBeNull();
+    expect(vista().textContent).not.toContain('No se encontraron solicitudes');
+    expect(gateway.guardar).not.toHaveBeenCalled(); expect(gateway.decidir).not.toHaveBeenCalled(); http.expectNone(() => true);
   });
   it('distingue error y carga de catálogos y permite reintentar sin sustituirlos por datos ficticios', async () => {
     configurar(false, true); await navegar('/solicitudes/nueva');
     http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ message: 'Área restringida' }, { status: 403, statusText: 'Forbidden' });
-    http.expectOne(environment.apiBaseUrl + '/ativicty-type').flush({ message: 'Catálogo no disponible' }, { status: 503, statusText: 'Unavailable' }); harness.detectChanges();
+    http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1').flush({ message: 'Catálogo no disponible' }, { status: 503, statusText: 'Unavailable' }); harness.detectChanges();
     expect(vista().textContent).toContain('No tienes permiso'); expect(boton('Guardar borrador').disabled).toBeTrue();
     expect(vista().querySelector<HTMLSelectElement>('#solicitud-area')?.options.length).toBe(1);
     await pulsar('Actualizar catálogos');
@@ -104,6 +105,30 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     expect(form.hasError('fechaInvalida')).toBeTrue();
     form.setValue({ inicio: '2028-02-29', fin: '2028-03-01' }); expect(form.valid).toBeTrue();
     form.setValue({ inicio: '2028-03-02', fin: '2028-03-01' }); expect(form.hasError('ordenFechas')).toBeTrue();
+  });
+  it('muestra catálogos vacíos sin opciones de respaldo ni acceso a Solicitudes', async () => {
+    configurar(false, true); await navegar('/solicitudes/nueva');
+    http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ success: true, data: [] });
+    http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1').flush({ success: true, data: [] }); harness.detectChanges();
+    expect(vista().querySelector<HTMLSelectElement>('#solicitud-area')!.options.length).toBe(1);
+    expect(vista().querySelector<HTMLSelectElement>('#solicitud-tipo')!.options.length).toBe(1);
+    expect(vista().textContent).toContain('No hay áreas disponibles');
+    expect(vista().textContent).toContain('No hay tipos activos disponibles');
+    await pulsar('Revisar datos');
+    for (const campo of ['area', 'tipo', 'nombre', 'inicio', 'fin', 'objetivo']) expect(vista().querySelector('#error-' + campo)).not.toBeNull();
+    expect(vista().querySelector('app-solicitud-detalle')).toBeNull(); http.expectNone(() => true);
+  });
+  it('rechaza una respuesta de catálogo mal formada y permite reintentar', async () => {
+    configurar(false, true); await navegar('/solicitudes/nueva');
+    http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ success: true, data: {} });
+    http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1').flush({ success: true, data: {} }); harness.detectChanges();
+    expect(vista().querySelector<HTMLSelectElement>('#solicitud-area')!.options.length).toBe(1);
+    expect(vista().querySelector<HTMLSelectElement>('#solicitud-tipo')!.options.length).toBe(1);
+    expect(vista().querySelectorAll('.error').length).toBeGreaterThanOrEqual(2);
+    await pulsar('Actualizar catálogos');
+    http.expectOne(environment.apiBaseUrl + '/areas/list').flush({ success: true, data: [{ id_area: 9, nombre: 'Área HTTP de prueba' }] });
+    catalogos();
+    expect(vista().querySelector<HTMLSelectElement>('#solicitud-area')!.options.length).toBe(2);
   });
   it('mantiene el formulario sin desbordamiento en un contenedor estrecho y ancho', () => {
     configurar(false); const fixture = TestBed.createComponent(NuevaSolicitudComponent);
@@ -125,7 +150,9 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
       await harness.navigateByUrl(url); harness.detectChanges();
       expect(TestBed.inject(Router).url).toBe(url);
       expect(vista().querySelector('app-vista-temporal')).toBeNull();
-      expect(vista().querySelector('app-integracion-solicitudes')?.textContent?.trim()).toBe('');
+      expect(vista().querySelector('app-integracion-solicitudes')?.textContent).toContain('pendiente de habilitaci');
+      expect(vista().textContent).not.toContain('DEMOSTRACI');
+      expect(vista().querySelector('tbody, .paginacion')).toBeNull();
       expect(vista().querySelector('tbody tr, app-documento-pendiente-card')).toBeNull();
       expect(vista().querySelectorAll('app-sidebar a[aria-current="page"]').length).toBe(1);
     }

@@ -9,7 +9,6 @@
   <section class="card indicador"><strong>{{ observadas() ?? '—' }}</strong><p>Observadas en esta página</p></section>
 </div>
 <section class="card" aria-label="Bandeja de solicitudes"><h2>Consulta de solicitudes</h2>
-  @if (!api.integrado && bandeja() === 'propias') { <p class="aviso" role="status">{{ mensajeDemo }}. Estos datos solo duran durante esta sesión de la aplicación.</p> }
   <form class="filtros" [formGroup]="filtros" (ngSubmit)="cargar()">
     <div class="form-field"><label for="filtro-busqueda">Actividad o número de solicitud</label><input class="input" id="filtro-busqueda" formControlName="busqueda" type="search" /></div>
     <div class="form-field"><label for="filtro-estado">Estado</label><select class="input" id="filtro-estado" formControlName="estado"><option value="">Todos los estados</option>@for (estado of bandeja() === 'gerencia' ? ['Pendiente de aprobación'] : estados; track estado) { <option [value]="estado">{{ estado }}</option> }</select></div>
@@ -22,7 +21,7 @@
   @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
   @if (pagina(); as datos) {
     @if (datos.registros.length) {
-      <div class="tabla-scroll" tabindex="0" role="region" aria-label="Resultados de solicitudes"><table class="table"><caption>{{ api.integrado ? 'Solicitudes autorizadas por el servidor' : 'Mis solicitudes de demostración: registros temporales en memoria' }}</caption>
+      <div class="tabla-scroll" tabindex="0" role="region" aria-label="Resultados de solicitudes"><table class="table"><caption>Solicitudes autorizadas por el servidor</caption>
         <thead><tr><th scope="col">Solicitud y actividad</th><th scope="col">Área / responsable</th><th scope="col">Fechas</th><th scope="col">Estado y revisión</th><th scope="col">Acciones</th></tr></thead>
         <tbody>@for (fila of datos.registros; track fila.id) {
           <tr><td><strong>{{ fila.numero }}</strong><p>{{ fila.nombre }}</p></td><td>{{ fila.area }}<small>{{ fila.responsable }}</small></td>
@@ -37,7 +36,7 @@
     <nav class="paginacion" aria-label="Paginación de solicitudes"><button class="btn" type="button" [disabled]="datos.pagina <= 1 || ocupado()" (click)="cargar(datos.pagina - 1)">Anterior</button>
       <span>Página {{ datos.pagina }} de {{ datos.ultimaPagina }} · {{ datos.total }} registros</span><button class="btn" type="button" [disabled]="datos.pagina >= datos.ultimaPagina || ocupado()" (click)="cargar(datos.pagina + 1)">Siguiente</button></nav>
   }
-  @if (!api.integrado && bandeja() !== 'propias') { <div class="vacio" role="status"><span class="material-symbols-outlined" aria-hidden="true">inbox</span><h3>Bandeja preparada para sus solicitudes</h3><p>Los registros aparecerán cuando se habilite la consulta autenticada.</p></div> }
+  @if (!api.integrado) { <div class="vacio" role="status"><span class="material-symbols-outlined" aria-hidden="true">inbox</span><h3>Bandeja preparada para sus solicitudes</h3><p>Los registros aparecerán cuando se habilite la consulta autenticada.</p></div> }
 </section>
 <app-dialogo titulo="Detalle de solicitud" (cerrado)="cerrarDetalle()">
   @if (cargandoDetalle()) { <p role="status">Consultando detalle autorizado…</p> }
@@ -45,4 +44,4 @@
   @if (detalle(); as fila) { <app-solicitud-detalle [datos]="fila" [registro]="fila" [area]="fila.area" [responsable]="fila.responsable" [tipo]="fila.tipo" /> }
   <div class="acciones"><button class="btn" type="button" autofocus (click)="dialogo().cerrar()">Cerrar</button></div>
 </app-dialogo>
-<app-decision-modal [ocupado]="ocupado()" [integrado]="operativo()" [demostracion]="!api.integrado" (confirmado)="decidir($event)" />
+<app-decision-modal [ocupado]="ocupado()" [integrado]="operativo()" (confirmado)="decidir($event)" />

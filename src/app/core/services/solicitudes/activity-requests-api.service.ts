@@ -55,7 +55,7 @@ export class ActivityRequestsApiService {
   }
   private peticion<T>(metodo: string, ruta: string, body?: unknown, params?: HttpParams): Observable<T> {
     return defer(() => {
-      if (!this.disponible) return throwError(() => new Error('Modo demostración: las rutas de solicitudes y la autenticación efectiva aún no están activadas. No se ha enviado información.'));
+      if (!this.disponible) return throwError(() => new Error('Servicio de Solicitudes pendiente de habilitación: sus rutas y autorización aún no están activadas. No se ha enviado información.'));
       return this.http.request<ActivityRequestResponse<T>>(metodo, this.base + ruta, {
         body, params, context: new HttpContext().set(AUTHENTICATED_REQUEST, true),
       }).pipe(map(respuesta => {

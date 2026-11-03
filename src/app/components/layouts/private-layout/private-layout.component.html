@@ -7,16 +7,31 @@
       <span class="sistema">Sistema de Certificados Digitales</span>
     </span>
     @if (auth.usuario(); as usuario) {
-      <div class="usuario">
-        <span class="datos">
-          <span class="nombre">{{ usuario.nombre }}</span>
-          <span class="rol">{{ usuario.rol }}</span>
-        </span>
-        <button type="button" class="btn salir" (click)="cerrarSesion()" [disabled]="saliendo()"
-          [attr.aria-busy]="saliendo()">
-          <span class="material-symbols-outlined" aria-hidden="true">logout</span>
-          <span class="salir-texto">Salir</span>
+      <div class="usuario" #menuUsuario (focusout)="cerrarAlSalir($event)">
+        <button #botonUsuario type="button" class="cuenta" (click)="menuAbierto.set(!menuAbierto())"
+          [attr.aria-expanded]="menuAbierto()" aria-controls="opciones-usuario" aria-label="Opciones de usuario">
+          <svg class="avatar" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+            <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z" />
+          </svg>
+          <span class="datos">
+            <span class="nombre">{{ usuario.nombre }}</span>
+            <span class="rol">{{ usuario.rol }}</span>
+          </span>
+          <span class="material-symbols-outlined flecha" [class.abierta]="menuAbierto()" aria-hidden="true">expand_more</span>
         </button>
+        @if (menuAbierto()) {
+          <div class="opciones-usuario" id="opciones-usuario">
+            <div class="perfil-usuario">
+              <strong>{{ usuario.nombre }}</strong>
+              <span>{{ usuario.email }}</span>
+            </div>
+            <button type="button" class="cerrar-sesion" (click)="cerrarSesion()" [disabled]="saliendo()" [attr.aria-busy]="saliendo()">
+              <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+              {{ saliendo() ? 'Cerrando sesión…' : 'Cerrar sesión' }}
+            </button>
+            @if (errorSalida()) { <p class="error-salida" role="alert">No se pudo cerrar la sesión. Intenta nuevamente.</p> }
+          </div>
+        }
       </div>
     }
   </div>
