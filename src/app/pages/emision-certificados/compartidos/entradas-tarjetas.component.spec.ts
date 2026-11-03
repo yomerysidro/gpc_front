@@ -51,7 +51,7 @@ describe('Contratos de inputs de las tarjetas de Certificaciones', () => {
 
   it('acepta dni y nombres desde una plantilla padre sin esquemas que oculten errores', () => {
     const vista: HTMLElement = fixture.nativeElement;
-    expect(vista.querySelector('app-firmante-card')?.textContent).toContain('12345678');
+    expect(vista.querySelector('app-firmante-card')?.textContent).toContain('••••5678');
     expect(vista.querySelector('app-reconocimiento-card')?.textContent).toContain('12345678');
     expect(vista.querySelector('#firmante-trabajador')?.textContent).toContain('Nombre recibido del servidor');
   });

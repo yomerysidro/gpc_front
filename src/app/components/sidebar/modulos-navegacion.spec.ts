@@ -25,7 +25,8 @@ describe('Configuración única del Sidebar institucional', () => {
     for (const grupo of SIDEBAR_CONFIG.filter(grupo => ['solicitudes', 'gerencia', 'reportes'].includes(grupo.id))) {
       expect(grupo.hijos.every(hijo => !hijo.habilitado && !hijo.path && !!hijo.pendiente)).toBeTrue();
     }
-    expect(SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos).find(hijo => hijo.id === 'generar-emitir')?.habilitado).toBeFalse();
+    expect(SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos).find(hijo => hijo.id === 'generar-emitir')?.path).toBe('/certificaciones/generar-emitir');
+    expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'emision')!.hijos.map(hijo => hijo.label)).toEqual(['Generar y emitir', 'Certificados emitidos', 'Firmas digitales']);
   });
 
   it('no duplica rutas con los mismos parámetros, IDs ni grupos', () => {
@@ -50,10 +51,10 @@ describe('Configuración única del Sidebar institucional', () => {
   it('conserva el metadato de Laravel sin usarlo para conceder capacidades ni duplicar enlaces', () => {
     const backend = { label: 'Nombre del módulo recibido', path: '/emision', icon: 'workspace_premium' };
     const grupos = resolverGruposSidebar(clave => ['emision.ver', 'emision.crear'].includes(clave), [backend, backend, { label: 'No desarrollado', path: '/reportes' }]);
-    const preparar = grupos.flatMap(grupo => grupo.hijos).find(entrada => entrada.id === 'preparar')!;
+    const preparar = grupos.flatMap(grupo => grupo.hijos).find(entrada => entrada.id === 'generar-emitir')!;
     expect(preparar.backend).toBe(backend);
-    expect(preparar.label).toBe('Preparar certificados');
-    expect(grupos.flatMap(grupo => grupo.hijos).filter(entrada => entrada.id === 'preparar').length).toBe(1);
+    expect(preparar.label).toBe('Generar y emitir');
+    expect(grupos.flatMap(grupo => grupo.hijos).filter(entrada => entrada.id === 'generar-emitir').length).toBe(1);
     expect(resolverGruposSidebar(() => false, [backend])).toEqual([]);
   });
 });
@@ -212,7 +213,7 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
     ['/certificaciones/actividades', 'app-listar-actividades'],
     ['/certificaciones/participantes', 'app-listar-participantes'],
     ['/certificaciones/sesiones-asistencia', 'app-actividades'],
-    ['/certificaciones/certificados', 'app-listar-certificados'],
+    ['/certificaciones/generar-emitir', 'app-generar-emitir'],
     ['/certificaciones/certificados/documentos', 'app-listar-documentos'],
     ['/certificaciones/firmas', 'app-listar-firmas'],
     ['/gestion/configuracion?pestana=areas', 'app-area'],
@@ -272,7 +273,7 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
     const harness = await RouterTestingHarness.create('/actividades'); resolverLecturas();
     expect(TestBed.inject(Router).url).toBe('/certificaciones/actividades');
     await harness.navigateByUrl('/emision'); resolverLecturas();
-    expect(TestBed.inject(Router).url).toBe('/certificaciones/certificados');
+    expect(TestBed.inject(Router).url).toBe('/certificaciones/generar-emitir');
     await harness.navigateByUrl('/gestion/practicantes'); resolverLecturas();
     expect(TestBed.inject(Router).url).toBe('/gestion/practicas?pestana=practicantes');
     await harness.navigateByUrl('/areas'); resolverLecturas();

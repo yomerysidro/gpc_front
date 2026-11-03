@@ -1,0 +1,52 @@
+﻿<app-page-title title="Generar y emitir" />
+<p class="alert alert-advertencia" role="status">La generación oficial del PDF, código de verificación y QR estará disponible cuando se integre el backend de emisión.</p>
+<ol class="pasos" aria-label="Proceso documental">@for (titulo of pasos; track titulo; let indice = $index) { <li [class.actual]="paso() === indice + 1" [attr.aria-current]="paso() === indice + 1 ? 'step' : null"><span>{{ indice + 1 }}</span>{{ titulo }}</li> }</ol>
+@if (modo() === 'existente') {
+  <div [hidden]="paso() !== 1">
+  <section class="card"><h2>Continuar un certificado administrativo existente</h2><p>Selecciona una preparación registrada o inicia una nueva desde su origen.</p>
+    @if (auth.tienePermiso('emision.crear')) { <button type="button" class="btn btn-primary" (click)="nuevo()">Preparar nuevo certificado</button> }
+  </section>
+  <app-listar-certificados [seleccionable]="true" (seleccionado)="seleccionar($event)" />
+  </div>
+}
+@if (modo() === 'nuevo') {
+  @for (contexto of contextosFormulario(); track contexto) {
+  <div [hidden]="paso() > 2">
+    <app-formulario-certificado [integrado]="true" [paso]="paso()" (cambioPaso)="paso.set($event)" (preparado)="seleccionar($event, true)" (cancelado)="cancelar()" (falloGuardado)="error.set($event)" />
+  </div>
+  }
+}
+@if (cargando()) { <p role="status">Consultando el origen autorizado…</p> }
+@if (error()) { <p class="alert alert-error" role="alert">{{ error() }}</p> }
+@if (seleccion(); as ficha) {
+  @if (paso() === 2 && modo() === 'existente') {
+    <section class="card"><h2>Preparación administrativa #{{ ficha.registro.id_certificado }}</h2>
+      <dl class="datos"><dt>Beneficiario</dt><dd>{{ ficha.beneficiario }}</dd><dt>DNI</dt><dd>{{ ficha.dni || 'No disponible con los permisos actuales' }}</dd><dt>Tipo</dt><dd>{{ ficha.tipo }}</dd><dt>Origen</dt><dd>{{ origen() || 'Pendiente de consulta' }}</dd><dt>Fecha</dt><dd>{{ ficha.registro.fecha_emision ? (ficha.registro.fecha_emision | date:'dd/MM/yyyy') : 'No informada' }}</dd><dt>Estado administrativo</dt><dd>{{ estado(ficha.registro.estado) }}</dd></dl>
+      <p>Este certificado ya está registrado. Continuar no crea un duplicado.</p>
+      <form [formGroup]="revision"><label><input type="checkbox" formControlName="datos" /> He revisado los datos del beneficiario y del certificado.</label><label><input type="checkbox" formControlName="origen" /> He revisado el registro de origen. Esta revisión no acredita elegibilidad oficial.</label></form>
+      @if (revision.touched && revision.invalid) { <p class="error-text">Confirma ambas revisiones para continuar.</p> }
+    </section>
+  }
+  @if (paso() === 3) {
+    <section class="card"><h2>Revisar documento</h2><p>Previsualización HTML de metadatos. El backend definirá la plantilla oficial y el contenido final.</p>
+      <dl class="datos"><dt>Beneficiario</dt><dd>{{ ficha.beneficiario }}</dd><dt>Documento de identidad</dt><dd>{{ ficha.dni || 'No disponible con los permisos actuales' }}</dd><dt>Origen relacionado</dt><dd>{{ origen() }}</dd><dt>Estado administrativo</dt><dd>{{ estado(ficha.registro.estado) }}</dd></dl>
+      @if (ficha.registro.id_certificado === null) { <p class="alert alert-advertencia" role="status">Preparación local sin guardar. No existe todavía un certificado administrativo para este borrador.</p> }
+      <app-visor-certificado [certificado]="ficha.registro" [beneficiario]="ficha.beneficiario" [tipo]="ficha.tipo" [origen]="origen()" [reconocimiento]="reconocimiento()" />
+      <h3>Firmantes asignados disponibles</h3>@for (asignacion of asignaciones(); track asignacion.firma) { <p>Firmante #{{ asignacion.firma }} · Orden {{ asignacion.orden }} · Asignación administrativa, sin firma aplicada.</p> } @empty { <p>No hay información de firmantes autorizados disponible para este origen.</p> }
+      @if (modo() === 'nuevo') { <button class="btn btn-primary" type="button" [disabled]="!formulario()?.puedeGuardarPreparacion() || cargando() || !!error()" (click)="formulario()?.guardar()">Guardar preparación</button>
+        @if (!escrituraAutorizada) { <p>El guardado requiere autorización efectiva del backend.</p> }
+      }
+    </section>
+  }
+  @if (paso() === 4) {
+    <section class="card"><h2>Resumen de emisión</h2><p><strong>{{ ficha.beneficiario }}</strong> · {{ ficha.tipo }}</p><p>{{ origen() }}</p>
+      <dl class="datos"><dt>Estado administrativo</dt><dd>{{ estado(ficha.registro.estado) }}</dd><dt>Preparación</dt><dd>{{ ficha.registro.id_certificado === null ? 'Borrador local sin persistencia' : 'Certificado administrativo #' + ficha.registro.id_certificado }}</dd><dt>Estado de firmas</dt><dd>No se ha aplicado una firma digital en este proceso.</dd></dl>
+      <ul><li>PDF, código único, hash y QR: pendientes del servicio oficial.</li><li>Elegibilidad, plantilla y facultades de emisión: pendientes de verificación en Laravel.</li><li>Resultado: no se ha emitido ningún documento durante este flujo.</li></ul>
+      <button class="btn btn-primary" type="button" disabled aria-describedby="emision-pendiente">Generar documento oficial</button><p id="emision-pendiente">La generación oficial del PDF, código de verificación y QR estará disponible cuando se integre el backend de emisión.</p>
+      @if (ficha.registro.id_certificado !== null) { <a class="btn" routerLink="/certificaciones/certificados/documentos" [queryParams]="{ id_certificado: ficha.registro.id_certificado }">Consultar documentos existentes</a> }
+    </section>
+  }
+  @if (paso() > 2 || (paso() === 2 && modo() === 'existente')) {
+    <nav class="acciones" aria-label="Navegar por el proceso"><button class="btn" type="button" (click)="volver()">Anterior</button>@if (paso() < 4) { <button class="btn btn-primary" type="button" [disabled]="cargando() || !!error()" (click)="avanzar()">Siguiente</button> }<button class="btn" type="button" (click)="cancelar()">Cancelar</button></nav>
+  }
+}

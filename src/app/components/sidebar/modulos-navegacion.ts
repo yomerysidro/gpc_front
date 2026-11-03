@@ -16,6 +16,7 @@ export interface EntradaSidebar {
   readonly pendiente?: string;
   readonly rutaPreliminar?: string;
   readonly descripcionPreliminar?: string;
+  readonly interfazDisponible?: boolean;
 }
 export interface GrupoSidebar {
   readonly id: string;
@@ -50,9 +51,9 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
     { id: 'reconocimientos', label: 'Reconocimientos', icon: 'military_tech', path: '/certificaciones/reconocimientos', permiso: 'reconocimientos.ver', aliases: ['/reconocimientos'], habilitado: true },
   ] },
   { id: 'solicitudes', label: 'SOLICITUDES', icon: 'forward_to_inbox', hijos: [
-    { id: 'solicitud-nueva', label: 'Nueva solicitud de actividad', icon: 'add', habilitado: false, rutaPreliminar: '/solicitudes/nueva', descripcionPreliminar: 'Permitirá registrar una propuesta de actividad para su evaluación institucional.', pendiente: 'El registro de solicitudes está pendiente de integración.' },
-    { id: 'mis-solicitudes', label: 'Mis solicitudes', icon: 'event', habilitado: false, rutaPreliminar: '/solicitudes/mis-solicitudes', descripcionPreliminar: 'Permitirá consultar el estado y seguimiento de las solicitudes presentadas.', pendiente: 'La consulta de solicitudes está pendiente de integración.' },
-    { id: 'revisar-solicitudes', label: 'Revisión de solicitudes', icon: 'check_circle', habilitado: false, rutaPreliminar: '/solicitudes/revision', descripcionPreliminar: 'Permitirá revisar las solicitudes de actividad y conocer su evaluación institucional.', pendiente: 'El flujo de revisión y aprobación está pendiente de integración.' },
+    { id: 'solicitud-nueva', interfazDisponible: true, label: 'Nueva solicitud de actividad', icon: 'add', habilitado: false, rutaPreliminar: '/solicitudes/nueva', descripcionPreliminar: 'Permitirá registrar una propuesta de actividad para su evaluación institucional.', pendiente: 'El registro de solicitudes está pendiente de integración.' },
+    { id: 'mis-solicitudes', interfazDisponible: true, label: 'Mis solicitudes', icon: 'event', habilitado: false, rutaPreliminar: '/solicitudes/mis-solicitudes', descripcionPreliminar: 'Permitirá consultar el estado y seguimiento de las solicitudes presentadas.', pendiente: 'La consulta de solicitudes está pendiente de integración.' },
+    { id: 'revisar-solicitudes', interfazDisponible: true, label: 'Revisión de solicitudes', icon: 'check_circle', habilitado: false, rutaPreliminar: '/solicitudes/revision', descripcionPreliminar: 'Permitirá revisar las solicitudes de actividad y conocer su evaluación institucional.', pendiente: 'El flujo de revisión y aprobación está pendiente de integración.' },
   ] },
   { id: 'actividades', label: 'GESTIÓN DE ACTIVIDADES', icon: 'event', hijos: [
     { id: 'actividades', label: 'Actividades', icon: 'event', path: '/certificaciones/actividades', permiso: 'actividades.ver', aliases: ['/actividades'], habilitado: true },
@@ -60,15 +61,14 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
     { id: 'sesiones-asistencia', label: 'Sesiones y asistencia', icon: 'how_to_reg', path: '/certificaciones/sesiones-asistencia', permiso: 'actividades.ver', habilitado: true },
   ] },
   { id: 'emision', label: 'EMISIÓN DE CERTIFICADOS', icon: 'workspace_premium', hijos: [
-    { id: 'preparar', label: 'Preparar certificados', icon: 'workspace_premium', path: '/certificaciones/certificados', permiso: 'emision.ver', aliases: ['/emision', '/certificados'], habilitado: true },
-    { id: 'generar-emitir', label: 'Generar y emitir', icon: 'forward_to_inbox', habilitado: false, pendiente: 'No hay generación y emisión oficial de documentos en Laravel.' },
+    { id: 'generar-emitir', label: 'Generar y emitir', icon: 'forward_to_inbox', path: '/certificaciones/generar-emitir', permiso: 'emision.ver', aliases: ['/emision', '/certificados', '/certificaciones/certificados'], rutasActivas: ['/certificaciones/certificados/:id'], habilitado: true },
     { id: 'emitidos', label: 'Certificados emitidos', icon: 'visibility', path: '/certificaciones/certificados/documentos', rutasActivas: ['/certificaciones/certificados/:id/documentos'], permiso: 'emision.ver', habilitado: true },
     { id: 'firmas', label: 'Firmas digitales', icon: 'edit', path: '/certificaciones/firmas', permiso: 'ponentes-firmantes.ver', aliases: ['/firmas', '/ponentes-firmantes'], habilitado: true },
   ] },
   { id: 'gerencia', label: 'GERENCIA', icon: 'check_circle', hijos: [
-    { id: 'pendientes-aprobacion', label: 'Pendientes de aprobación', icon: 'event', habilitado: false, pendiente: 'No hay bandeja ni permiso de aprobación.' },
-    { id: 'documentos-firmar', label: 'Documentos por firmar', icon: 'edit', habilitado: false, pendiente: 'No hay bandeja personal ni operación de firma criptográfica.' },
-    { id: 'historial-decisiones', label: 'Historial de decisiones', icon: 'visibility', habilitado: false, pendiente: 'No hay historial de decisiones ni permiso definido.' },
+    { id: 'pendientes-aprobacion', interfazDisponible: true, label: 'Pendientes de aprobación', icon: 'event', habilitado: false, pendiente: 'Las rutas de aprobación siguen comentadas; su uso requiere autenticación y autorización efectivas.' },
+    { id: 'documentos-firmar', interfazDisponible: true, label: 'Documentos por firmar', icon: 'edit', habilitado: false, pendiente: 'No hay bandeja personal ni operación de firma criptográfica.' },
+    { id: 'historial-decisiones', interfazDisponible: true, label: 'Historial de decisiones', icon: 'visibility', habilitado: false, pendiente: 'La consulta global está preparada; su ruta sigue comentada y requiere autorización de Gerencia.' },
   ] },
   { id: 'reportes', label: 'REPORTES', icon: 'bar_chart', hijos: [
     { id: 'indicadores', label: 'Indicadores generales', icon: 'bar_chart', habilitado: false, pendiente: 'El módulo de menú existe; no hay pantalla ni endpoint de indicadores.' },

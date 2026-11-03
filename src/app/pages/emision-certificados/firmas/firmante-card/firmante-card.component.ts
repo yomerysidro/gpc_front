@@ -13,4 +13,6 @@ export class FirmanteCardComponent {
   readonly dni = input<string | null>(null);
   readonly administrar = output<void>();
   readonly eliminar = output<void>();
+  readonly consultar = output<void>();
+  protected dniVisible(): string { const dni = this.dni(); return dni ? '•'.repeat(Math.max(0, dni.length - 4)) + dni.slice(-4) : 'No disponible'; }
 }

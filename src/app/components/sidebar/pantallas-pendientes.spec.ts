@@ -35,6 +35,11 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
+  function resolverCatalogos(): void {
+    for (const peticion of http.match(req => req.method === 'GET' && (req.url.endsWith('/areas/list') || req.url.endsWith('/ativicty-type')))) {
+      peticion.flush({ success: true, data: [] });
+    }
+  }
 
   it('muestra los ocho grupos, Dashboard y los tres enlaces de Solicitudes para el Administrador autorizado', async () => {
     const harness = await RouterTestingHarness.create('/inicio');
@@ -46,7 +51,14 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     expect(solicitudes.textContent).toContain('Nueva solicitud de actividad');
     expect(solicitudes.textContent).toContain('Mis solicitudes');
     expect(solicitudes.textContent).toContain('Revisión de solicitudes');
-    expect(vista.querySelectorAll('app-sidebar a').length).toBe(31);
+    expect(vista.querySelectorAll('app-sidebar a').length).toBe(30);
+    for (const entrada of pendientes.filter(entrada => entrada.interfazDisponible)) {
+      const enlace = vista.querySelector(`app-sidebar a[href="${rutaPantallaPendiente(entrada)}"]`)!;
+      expect(enlace.querySelector('.texto-enlace')?.textContent?.trim()).toBe(entrada.label);
+      expect(enlace.querySelector('.etiqueta-desarrollo')).toBeNull();
+    }
+    expect(vista.querySelector('app-sidebar')?.textContent).not.toContain('Integración pendiente');
+    expect(vista.querySelector('#submenu-reportes .etiqueta-desarrollo')?.textContent).toBe('En desarrollo');
     http.expectNone(() => true);
   });
 
@@ -54,15 +66,23 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     it('abre la página informativa ' + entrada.id + ' sin peticiones de negocio', async () => {
       const url = rutaPantallaPendiente(entrada);
       const harness = await RouterTestingHarness.create(url);
+      resolverCatalogos();
       harness.detectChanges();
       expect(TestBed.inject(Router).url).toBe(url);
       const vista = harness.routeNativeElement!;
-      const pagina = vista.querySelector('app-vista-temporal')!;
-      expect(pagina).not.toBeNull();
-      expect(pagina.querySelector('h1')?.textContent).toBe(entrada.label);
-      expect(pagina.textContent).toContain('En desarrollo');
-      expect(pagina.textContent).toContain('Funcionalidad pendiente de integración');
-      expect(pagina.querySelector('form, input, table, button')).toBeNull();
+      if (entrada.interfazDisponible) {
+        expect(vista.querySelector('app-vista-temporal')).toBeNull();
+        expect(vista.querySelector('app-integracion-solicitudes')?.textContent?.trim()).toBe('');
+        expect(vista.querySelector('h1')).not.toBeNull();
+        expect(vista.querySelectorAll('tbody tr, app-documento-pendiente-card').length).toBe(0);
+      } else {
+        const pagina = vista.querySelector('app-vista-temporal')!;
+        expect(pagina).not.toBeNull();
+        expect(pagina.querySelector('h1')?.textContent).toBe(entrada.label);
+        expect(pagina.textContent).toContain('En desarrollo');
+        expect(pagina.textContent).toContain('Funcionalidad pendiente de integración');
+        expect(pagina.querySelector('form, input, table, button')).toBeNull();
+      }
       expect(vista.querySelectorAll('app-sidebar a[aria-current="page"]').length).toBe(1);
       expect(vista.querySelector('app-sidebar a[aria-current="page"]')?.getAttribute('href')).toBe(url);
       const grupo = SIDEBAR_CONFIG.find(grupo => grupo.hijos.some(hijo => hijo.id === entrada.id))!;
@@ -73,9 +93,12 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
 
   it('mantiene separadas las tres pantallas de Solicitudes al navegar entre ellas', async () => {
     const harness = await RouterTestingHarness.create('/solicitudes/nueva');
+    resolverCatalogos();
     for (const url of ['/solicitudes/mis-solicitudes', '/solicitudes/revision', '/solicitudes/nueva']) {
       await harness.navigateByUrl(url); harness.detectChanges();
-      expect(harness.routeNativeElement!.querySelectorAll('app-vista-temporal').length).toBe(1);
+      resolverCatalogos();
+      expect(harness.routeNativeElement!.querySelectorAll('app-integracion-solicitudes').length).toBe(1);
+      expect(harness.routeNativeElement!.querySelector('app-vista-temporal')).toBeNull();
       expect(harness.routeNativeElement!.querySelector('app-sidebar a.active')?.getAttribute('href')).toBe(url);
     }
     http.expectNone(() => true);
@@ -103,7 +126,7 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
   it('consultar una página preliminar no concede acceso a Usuarios ni a otros CRUD', async () => {
     permisos.set(['roles.ver', 'roles.editar']);
     const harness = await RouterTestingHarness.create('/solicitudes/nueva');
-    expect(harness.routeNativeElement!.querySelector('app-vista-temporal')).not.toBeNull();
+    expect(harness.routeNativeElement!.querySelector('app-nueva-solicitud')).not.toBeNull();
     await harness.navigateByUrl('/usuarios');
     expect(TestBed.inject(Router).url).toBe('/acceso-denegado');
     http.expectNone(() => true);

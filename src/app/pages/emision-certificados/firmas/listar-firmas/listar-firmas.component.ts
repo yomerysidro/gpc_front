@@ -1,7 +1,8 @@
 import { afterNextRender, Component, computed, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { AsignarFirmantesComponent } from '../asignar-firmantes/asignar-firmantes.component';
 import { catchError, concatMap, defer, forkJoin, from, map, Observable, of, shareReplay, Subscription, switchMap, tap, toArray } from 'rxjs';
 import { ErrorApi } from '../../../../core/interfaces/api/api-response.interface';
 import { Firma, TrabajadorEmision } from '../../../../core/interfaces/emision-certificados/emision-certificados.interface';
@@ -13,18 +14,27 @@ import { PageTitleComponent } from '../../../../shared/components/page-title/pag
 import { DatoFirmante, FirmanteVistaMunicipal } from '../firmante-vista.interface';
 import { FirmanteCardComponent } from '../firmante-card/firmante-card.component';
 import { FormularioFirmanteComponent } from '../formulario-firmante/formulario-firmante.component';
+import { ESCRITURA_EMISION_AUTORIZADA } from '../../../../core/services/emision-certificados/operaciones-emision';
 
 @Component({
   selector: 'app-listar-firmas', standalone: true,
-  imports: [RouterLink, ReactiveFormsModule, PageTitleComponent, FirmanteCardComponent, FormularioFirmanteComponent, DialogoComponent, DialogoConfirmacionComponent],
+  imports: [RouterLink, ReactiveFormsModule, PageTitleComponent, FirmanteCardComponent, FormularioFirmanteComponent, DialogoComponent, DialogoConfirmacionComponent, AsignarFirmantesComponent],
   templateUrl: './listar-firmas.component.html',
-  styleUrls: ['../../compartidos/emision.scss', './listar-firmas.component.scss'],
+  styleUrls: ['../../compartidos/emision.scss', './listar-firmas.component.scss', './modal-firmante.scss'],
 })
 export class ListarFirmasComponent {
+  protected readonly escrituraAutorizada = inject(ESCRITURA_EMISION_AUTORIZADA);
   private readonly api = inject(EmisionCertificadosService);
   protected readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly dialogo = viewChild.required(DialogoComponent);
+  private readonly dialogo = viewChild.required<DialogoComponent>('credencial');
+  protected readonly detalleDialogo = viewChild.required<DialogoComponent>('detalleCredencial');
+  private readonly formularioFirmante = viewChild(FormularioFirmanteComponent);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly parametros = toSignal(this.route.queryParamMap, { requireSync: true });
+  protected readonly pestana = computed(() => this.parametros().get('pestana') === 'asignaciones' ? 'asignaciones' : 'firmantes');
+  protected readonly detalle = signal<FirmanteVistaMunicipal | null>(null);
   private readonly confirmacion = viewChild.required(DialogoConfirmacionComponent);
   private carga?: Subscription;
   private readonly cache = new Map<string, Observable<DatoFirmante<string>>>();
@@ -131,9 +141,19 @@ export class ListarFirmasComponent {
     if (!this.auth.tienePermiso(`ponentes-firmantes.${firma ? 'editar' : 'crear'}`)) return;
     this.editar.set(firma); this.formularioActivo.set(true); this.dialogo().abrir();
   }
-  protected cerrarFormulario(): void { this.formularioActivo.set(false); this.editar.set(null); this.dialogo().cerrar(); }
+  protected cerrarFormulario(): void { this.formularioFirmante()?.limpiar(); this.formularioActivo.set(false); this.editar.set(null); this.dialogo().cerrar(); }
+  protected consultar(firmante: FirmanteVistaMunicipal): void { this.detalle.set(firmante); this.detalleDialogo().abrir(); }
+  protected seleccionarPestana(pestana: 'firmantes' | 'asignaciones'): void {
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { pestana: pestana === 'firmantes' ? null : pestana }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+  protected teclaPestana(evento: KeyboardEvent): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(evento.key) || !(evento.currentTarget instanceof HTMLElement)) return;
+    evento.preventDefault(); const destino = evento.key === 'Home' ? 'firmantes' : evento.key === 'End' ? 'asignaciones' : this.pestana() === 'firmantes' ? 'asignaciones' : 'firmantes';
+    this.seleccionarPestana(destino); evento.currentTarget.querySelector<HTMLElement>('#firmas-tab-' + destino)?.focus();
+  }
   protected alGuardar(): void { this.cerrarFormulario(); this.aviso.set('La credencial del firmante se guardó correctamente.'); this.cargar(); }
   protected async eliminar(firma: Firma): Promise<void> {
+    if (!this.escrituraAutorizada) return;
     if (!this.auth.tienePermiso('ponentes-firmantes.eliminar') || this.eliminando() !== null) return;
     if (!await this.confirmacion().abrir()) return;
     this.eliminando.set(firma.id_firma); this.errorOperacion.set(null);

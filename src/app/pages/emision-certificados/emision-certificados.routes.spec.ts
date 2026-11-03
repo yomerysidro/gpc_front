@@ -83,7 +83,7 @@ describe('Autorización institucional y navegación de Emisión', () => {
   it('conecta certificados y firmas y conserva la consulta anterior fuera del Sidebar', async () => {
     await sesion(['emision.ver', 'ponentes-firmantes.ver']);
     const harness = await RouterTestingHarness.create('/inicio');
-    for (const [opcion, titulo] of [['certificados/documentos', 'Documentos'], ['firmas', 'Gestión de Firmantes Municipales']]) {
+    for (const [opcion, titulo] of [['certificados/documentos', 'Certificados emitidos'], ['firmas', 'GESTIÓN DE FIRMANTES MUNICIPALES']]) {
       const url = `/certificaciones/${opcion}`;
       const enlace = harness.routeNativeElement!.querySelector<HTMLAnchorElement>(`app-sidebar a[href="${url}"]`)!;
       expect(enlace).withContext(url).not.toBeNull();
@@ -106,8 +106,8 @@ describe('Autorización institucional y navegación de Emisión', () => {
     await harness.fixture.whenStable(); harness.detectChanges();
     expect(TestBed.inject(Router).url).toBe('/certificaciones/firmas');
     const pagina = harness.routeNativeElement!.querySelector('app-listar-firmas')!;
-    expect(pagina.querySelector('h1')!.textContent).toBe('Gestión de Firmantes Municipales');
-    expect(pagina.textContent).toContain('Registrar firmante');
+    expect(pagina.querySelector('h1')!.textContent).toBe('GESTIÓN DE FIRMANTES MUNICIPALES');
+    expect(pagina.textContent).toContain('REGISTRAR FIRMANTE');
     expect(pagina.querySelector('app-listado-emision')).toBeNull();
     expect(pagina.textContent).not.toContain('Nuevo registro');
     expect(pagina.textContent).not.toContain('Filtrar por');
@@ -144,7 +144,7 @@ describe('Autorización institucional y navegación de Emisión', () => {
     });
     await navegacion;
     harness.detectChanges();
-    expect(TestBed.inject(Router).url).toBe('/certificaciones/certificados');
+    expect(TestBed.inject(Router).url).toBe('/certificaciones/generar-emitir');
     expect(harness.routeNativeElement!.querySelector('app-listar-certificados')).not.toBeNull();
     expect(api.listar).not.toHaveBeenCalled();
   });
@@ -166,12 +166,46 @@ describe('Autorización institucional y navegación de Emisión', () => {
     expect(api.obtener).not.toHaveBeenCalled();
   });
 
+  it('redirige preparación y sus alias a una sola pantalla sin montar dos listados', async () => {
+    await sesion(['emision.ver']);
+    const harness = await RouterTestingHarness.create('/emision');
+    for (const url of ['/emision', '/certificados', '/certificaciones/certificados']) {
+      await harness.navigateByUrl(url); harness.detectChanges();
+      expect(TestBed.inject(Router).url).toBe('/certificaciones/generar-emitir');
+      expect(harness.routeNativeElement!.querySelectorAll('app-generar-emitir').length).toBe(1);
+      expect(harness.routeNativeElement!.querySelectorAll('app-listar-certificados').length).toBe(1);
+      expect(harness.routeNativeElement!.querySelector('app-formulario-certificado')).toBeNull();
+    }
+  });
+
+  it('redirige el enlace antiguo de creación y carga solo el formulario reutilizado', async () => {
+    await sesion(['emision.ver', 'emision.crear']);
+    const harness = await RouterTestingHarness.create('/certificaciones/certificados/nuevo');
+    expect(TestBed.inject(Router).url).toBe('/certificaciones/generar-emitir?nuevo=1');
+    expect(harness.routeNativeElement!.querySelectorAll('app-formulario-certificado').length).toBe(1);
+    expect(harness.routeNativeElement!.querySelector('app-listar-certificados')).toBeNull();
+    expect(api.listarTodos.calls.allArgs()).toEqual([['tipos-certificado']]);
+  });
+
+  it('conserva edición mediante la ruta antigua y vuelve a comprobar permisos al cambiar parámetros', async () => {
+    await sesion(['emision.ver', 'emision.editar']);
+    api.obtener.and.returnValue(of({ id_certificado: 9, id_persona: 6, id_tipo_certificado: 2, id_participacion: 1,
+      id_reconocimiento: null, id_practica: null, fecha_emision: null, estado: true, notificado: false, fecha_notificacion: null }));
+    const harness = await RouterTestingHarness.create('/certificaciones/generar-emitir');
+    await harness.navigateByUrl('/certificaciones/certificados/9/editar'); harness.detectChanges();
+    expect(TestBed.inject(Router).url).toBe('/certificaciones/generar-emitir?editar=9');
+    expect(api.obtener).toHaveBeenCalledWith('certificados', 9);
+    expect(harness.routeNativeElement!.querySelectorAll('app-formulario-certificado').length).toBe(1);
+    await harness.navigateByUrl('/certificaciones/generar-emitir?nuevo=1');
+    expect(TestBed.inject(Router).url).toBe('/acceso-denegado');
+  });
+
   it('redirige al login cuando auth/me responde 401', async () => {
     const carga = firstValueFrom(TestBed.inject(AuthService).cargarSesion());
     http.expectOne(`${environment.apiBaseUrl}/auth/me`).flush({ message: 'No autenticado' }, { status: 401, statusText: 'Unauthorized' });
     expect(await carga).toBeFalse();
     await RouterTestingHarness.create('/certificaciones/certificados');
-    expect(TestBed.inject(Router).url).toBe('/login?returnUrl=%2Fcertificaciones%2Fcertificados');
+    expect(TestBed.inject(Router).url).toBe('/login?returnUrl=%2Fcertificaciones%2Fgenerar-emitir');
     expect(api.listar).not.toHaveBeenCalled();
   });
 });

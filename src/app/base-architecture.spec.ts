@@ -56,7 +56,8 @@ describe('Componentes de la estructura base', () => {
     fixture.componentRef.setInput('items', [{ label: 'Consulta adicional', path: '/consulta-adicional' }]);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('a[href="/consulta-adicional"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('a[href="/certificaciones/certificados"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/certificaciones/generar-emitir"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/certificaciones/certificados"]')).toBeNull();
     fixture.componentRef.setInput('items', []); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('a[href="/consulta-adicional"]')).toBeNull();
   });

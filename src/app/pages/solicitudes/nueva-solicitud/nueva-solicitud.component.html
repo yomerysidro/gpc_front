@@ -1,0 +1,43 @@
+﻿<header class="encabezado-pagina"><span class="material-symbols-outlined icono-pagina" aria-hidden="true">edit_calendar</span><div><app-page-title [title]="registro() ? 'Editar solicitud de actividad' : 'Nueva solicitud de actividad'" /><p>Planifique su actividad y revise la información antes de enviarla a evaluación.</p></div></header>
+<app-integracion-solicitudes />
+<ol class="pasos" aria-label="Pasos de registro"><li [attr.aria-current]="!confirmar() ? 'step' : null"><span>1</span><div>Completar solicitud<small>Datos y programación</small></div></li><li [attr.aria-current]="confirmar() ? 'step' : null"><span>2</span><div>Revisar y enviar<small>Confirmación de la información</small></div></li></ol>
+@if (error()) { <p class="error aviso" role="alert">{{ error() }}</p> }
+@if (aviso()) { <p class="aviso" role="status">{{ aviso() }}</p> }
+@if (cargando()) { <p class="aviso" role="status">Consultando datos autorizados…</p> }
+@if (confirmar(); as datos) {
+  <section class="card" aria-label="Confirmación de datos"><h2>Revisa los datos de tu solicitud</h2>
+    @if (!api.integrado && !aviso()) { <p class="aviso" role="status">{{ mensajeDemo }}</p> }
+    <app-solicitud-detalle [datos]="datos" [area]="nombreArea(datos.areaId)" [responsable]="contexto()?.responsable || auth.usuario()?.nombre || 'Pendiente de autenticación'" [tipo]="nombreTipo(datos.tipoId)" />
+    <p class="ayuda">{{ api.integrado ? 'Enviar la solicitud inicia su evaluación. No genera certificados ni acredita una aprobación.' : 'El envío de prueba solo cambia el estado temporal a Enviada. No inicia una evaluación oficial.' }}</p>
+    <div class="acciones pie-formulario"><button class="btn" type="button" [disabled]="ocupado()" (click)="editar()">Volver al formulario</button><button class="btn" type="button" [disabled]="!puedeGuardar()" (click)="guardar()">{{ registro()?.estado === "Observada" ? "Guardar corrección" : "Guardar borrador" }}</button><button class="btn btn-primary" type="button" [disabled]="!puedeGuardar()" (click)="guardar(true)">{{ ocupado() ? 'Procesando…' : 'Enviar solicitud' }}</button></div>
+  </section>
+} @else {
+  <section class="card formulario-solicitud"><div class="encabezado"><div><h2>Datos de la actividad propuesta</h2><p class="ayuda">Los campos con * son obligatorios.</p></div><button class="btn" type="button" (click)="cargarCatalogos()" [disabled]="cargandoAreas() || cargandoTipos() || ocupado()">Actualizar catálogos</button></div>
+    <form [formGroup]="form" (ngSubmit)="revisar()" novalidate [attr.aria-busy]="ocupado() || cargando()">
+      <fieldset [disabled]="ocupado() || cargando()"><legend>Unidad solicitante</legend><div class="form-grid">
+        <div class="form-field"><label for="solicitud-area">Área solicitante *</label><select id="solicitud-area" class="input" formControlName="areaId" required aria-describedby="ayuda-area error-area" [attr.aria-invalid]="form.controls.areaId.touched && form.controls.areaId.invalid"><option value="">{{ cargandoAreas() ? 'Cargando áreas…' : 'Selecciona un área' }}</option>@for (area of areasDisponibles(); track area.id) { <option [value]="area.id">{{ area.nombre }}</option> }</select><small id="ayuda-area">{{ api.integrado ? 'Solo áreas autorizadas para tu sesión.' : 'Catálogo real de referencia. La API deberá autorizar el área antes de guardar.' }}</small>
+          @if (errorAreas()) { <p class="error" role="status">{{ errorAreas() }}</p> }
+          @if (!cargandoAreas() && !errorAreas() && !areasDisponibles().length) { <small>No hay áreas disponibles para seleccionar.</small> }
+          @if (form.controls.areaId.touched && form.controls.areaId.invalid) { <p class="error" id="error-area">Selecciona un área solicitante.</p> }
+        </div>
+        <div class="form-field"><label for="solicitud-responsable">Responsable solicitante</label><input id="solicitud-responsable" class="input" readonly [value]="contexto()?.responsable || auth.usuario()?.nombre || ''" placeholder="Pendiente de sesión autenticada" /><small>La identidad la determina Laravel mediante la sesión autenticada.</small></div>
+      </div></fieldset>
+      <fieldset [disabled]="ocupado() || cargando()"><legend>Actividad propuesta</legend><div class="form-grid">
+        @for (campo of camposTexto; track campo.clave) { <div class="form-field"><label [for]="'solicitud-' + campo.clave">{{ campo.label }} {{ campo.obligatorio ? '*' : '(opcional)' }}</label><input [id]="'solicitud-' + campo.clave" class="input" [formControlName]="campo.clave" [maxlength]="campo.maximo" [required]="campo.obligatorio" [attr.aria-invalid]="form.controls[campo.clave].touched && form.controls[campo.clave].invalid" [attr.aria-describedby]="'error-' + campo.clave" />@if (form.controls[campo.clave].touched && form.controls[campo.clave].invalid) { <p class="error" [id]="'error-' + campo.clave">{{ campo.obligatorio ? 'Ingresa un nombre; no solo espacios.' : 'Revisa la sede propuesta.' }} Máximo {{ campo.maximo }} caracteres.</p> }</div> }
+        <div class="form-field"><label for="solicitud-tipo">Tipo de actividad *</label><select id="solicitud-tipo" class="input" formControlName="tipoId" required aria-describedby="error-tipo" [attr.aria-invalid]="form.controls.tipoId.touched && form.controls.tipoId.invalid"><option value="">{{ cargandoTipos() ? 'Cargando tipos…' : 'Selecciona un tipo activo' }}</option>@for (tipo of tipos(); track tipo.id) { <option [value]="tipo.id">{{ tipo.nombre }}</option> }</select>
+          @if (errorTipos()) { <p class="error" role="status">{{ errorTipos() }}</p> }
+          @if (!cargandoTipos() && !errorTipos() && !tipos().length) { <small>No hay tipos activos disponibles.</small> }
+          @if (form.controls.tipoId.touched && form.controls.tipoId.invalid) { <p class="error" id="error-tipo">Selecciona un tipo de actividad.</p> }
+        </div>
+      </div></fieldset>
+      <fieldset [disabled]="ocupado() || cargando()"><legend>Programación</legend><div class="form-grid">
+        <div class="form-field"><label for="solicitud-inicio">Fecha de inicio propuesta *</label><input id="solicitud-inicio" class="input" type="date" formControlName="inicio" required aria-describedby="error-inicio" [attr.aria-invalid]="form.controls.inicio.touched && (form.controls.inicio.invalid || form.hasError('fechaInvalida'))" />@if (form.controls.inicio.touched && (form.controls.inicio.invalid || form.hasError('fechaInvalida'))) { <p class="error" id="error-inicio">Indica una fecha de inicio válida.</p> }</div>
+        <div class="form-field"><label for="solicitud-fin">Fecha de fin propuesta *</label><input id="solicitud-fin" class="input" type="date" formControlName="fin" [min]="form.controls.inicio.value" required aria-describedby="error-fin" [attr.aria-invalid]="form.controls.fin.touched && (form.controls.fin.invalid || form.invalid && !!form.errors)" />@if (form.controls.fin.touched && (form.controls.fin.invalid || form.errors)) { <p class="error" id="error-fin">La fecha de fin debe ser válida y no puede preceder al inicio.</p> }</div>
+      </div></fieldset>
+      <fieldset [disabled]="ocupado() || cargando()"><legend>Descripción y justificación</legend><div class="form-grid">
+        @for (campo of camposLargos; track campo.clave) { <div class="form-field"><label [for]="'solicitud-' + campo.clave">{{ campo.label }} {{ campo.obligatorio ? '*' : '(opcional)' }}</label><textarea class="input" [id]="'solicitud-' + campo.clave" [formControlName]="campo.clave" rows="4" [attr.maxlength]="campo.maximo" [required]="campo.obligatorio" [attr.aria-invalid]="form.controls[campo.clave].touched && form.controls[campo.clave].invalid" [attr.aria-describedby]="'error-' + campo.clave"></textarea>@if (form.controls[campo.clave].touched && form.controls[campo.clave].invalid) { <p class="error" [id]="'error-' + campo.clave">{{ campo.clave === "descripcion" ? "La descripción admite hasta 255 caracteres." : "Explica la justificación de la actividad; no solo espacios." }}</p> }</div> }
+      </div></fieldset>
+      <div class="acciones pie-formulario"><a class="btn" routerLink="/solicitudes/mis-solicitudes">Cancelar</a><button class="btn" type="button" [disabled]="!puedeGuardar()" (click)="guardar()">{{ registro()?.estado === "Observada" ? "Guardar corrección" : "Guardar borrador" }}</button><button class="btn btn-primary" type="submit" [disabled]="ocupado() || cargando()">Revisar datos</button></div>
+    </form>
+  </section>
+}

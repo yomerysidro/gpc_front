@@ -1,7 +1,8 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { Component, inject, input, PLATFORM_ID } from '@angular/core';
-import { CertificadoDocumento, CertificadoFirma, CertificadoRow, Reconocimiento } from '../../../core/interfaces/emision-certificados/emision-certificados.interface';
+import { CertificadoDocumento, CertificadoFirma, Reconocimiento } from '../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { documentoAnulado, etiquetaEstado } from './estado-emision';
+import { DatosPreparacion } from '../../../core/interfaces/emision-certificados/preparacion-documental.interface';
 
 export interface FirmanteVista { readonly cargo: string; readonly trabajador: number }
 
@@ -11,7 +12,7 @@ export interface FirmanteVista { readonly cargo: string; readonly trabajador: nu
   templateUrl: './visor-certificado.component.html', styleUrl: './visor-certificado.component.scss',
 })
 export class VisorCertificadoComponent {
-  readonly certificado = input<CertificadoRow | null>(null);
+  readonly certificado = input<DatosPreparacion | null>(null);
   readonly beneficiario = input<string | null>(null);
   protected readonly anulado = documentoAnulado;
   protected readonly estadoRegistro = etiquetaEstado;

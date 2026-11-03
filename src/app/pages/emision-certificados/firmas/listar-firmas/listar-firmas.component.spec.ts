@@ -1,3 +1,4 @@
+import { ESCRITURA_EMISION_AUTORIZADA } from '../../../../core/services/emision-certificados/operaciones-emision';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -18,7 +19,7 @@ describe('Pantalla integrada de Gestión de Firmantes Municipales', () => {
 
   beforeEach(() => {
     permisos = new Set(['ponentes-firmantes.ver', 'ponentes-firmantes.crear', 'ponentes-firmantes.editar', 'ponentes-firmantes.eliminar', 'emision.ver']);
-    TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
+    TestBed.configureTestingModule({ providers: [{ provide: ESCRITURA_EMISION_AUTORIZADA, useValue: true },provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
       { provide: AuthService, useValue: { tienePermiso: (permiso: string) => permisos.has(permiso) } },
     ] });
     http = TestBed.inject(HttpTestingController);
@@ -46,7 +47,7 @@ describe('Pantalla integrada de Gestión de Firmantes Municipales', () => {
 
   it('reemplaza realmente el CRUD generico por tarjetas con datos reales recibidos y sin secretos', () => {
     cargar(); relaciones();
-    expect(fixture.nativeElement.querySelector('h1').textContent).toBe('Gestión de Firmantes Municipales');
+    expect(fixture.nativeElement.querySelector('h1').textContent).toBe('GESTIÓN DE FIRMANTES MUNICIPALES');
     expect(fixture.nativeElement.querySelector('app-listado-emision, table')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Nuevo registro');
     expect(fixture.nativeElement.textContent).not.toContain('Valor exacto');
@@ -81,7 +82,8 @@ describe('Pantalla integrada de Gestión de Firmantes Municipales', () => {
 
   it('mantiene las tarjetas de solo lectura cuando faltan los permisos de administracion', () => {
     permisos = new Set(['ponentes-firmantes.ver']); cargar(); relaciones();
-    expect(fixture.nativeElement.querySelector('app-firmante-card button')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-firmante-card').textContent).toContain('Ver detalle');
+    expect(fixture.nativeElement.querySelectorAll('app-firmante-card button').length).toBe(1);
     expect(Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).some(boton => boton.textContent?.trim() === 'Registrar firmante')).toBeFalse();
     expect(fixture.nativeElement.querySelector('a[href="/certificaciones/firmas/aplicadas"]')).toBeNull();
   });
@@ -124,9 +126,9 @@ describe('Pantalla integrada de Gestión de Firmantes Municipales', () => {
 
   it('no rellena rutas privadas ni contrasenas al administrar una credencial', async () => {
     cargar(); relaciones();
-    fixture.nativeElement.querySelector('app-firmante-card button').click(); fixture.detectChanges(); await fixture.whenStable(); fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('#firmante-referencia').value).toBe('');
-    expect(fixture.nativeElement.querySelector('#firmante-clave').value).toBe('');
+    fixture.nativeElement.querySelectorAll('app-firmante-card button')[1].click(); fixture.detectChanges(); await fixture.whenStable(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#firmante-referencia')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#firmante-clave')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('NO-MOSTRAR');
     http.expectNone(req => req.url.includes('/firmas/detail/'));
   });

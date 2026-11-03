@@ -1,0 +1,48 @@
+<header class="encabezado-pagina"><span class="material-symbols-outlined icono-pagina" aria-hidden="true">{{ bandeja() === 'propias' ? 'inbox' : bandeja() === 'revision' ? 'fact_check' : 'approval' }}</span><div><app-page-title [title]="titulo()" /><p>{{ bandeja() === 'propias' ? 'Consulte el estado y seguimiento de sus actividades propuestas.' : bandeja() === 'revision' ? 'Revise las propuestas antes de su evaluación por Gerencia.' : 'Evalúe las propuestas derivadas por Recursos Humanos.' }}</p></div></header><app-integracion-solicitudes />
+<div class="encabezado"><p>{{ bandeja() === 'propias' ? 'Seguimiento de las solicitudes autorizadas de tu área.' : bandeja() === 'revision' ? 'Evalúa la información y deriva las solicitudes conformes a Gerencia.' : 'Consulta la revisión de RR. HH. antes de registrar una decisión.' }}</p>
+  @if (bandeja() === 'propias') { @if (puedeCrear()) { <a class="btn btn-primary" routerLink="/solicitudes/nueva">Nueva solicitud</a> }
+    @else { <button type="button" class="btn btn-primary" disabled title="Requiere habilitación del backend y permiso de creación">Nueva solicitud</button> } }
+</div>
+<div class="indicadores" aria-label="Resumen de resultados">
+  <section class="card indicador"><strong>{{ pagina()?.total ?? '—' }}</strong><p>Resultados del filtro</p></section>
+  <section class="card indicador"><strong>{{ pendientes() ?? '—' }}</strong><p>Pendientes en esta página</p></section>
+  <section class="card indicador"><strong>{{ observadas() ?? '—' }}</strong><p>Observadas en esta página</p></section>
+</div>
+<section class="card" aria-label="Bandeja de solicitudes"><h2>Consulta de solicitudes</h2>
+  @if (!api.integrado && bandeja() === 'propias') { <p class="aviso" role="status">{{ mensajeDemo }}. Estos datos solo duran durante esta sesión de la aplicación.</p> }
+  <form class="filtros" [formGroup]="filtros" (ngSubmit)="cargar()">
+    <div class="form-field"><label for="filtro-busqueda">Actividad o número de solicitud</label><input class="input" id="filtro-busqueda" formControlName="busqueda" type="search" /></div>
+    <div class="form-field"><label for="filtro-estado">Estado</label><select class="input" id="filtro-estado" formControlName="estado"><option value="">Todos los estados</option>@for (estado of bandeja() === 'gerencia' ? ['Pendiente de aprobación'] : estados; track estado) { <option [value]="estado">{{ estado }}</option> }</select></div>
+    <div class="form-field"><label for="filtro-desde">Desde</label><input class="input" id="filtro-desde" formControlName="desde" type="date" /></div>
+    <div class="form-field"><label for="filtro-hasta">Hasta</label><input class="input" id="filtro-hasta" formControlName="hasta" type="date" [min]="filtros.controls.desde.value" /></div>
+    <div class="acciones ancho"><button class="btn btn-primary" type="submit" [disabled]="!operativo() || cargando() || ocupado()">Buscar</button><button class="btn" type="button" [disabled]="!operativo() || ocupado()" (click)="limpiar()">Limpiar filtros</button></div>
+  </form>
+  @if (aviso()) { <p class="aviso" role="status">{{ aviso() }}</p> }
+  @if (cargando()) { <p role="status" aria-live="polite">Cargando solicitudes…</p> }
+  @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+  @if (pagina(); as datos) {
+    @if (datos.registros.length) {
+      <div class="tabla-scroll" tabindex="0" role="region" aria-label="Resultados de solicitudes"><table class="table"><caption>{{ api.integrado ? 'Solicitudes autorizadas por el servidor' : 'Mis solicitudes de demostración: registros temporales en memoria' }}</caption>
+        <thead><tr><th scope="col">Solicitud y actividad</th><th scope="col">Área / responsable</th><th scope="col">Fechas</th><th scope="col">Estado y revisión</th><th scope="col">Acciones</th></tr></thead>
+        <tbody>@for (fila of datos.registros; track fila.id) {
+          <tr><td><strong>{{ fila.numero }}</strong><p>{{ fila.nombre }}</p></td><td>{{ fila.area }}<small>{{ fila.responsable }}</small></td>
+            <td>{{ fila.fecha | date:'dd/MM/yyyy' }}<small>Propuesta: {{ fila.inicio | date:'dd/MM/yyyy' }} – {{ fila.fin | date:'dd/MM/yyyy' }}</small></td>
+            <td><app-solicitud-estado-badge [estado]="fila.estado" /><small>{{ fila.revisor || 'Revisor no informado por la API' }}</small><small>{{ fila.resultadoRevision }}</small><small>{{ fila.ultimaObservacion }}</small></td>
+            <td><div class="acciones"><button class="btn" type="button" [disabled]="ocupado() || fila.puedeVerDetalle === false" [attr.title]="fila.puedeVerDetalle === false ? 'La consulta del detalle requiere autorización del servidor para esta solicitud.' : null" (click)="ver(fila)">Ver detalle</button>
+              @if (bandeja() === 'propias' && fila.puedeEditar) { <a class="btn" routerLink="/solicitudes/nueva" [queryParams]="{ editar: fila.id }">{{ fila.estado === 'Observada' ? 'Corregir solicitud' : 'Editar borrador' }}</a> }
+              @for (accion of acciones(fila); track accion) { <button class="btn" type="button" [class.btn-primary]="accion === 'Aprobar' || accion === 'Derivar'" [disabled]="ocupado() || !operativo()" (click)="modal().abrir(accion, fila)">{{ accion === 'Derivar' ? 'Derivar a Gerencia' : accion }}</button> }
+            </div></td></tr>
+        }</tbody></table></div>
+    } @else { <div class="vacio" role="status">No se encontraron solicitudes para estos filtros.</div> }
+    <nav class="paginacion" aria-label="Paginación de solicitudes"><button class="btn" type="button" [disabled]="datos.pagina <= 1 || ocupado()" (click)="cargar(datos.pagina - 1)">Anterior</button>
+      <span>Página {{ datos.pagina }} de {{ datos.ultimaPagina }} · {{ datos.total }} registros</span><button class="btn" type="button" [disabled]="datos.pagina >= datos.ultimaPagina || ocupado()" (click)="cargar(datos.pagina + 1)">Siguiente</button></nav>
+  }
+  @if (!api.integrado && bandeja() !== 'propias') { <div class="vacio" role="status"><span class="material-symbols-outlined" aria-hidden="true">inbox</span><h3>Bandeja preparada para sus solicitudes</h3><p>Los registros aparecerán cuando se habilite la consulta autenticada.</p></div> }
+</section>
+<app-dialogo titulo="Detalle de solicitud" (cerrado)="cerrarDetalle()">
+  @if (cargandoDetalle()) { <p role="status">Consultando detalle autorizado…</p> }
+  @if (errorDetalle()) { <p class="error" role="alert">{{ errorDetalle() }}</p> }
+  @if (detalle(); as fila) { <app-solicitud-detalle [datos]="fila" [registro]="fila" [area]="fila.area" [responsable]="fila.responsable" [tipo]="fila.tipo" /> }
+  <div class="acciones"><button class="btn" type="button" autofocus (click)="dialogo().cerrar()">Cerrar</button></div>
+</app-dialogo>
+<app-decision-modal [ocupado]="ocupado()" [integrado]="operativo()" [demostracion]="!api.integrado" (confirmado)="decidir($event)" />

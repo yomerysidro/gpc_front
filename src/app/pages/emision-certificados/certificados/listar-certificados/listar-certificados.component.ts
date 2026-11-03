@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
-import { afterNextRender, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, inject, input, output, signal } from '@angular/core';
+import { SeleccionCertificado } from '../../../../core/interfaces/emision-certificados/preparacion-documental.interface';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -26,6 +27,8 @@ interface CertificadoVista {
   styleUrls: ['../../compartidos/emision.scss', './listar-certificados.component.scss'],
 })
 export class ListarCertificadosComponent {
+  readonly seleccionable = input(false);
+  readonly seleccionado = output<SeleccionCertificado>();
   private readonly api = inject(EmisionCertificadosService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly auth = inject(AuthService);
@@ -104,6 +107,9 @@ export class ListarCertificadosComponent {
 
   protected nombreOrigen(registro: CertificadoRow): string {
     return registro.id_participacion ? 'Participación' : registro.id_reconocimiento ? 'Reconocimiento' : registro.id_practica ? 'Prácticas' : 'Sin origen';
+  }
+  protected seleccionar(item: CertificadoVista): void {
+    this.seleccionado.emit({ registro: item.registro, beneficiario: item.beneficiario, tipo: item.tipo, dni: this.dni()[item.registro.id_persona] ?? null });
   }
   protected limpiar(): void { for (const control of [this.filtroBeneficiario, this.filtroTipo, this.filtroOrigen, this.filtroEstado]) control.reset(); }
   private normalizar(texto: string): string { return texto.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase(); }
