@@ -1,3 +1,4 @@
+import { ESCRITURA_EMISION_AUTORIZADA } from './operaciones-emision';
 import { HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -28,7 +29,7 @@ describe('Contrato HTTP de Emisión con Laravel', () => {
   };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [
+    TestBed.configureTestingModule({ providers: [{ provide: ESCRITURA_EMISION_AUTORIZADA, useValue: true },
       provideRouter([]), provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(),
       { provide: AuthService, useClass: SessionAuthService },
     ] });

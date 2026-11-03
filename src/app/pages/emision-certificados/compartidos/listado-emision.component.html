@@ -1,14 +1,16 @@
+@if (!formularioExclusivoAbierto()) {
 @if (config().aviso) { <p class="nota">{{ config().aviso }}</p> }
 @if (aviso(); as mensaje) { <p class="alert alert-exito" role="status">{{ mensaje }}</p> }
 @if (errorOperacion(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
 @for (mensaje of erroresRelaciones(); track mensaje) { <p class="alert alert-advertencia" role="alert">{{ mensaje }}</p> }
+}
 @if (editable(); as recursoEditable) {
-  @if (!soloLectura() && permitido('crear')) {
+  @if (!formularioExclusivoAbierto() && !soloLectura() && permitido('crear')) {
     <div class="acciones">
       @if (nuevoUrl(); as url) {
         <a class="btn btn-primary" [routerLink]="url">Nuevo registro</a>
       } @else {
-        <button class="btn btn-primary" type="button" (click)="editar.set(null)">Nuevo registro</button>
+        <button class="btn btn-primary" type="button" (click)="abrirFormulario(null)">Nuevo registro</button>
       }
     </div>
   }
@@ -17,6 +19,7 @@
       (guardado)="alGuardar()" (cancelar)="editar.set(undefined)" />
   }
 }
+@if (!formularioExclusivoAbierto()) {
 <form class="filtros" role="search" [attr.aria-label]="'Filtrar ' + config().titulo" [formGroup]="filtro" (ngSubmit)="cargar(1)">
   <div class="form-field">
     <label [for]="recurso() + '-filtro-campo'">Filtrar por</label>
@@ -62,7 +65,7 @@
                     @if (editarBase(); as base) {
                       <a class="btn" [routerLink]="[base, identificar(registro), 'editar']">Editar</a>
                     } @else {
-                      <button class="btn" type="button" (click)="editar.set(identificar(registro))">Editar</button>
+                      <button class="btn" type="button" (click)="abrirFormulario(identificar(registro))">Editar</button>
                     }
                   }
                   @if (puedeEliminar()) {
@@ -94,5 +97,6 @@
     </dl>
     <button class="btn" type="button" (click)="detalle.set(null)">Cerrar detalle</button>
   </section>
+}
 }
 <app-dialogo-confirmacion titulo="Eliminar registro" texto="¿Deseas eliminar este registro? Si tiene dependencias históricas, la operación será rechazada." confirmar="Eliminar" />

@@ -19,6 +19,7 @@ import { configuracionGestionGuard } from './components/sidebar/configuracion.gu
 import { SIDEBAR_CONFIG, rutaPantallaPendiente } from './components/sidebar/modulos-navegacion';
 import { pantallasPendientesGuard } from './components/sidebar/pantallas-pendientes.guard';
 import { VistaTemporalComponent } from './pages/vista-temporal/vista-temporal.component';
+import { VISTAS_SOLICITUDES } from './pages/solicitudes/solicitudes.routes';
 import { EMISION_CERTIFICADOS_ROUTES } from './pages/emision-certificados/emision-certificados.routes';
 
 const gestionRoutes: Routes = [
@@ -76,10 +77,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: 'inicio', component: HomeComponent },
+      { path: 'pendientes/generar-emitir', pathMatch: 'full', redirectTo: '/certificaciones/generar-emitir' },
       // Solo páginas informativas: authGuard del layout y guard de consulta administrativa.
       ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.filter(entrada => !entrada.habilitado && !!entrada.pendiente)
         .map(entrada => ({
-          path: rutaPantallaPendiente(entrada).slice(1), component: VistaTemporalComponent,
+          path: rutaPantallaPendiente(entrada).slice(1),
+          ...(VISTAS_SOLICITUDES[entrada.id] ? { loadComponent: VISTAS_SOLICITUDES[entrada.id] } : { component: VistaTemporalComponent }),
           canActivate: [pantallasPendientesGuard],
           data: {
             titulo: entrada.label, descripcion: entrada.descripcionPreliminar ?? entrada.pendiente,

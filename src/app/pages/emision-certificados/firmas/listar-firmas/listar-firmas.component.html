@@ -1,10 +1,14 @@
 <section>
   <header class="encabezado encabezado-firmantes">
-    <div class="titulo-firmantes"><span class="material-symbols-outlined seguridad" aria-hidden="true">admin_panel_settings</span><div><app-page-title title="Gestión de Firmantes Municipales" /><p>Administra las credenciales del personal autorizado para la firma de documentos institucionales.</p></div></div>
-    @if (auth.tienePermiso('ponentes-firmantes.crear')) { <button class="btn btn-primary" type="button" [disabled]="cargando() || !!errorGestion()" (click)="abrirFormulario()"><span class="material-symbols-outlined" aria-hidden="true">add</span>Registrar firmante</button> }
+    <div class="titulo-firmantes"><span class="material-symbols-outlined seguridad" aria-hidden="true">admin_panel_settings</span><div><app-page-title title="GESTIÓN DE FIRMANTES MUNICIPALES" /><p>Administre las credenciales digitales de los funcionarios autorizados para la firma de certificados y constancias institucionales.</p></div></div>
+    @if (pestana() === 'firmantes' && auth.tienePermiso('ponentes-firmantes.crear')) { <button class="btn registrar-firmante" type="button" [disabled]="cargando() || !!errorGestion()" (click)="abrirFormulario()"><span class="material-symbols-outlined" aria-hidden="true">add</span>REGISTRAR FIRMANTE</button> }
   </header>
+  <div class="pestanas" role="tablist" aria-label="Gestión de firmas" (keydown)="teclaPestana($event)">
+    <button id="firmas-tab-firmantes" role="tab" type="button" aria-controls="firmas-panel-firmantes" [attr.aria-selected]="pestana() === 'firmantes'" [attr.tabindex]="pestana() === 'firmantes' ? 0 : -1" (click)="seleccionarPestana('firmantes')">Firmantes municipales</button>
+    <button id="firmas-tab-asignaciones" role="tab" type="button" aria-controls="firmas-panel-asignaciones" [attr.aria-selected]="pestana() === 'asignaciones'" [attr.tabindex]="pestana() === 'asignaciones' ? 0 : -1" (click)="seleccionarPestana('asignaciones')">Asignaciones de firmantes</button>
+  </div>
+  @if (pestana() === 'firmantes') { <section id="firmas-panel-firmantes" role="tabpanel" aria-labelledby="firmas-tab-firmantes">
   <nav class="acciones" aria-label="Operaciones relacionadas con firmantes">
-    <a class="btn" routerLink="/certificaciones/firmas/asignar-firmantes">Asignar firmantes</a>
     @if (auth.tienePermiso('emision.ver')) { <a class="btn" routerLink="/certificaciones/firmas/aplicadas">Firmas asociadas a documentos</a> }
   </nav>
   @if (aviso(); as mensaje) { <p class="alert alert-exito" role="status">{{ mensaje }}</p> }
@@ -26,14 +30,20 @@
     @if (!cargando() && !filtrados().length) { <div class="card vacio" role="status"><span class="material-symbols-outlined" aria-hidden="true">people</span><h2>{{ filas().length ? 'No hay firmantes con estos criterios' : 'Aún no hay credenciales de firmantes registradas' }}</h2><p>{{ filas().length ? 'Prueba otro nombre, cargo, área o estado disponible.' : 'Utiliza Registrar firmante para vincular una credencial a un trabajador existente, cuando tengas el permiso correspondiente.' }}</p></div> }
     <div class="tarjetas-firmantes" [attr.aria-busy]="cargando()">
       @for (firmante of visibles(); track firmante.firma.id_firma) {
-        <app-firmante-card [firmante]="firmante" [dni]="(firmante.trabajador ? dni()[firmante.trabajador.id_persona] : null) ?? null" [puedeEditar]="auth.tienePermiso('ponentes-firmantes.editar')" [puedeEliminar]="auth.tienePermiso('ponentes-firmantes.eliminar')" [ocupado]="eliminando() !== null" (administrar)="abrirFormulario(firmante.firma)" (eliminar)="eliminar(firmante.firma)" />
+        <app-firmante-card [firmante]="firmante" [dni]="(firmante.trabajador ? dni()[firmante.trabajador.id_persona] : null) ?? null" [puedeEditar]="auth.tienePermiso('ponentes-firmantes.editar')" [puedeEliminar]="escrituraAutorizada && auth.tienePermiso('ponentes-firmantes.eliminar')" [ocupado]="eliminando() !== null" (consultar)="consultar(firmante)" (administrar)="abrirFormulario(firmante.firma)" (eliminar)="eliminar(firmante.firma)" />
       }
     </div>
     @if (filtrados().length) { <div class="paginacion"><p role="status">{{ filtrados().length }} credenciales · Página {{ pagina() }} de {{ totalPaginas() }}</p><div class="acciones"><button class="btn" type="button" [disabled]="pagina() <= 1" (click)="pagina.set(pagina() - 1)">Anterior</button><button class="btn" type="button" [disabled]="pagina() >= totalPaginas()" (click)="pagina.set(pagina() + 1)">Siguiente</button></div></div> }
     <p class="nota">Los nombres y áreas se muestran cuando Gestión autoriza su lectura. El estado del trabajador es independiente de la vigencia de su credencial. Esta pantalla no aplica firmas digitales.</p>
   }
+  </section> } @else { <section id="firmas-panel-asignaciones" role="tabpanel" aria-labelledby="firmas-tab-asignaciones"><app-asignar-firmantes [integradoEnFirmas]="true" /></section> }
 </section>
-<app-dialogo [titulo]="editar() ? 'Administrar credencial del firmante' : 'Registrar firmante'" (cerrado)="formularioActivo.set(false); editar.set(null)">
-  @if (formularioActivo()) { <app-formulario-firmante [firma]="editar()" [trabajadores]="trabajadores()" [nombres]="nombresFormulario()" (guardado)="alGuardar()" (cancelar)="cerrarFormulario()" /> }
+<app-dialogo #credencial class="modal-credencial" [titulo]="editar() ? 'ADMINISTRAR CREDENCIAL DEL FIRMANTE' : 'REGISTRAR FIRMANTE MUNICIPAL'" (cerrado)="formularioActivo.set(false); editar.set(null)">
+  <button class="cerrar-credencial" type="button" aria-label="Cerrar registro de firmante" (click)="cerrarFormulario()">×</button>
+  @if (formularioActivo()) { <app-formulario-firmante [firma]="editar()" [trabajadores]="trabajadores()" [nombres]="nombresFormulario()" [documentos]="dni()" (guardado)="alGuardar()" (cancelar)="cerrarFormulario()" /> }
+</app-dialogo>
+<app-dialogo #detalleCredencial titulo="Detalle del firmante" (cerrado)="detalle.set(null)">
+  @if (detalle(); as fila) { <p>Firmante #{{ fila.firma.id_firma }} · Trabajador #{{ fila.firma.id_persona_trabajador }}</p><p>{{ fila.trabajador?.cargo || 'Cargo no disponible' }}</p><p>{{ fila.nombre.estado === 'disponible' ? fila.nombre.datos : fila.nombre.mensaje }}</p><p>Fecha administrativa: {{ fila.firma.fecha_firma }}</p><p>Vigencia de credencial y disponibilidad criptográfica: no informadas por el backend. Esta consulta no permite usar la credencial para firmar.</p> }
+  <button class="btn" type="button" autofocus (click)="detalleDialogo().cerrar()">Cerrar</button>
 </app-dialogo>
 <app-dialogo-confirmacion titulo="Eliminar registro de credencial" texto="¿Deseas eliminar esta credencial? Laravel impedirá eliminarla si tiene firmas o asignaciones históricas asociadas." confirmar="Eliminar registro" />

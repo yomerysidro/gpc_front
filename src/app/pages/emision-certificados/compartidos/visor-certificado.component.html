@@ -4,7 +4,6 @@
   <p class="alert alert-advertencia">Borrador de metadatos. Esta vista no es el PDF oficial ni acredita una firma digital.</p>
   <div class="acciones">
     <button class="btn" type="button" (click)="imprimir()" [disabled]="anulado(documento()?.estado) || cargandoFirmas()">Imprimir previsualización</button>
-    <button class="btn btn-primary" type="button" disabled aria-describedby="pdf-pendiente">Descargar PDF</button>
   </div>
   <p class="nota" id="pdf-pendiente">PDF oficial pendiente de integración: Laravel no ofrece una operación autorizada de visualización o descarga. No se puede confirmar la disponibilidad del archivo.</p>
   <article class="certificado-borrador">

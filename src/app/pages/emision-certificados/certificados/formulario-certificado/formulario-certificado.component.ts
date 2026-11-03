@@ -1,6 +1,8 @@
-import { afterNextRender, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { afterNextRender, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { SeleccionCertificado } from '../../../../core/interfaces/emision-certificados/preparacion-documental.interface';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormControl, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { PersonService } from '../../../../core/services/person/person.service';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, Observable, of, Subscription } from 'rxjs';
 import { ErrorApi } from '../../../../core/interfaces/api/api-response.interface';
@@ -9,34 +11,59 @@ import { AuthService } from '../../../../core/services/autenticacion/auth.servic
 import { EmisionCertificadosService } from '../../../../core/services/emision-certificados/emision-certificados.service';
 import { PageTitleComponent } from '../../../../shared/components/page-title/page-title.component';
 import { estadoActivo } from '../../compartidos/estado-emision';
+import { BLOQUEO_ESCRITURA_EMISION, ESCRITURA_EMISION_AUTORIZADA } from '../../../../core/services/emision-certificados/operaciones-emision';
 
 type Origen = 'participacion' | 'practica' | 'reconocimiento';
 type FilaRelacion = Readonly<Record<string, string | number | boolean | null>>;
 interface OpcionRegistro { readonly id: number; readonly titulo: string; readonly idPersona: number | null }
 
+function fechaCalendario(control: AbstractControl): ValidationErrors | null {
+  const valor = String(control.value ?? '');
+  if (!valor) return null;
+  const fecha = new Date(valor);
+  return /^\d{4}-\d{2}-\d{2}$/.test(valor) && !Number.isNaN(fecha.getTime())
+    && fecha.toISOString().slice(0, 10) === valor ? null : { fechaInvalida: true };
+}
+
 @Component({
   selector: 'app-formulario-certificado', standalone: true,
   imports: [ReactiveFormsModule, RouterLink, PageTitleComponent],
-  templateUrl: './formulario-certificado.component.html', styleUrl: '../../compartidos/emision.scss',
+  templateUrl: './formulario-certificado.component.html', styleUrls: ['../../compartidos/emision.scss', './formulario-certificado.component.scss'],
 })
 export class FormularioCertificadoComponent {
+  readonly integrado = input(false);
+  readonly paso = input(1);
+  readonly cambioPaso = output<number>();
+  readonly preparado = output<SeleccionCertificado>();
+  readonly cancelado = output<void>();
+  readonly falloGuardado = output<string>();
+  puedeGuardarPreparacion(): boolean { return this.escrituraAutorizada && this.revision() && !this.guardando() && this.formulario.valid; }
+  protected readonly escrituraAutorizada = inject(ESCRITURA_EMISION_AUTORIZADA);
+  protected readonly bloqueoEscritura = BLOQUEO_ESCRITURA_EMISION;
   private readonly api = inject(EmisionCertificadosService);
+  private readonly personas = inject(PersonService);
   protected readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
-  protected readonly editarId = Number(this.route.snapshot.paramMap.get('id')) || null;
+  protected readonly editarId = Number(this.route.snapshot.queryParamMap.get('editar') ?? this.route.snapshot.paramMap.get('id')) || null;
   private certificadoOriginal: CertificadoRow | null = null;
   private registroEditarPendiente: number | null = null;
   private cargaOrigen?: Subscription;
   private cargaPersona?: Subscription;
   protected readonly comprobando = signal(false);
+  protected readonly busquedaBeneficiario = new FormControl('', { nonNullable: true });
+  protected readonly buscandoPersonas = signal(false);
+  protected readonly nombresOrigen = signal<ReadonlyMap<number, string>>(new Map());
+  private readonly idsEncontrados = signal<ReadonlySet<number> | null>(null);
+  protected readonly opcionesVisibles = computed(() => this.opciones().filter(opcion => !this.idsEncontrados() || this.idsEncontrados()?.has(opcion.idPersona ?? 0)));
   readonly formulario = this.fb.nonNullable.group({
     origen: this.fb.nonNullable.control<Origen | ''>('', Validators.required),
     registro: this.fb.control<number | null>(null, Validators.required),
     tipo: this.fb.control<number | null>(null, Validators.required),
-    fechaEmision: this.fb.nonNullable.control('', Validators.required),
+    fechaEmision: this.fb.nonNullable.control('', fechaCalendario),
+    estado: this.fb.nonNullable.control(true),
   });
   protected readonly tipos = signal<readonly TipoCertificado[]>([]);
   protected readonly opciones = signal<readonly OpcionRegistro[]>([]);
@@ -50,6 +77,7 @@ export class FormularioCertificadoComponent {
   protected readonly accesible = computed(() => this.auth.tienePermiso(this.editarId ? 'emision.editar' : 'emision.crear'));
 
   constructor() {
+    this.formulario.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.revision.set(false));
     afterNextRender(() => this.inicializar());
   }
 
@@ -87,7 +115,7 @@ export class FormularioCertificadoComponent {
         this.certificadoOriginal = certificado;
         const origen: Origen | '' = certificado.id_participacion ? 'participacion' : certificado.id_practica ? 'practica' : certificado.id_reconocimiento ? 'reconocimiento' : '';
         this.registroEditarPendiente = certificado.id_participacion ?? certificado.id_practica ?? certificado.id_reconocimiento;
-        this.formulario.patchValue({ tipo: certificado.id_tipo_certificado, fechaEmision: certificado.fecha_emision ?? '', origen });
+        this.formulario.patchValue({ tipo: certificado.id_tipo_certificado, fechaEmision: certificado.fecha_emision ?? '', estado: estadoActivo(certificado.estado), origen });
         this.cargando.set(false);
       },
       error: (error: ErrorApi) => { this.error.set(error.mensaje); this.cargando.set(false); },
@@ -95,6 +123,7 @@ export class FormularioCertificadoComponent {
   }
 
   private cargarOrigen(origen: Origen | ''): void {
+    this.idsEncontrados.set(null); this.busquedaBeneficiario.reset(); this.nombresOrigen.set(new Map());
     this.cargaOrigen?.unsubscribe(); this.cargaPersona?.unsubscribe(); this.cargandoOrigen.set(false); this.registroEditarPendiente = this.certificadoOriginal && !this.opciones().length ? this.registroEditarPendiente : null;
     this.formulario.controls.registro.reset(null); this.opciones.set([]); this.beneficiario.set(null); this.error.set(null);
     if (!origen) return;
@@ -131,7 +160,7 @@ export class FormularioCertificadoComponent {
         if (!Number.isSafeInteger(id) || id <= 0 || !Number.isSafeInteger(idPersona) || (idPersona ?? 0) <= 0) continue;
         const titulo = origen === 'practica' ? String(fila['carrera'] ?? `Práctica #${id}`)
           : origen === 'reconocimiento' ? String(fila['titulo'] ?? `Reconocimiento #${id}`)
-            : `Participación #${id}`;
+            : `Participación #${id} · Actividad #${fila['id_actividad'] ?? 'no disponible'}`;
         opciones.push({ id, titulo, idPersona });
       }
       this.opciones.set(opciones); this.cargandoOrigen.set(false);
@@ -152,6 +181,20 @@ export class FormularioCertificadoComponent {
       error: (error: ErrorApi) => this.error.set('No se pudo verificar la persona beneficiaria: ' + error.mensaje),
     });
   }
+  protected buscarBeneficiario(): void {
+    const texto = this.busquedaBeneficiario.value.trim().toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!texto) { this.idsEncontrados.set(null); return; }
+    if (!this.auth.tienePermiso('personas.verpersonas') || this.buscandoPersonas()) return;
+    this.buscandoPersonas.set(true);
+    this.personas.listar().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: personas => {
+        const nombres = new Map(personas.map(persona => [persona.id_persona, [persona.nombres, persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' ')]));
+        this.nombresOrigen.set(nombres);
+        this.idsEncontrados.set(new Set([...nombres].filter(([, nombre]) => nombre.toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(texto)).map(([id]) => id)));
+        this.buscandoPersonas.set(false);
+      }, error: () => { this.error.set('No se pudo consultar el catálogo autorizado de personas. Revisa tu conexión y permisos.'); this.buscandoPersonas.set(false); },
+    });
+  }
 
   protected prepararRevision(): void {
     if (this.comprobando() || this.cargando() || this.cargandoOrigen()) return;
@@ -167,40 +210,64 @@ export class FormularioCertificadoComponent {
       [`id_${valores.origen}`]: registro.id }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: certificados => {
         this.comprobando.set(false);
+        if (JSON.stringify(valores) !== JSON.stringify(this.formulario.getRawValue())) return;
+        const existente = certificados.find(certificado => certificado.id_certificado !== this.editarId);
+        if (this.integrado() && existente) {
+          this.preparado.emit({ registro: existente, beneficiario: this.beneficiario()!, tipo: this.nombreTipo(existente.id_tipo_certificado), dni: null });
+          return;
+        }
         if (certificados.some(certificado => certificado.id_certificado !== this.editarId)) {
           this.error.set('Ya existe un certificado para este beneficiario, tipo y origen. Consulta su detalle para gestionar el documento.'); return;
         }
         // Si el usuario cambió la selección durante la consulta, exige revisar de nuevo.
-        if (JSON.stringify(valores) === JSON.stringify(this.formulario.getRawValue())) this.revision.set(true);
+        if (JSON.stringify(valores) === JSON.stringify(this.formulario.getRawValue())) {
+          this.revision.set(true);
+          if (this.integrado()) this.preparado.emit({
+            registro: { id_certificado: this.editarId, ...this.payloadPreparacion()! },
+            beneficiario: this.beneficiario()!, tipo: this.nombreTipo(valores.tipo), dni: null,
+          });
+        }
       },
       error: (error: ErrorApi) => { this.comprobando.set(false); this.error.set(error.mensaje); },
     });
   }
 
-  protected guardar(): void {
-    if (!this.revision() || this.guardando()) return;
-    const { origen, registro, tipo, fechaEmision } = this.formulario.getRawValue();
-    const opcion = this.opciones().find(item => item.id === registro);
-    if (!origen || !opcion || !opcion.idPersona || !tipo) return;
-    const payload: PayloadEmision['certificados'] = {
-      id_persona: opcion.idPersona, id_tipo_certificado: tipo,
-      id_reconocimiento: origen === 'reconocimiento' ? registro : null,
-      id_participacion: origen === 'participacion' ? registro : null,
-      id_practica: origen === 'practica' ? registro : null,
-      fecha_emision: fechaEmision,
-      estado: this.certificadoOriginal ? estadoActivo(this.certificadoOriginal.estado) : true,
-      notificado: this.certificadoOriginal?.notificado ?? false,
-      fecha_notificacion: this.certificadoOriginal?.fecha_notificacion ?? null,
-    };
+  guardar(): void {
+    if (!this.escrituraAutorizada || !this.revision() || this.guardando() || !this.accesible() || this.formulario.invalid || !this.beneficiario()) return;
+    const payload = this.payloadPreparacion();
+    if (!payload || !this.tipos().some(item => item.id_tipo_certificado === payload.id_tipo_certificado)) return;
     this.guardando.set(true); this.error.set(null); this.erroresValidacion.set({});
     const guardado = this.editarId ? this.api.actualizar('certificados', this.editarId, payload) : this.api.crear('certificados', payload);
     guardado.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: creado => { this.guardando.set(false); void this.router.navigate(['/certificaciones/certificados', creado.id_certificado]); },
-      error: (error: ErrorApi) => { this.guardando.set(false); this.error.set(error.mensaje); this.erroresValidacion.set(error.errores); this.revision.set(false); },
+      next: creado => {
+        this.guardando.set(false);
+        this.revision.set(false);
+        if (this.integrado()) {
+          this.certificadoOriginal = creado;
+          this.preparado.emit({ registro: creado, beneficiario: this.beneficiario()!, tipo: this.nombreTipo(creado.id_tipo_certificado), dni: null });
+        } else void this.router.navigate(['/certificaciones/certificados', creado.id_certificado]);
+      },
+      error: (error: ErrorApi) => { this.guardando.set(false); this.error.set(error.mensaje); this.erroresValidacion.set(error.errores); this.revision.set(false); this.falloGuardado.emit(error.mensaje); },
     });
   }
 
-  protected cancelar(): void { void this.router.navigateByUrl('/certificaciones/certificados'); }
+  protected cancelar(): void { if (this.integrado()) this.cancelado.emit(); else void this.router.navigateByUrl('/certificaciones/generar-emitir'); }
+  protected siguienteOrigen(): void {
+    this.formulario.controls.origen.markAsTouched(); this.formulario.controls.registro.markAsTouched();
+    if (this.cargando() || this.cargandoOrigen() || !this.beneficiario() || !this.opciones().some(item => item.id === this.formulario.controls.registro.value)) {
+      this.error.set('Selecciona un origen y un registro con beneficiario verificado.'); return;
+    }
+    this.cambioPaso.emit(2);
+  }
+  private payloadPreparacion(): PayloadEmision['certificados'] | null {
+    const { origen, registro, tipo, fechaEmision, estado } = this.formulario.getRawValue();
+    const persona = this.opciones().find(item => item.id === registro)?.idPersona;
+    if (!persona || !tipo || !origen) return null;
+    return { id_persona: persona, id_tipo_certificado: tipo, id_participacion: origen === 'participacion' ? registro : null,
+      id_practica: origen === 'practica' ? registro : null, id_reconocimiento: origen === 'reconocimiento' ? registro : null,
+      fecha_emision: fechaEmision || null, estado, notificado: this.certificadoOriginal?.notificado ?? false,
+      fecha_notificacion: this.certificadoOriginal?.fecha_notificacion ?? null };
+  }
   protected nombreTipo(id: number | null): string { return this.tipos().find(tipo => tipo.id_tipo_certificado === id)?.nombre_tipo ?? '—'; }
   protected nombreOrigen(origen: Origen | ''): string { return origen ? ({ participacion: 'Participación', practica: 'Práctica', reconocimiento: 'Reconocimiento' } as const)[origen] : '—'; }
   protected tituloSeleccionado(): string { return this.opciones().find(opcion => opcion.id === this.formulario.controls.registro.value)?.titulo ?? '—'; }

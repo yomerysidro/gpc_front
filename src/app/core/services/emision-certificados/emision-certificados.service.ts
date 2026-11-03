@@ -14,6 +14,7 @@ import { PersonWorkerService } from '../person-worker/person-worker.service';
 import { AreaService } from '../area/area.service';
 import { PersonDocumentService } from '../person-document/person-document.service';
 import { DocumentTypeService } from '../document-type/document-type.service';
+import { BLOQUEO_ESCRITURA_EMISION, ESCRITURA_EMISION_AUTORIZADA } from './operaciones-emision';
 
 /** Ámbitos reales de config/module_permissions.php; no se deducen del nombre de la URL. */
 export const PERMISOS_EMISION: Record<RecursoEmision, string> = {
@@ -28,6 +29,10 @@ export const PERMISOS_EMISION: Record<RecursoEmision, string> = {
 
 @Injectable({ providedIn: 'root' })
 export class EmisionCertificadosService {
+  private readonly escrituraAutorizada = inject(ESCRITURA_EMISION_AUTORIZADA);
+  private escrituraBloqueada(recurso: RecursoEmision): boolean {
+    return !this.escrituraAutorizada && ['certificados', 'certificados-documentos', 'firmas', 'actividades-firmas'].includes(recurso);
+  }
   private readonly http = inject(HttpClient);
   private readonly api = environment.apiBaseUrl;
   private readonly personas = inject(PersonService);
@@ -117,16 +122,19 @@ export class EmisionCertificadosService {
   }
 
   crear<K extends RecursoEditable>(recurso: K, payload: PayloadEmision[K]): Observable<EntidadesEmision[K]> {
+    if (this.escrituraBloqueada(recurso)) return throwError(() => ({ status: 403, mensaje: BLOQUEO_ESCRITURA_EMISION, errores: {} }));
     return this.http.post<ApiResponse<EntidadesEmision[K]>>(this.ruta(recurso, 'crear'), this.payload(recurso, payload), this.opciones())
       .pipe(map(respuesta => this.datos(respuesta)), catchError(error => this.error(error)));
   }
 
   actualizar<K extends RecursoEditable>(recurso: K, id: number, payload: Partial<PayloadEmision[K]>): Observable<EntidadesEmision[K]> {
+    if (this.escrituraBloqueada(recurso)) return throwError(() => ({ status: 403, mensaje: BLOQUEO_ESCRITURA_EMISION, errores: {} }));
     return this.http.patch<ApiResponse<EntidadesEmision[K]>>(this.ruta(recurso, 'actualizar', id), this.payload(recurso, payload), this.opciones())
       .pipe(map(respuesta => this.datos(respuesta)), catchError(error => this.error(error)));
   }
 
   eliminar(recurso: RecursoEliminable, id: number): Observable<void> {
+    if (this.escrituraBloqueada(recurso)) return throwError(() => ({ status: 403, mensaje: BLOQUEO_ESCRITURA_EMISION, errores: {} }));
     return this.http.delete<ApiResponse<null>>(this.ruta(recurso, 'eliminar', id), this.opciones())
       .pipe(map(respuesta => { this.datos(respuesta); }), catchError(error => this.error(error)));
   }

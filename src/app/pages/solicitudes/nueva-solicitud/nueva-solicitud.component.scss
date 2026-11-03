@@ -1,0 +1,15 @@
+.pasos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); list-style: none; padding: 0; gap: .75rem; margin-block: 1.25rem; }
+.pasos li { display: flex; align-items: center; gap: .75rem; padding: 1rem; border: 1px solid #dde5ec; background: white; border-radius: .6rem; }
+.pasos li > span { border-radius: 50%; background: #edf2f6; padding: .3rem .7rem; }
+.pasos small { display: block; color: #64748b; font-weight: 400; }
+.pasos [aria-current='step'] { border-color: #075a9b; color: #075a9b; font-weight: 700; }
+.pasos [aria-current='step'] > span { background: #075a9b; color: white; }
+fieldset { min-width: 0; padding: 0; margin: 1.5rem 0; border: 0; border-top: 1px solid #e2e8f0; }
+legend { padding-right: .75rem; color: #075a9b; font-weight: 600; font-size: 1rem; }
+.pie-formulario { border-top: 1px solid #e2e8f0; padding-top: 1rem; justify-content: flex-end; }
+.pie-formulario > :first-child { margin-right: auto; }
+.input[aria-invalid='true'] { border-color: #a52d2d; }
+@media (max-width: 600px) {
+  .pasos { grid-template-columns: 1fr; }
+  .pie-formulario > :first-child { margin-right: 0; }
+}

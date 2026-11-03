@@ -1,3 +1,4 @@
+@if (!formularioExclusivoAbierto()) {
 <app-page-title [title]="configuracion().titulo" />
 @if (configuracion().pestanas; as opciones) {
   <div class="pestanas" role="tablist" [attr.aria-label]="configuracion().titulo" (keydown)="alTeclear($event)">
@@ -9,13 +10,15 @@
     }
   </div>
 }
+}
 @for (seccion of configuracion().secciones; track seccion.recurso) {
   <section class="card" [id]="'actividad-panel-' + seccion.recurso"
-    [attr.role]="configuracion().pestanas ? 'tabpanel' : null" [attr.aria-labelledby]="etiquetaPanel(seccion.recurso)"
+    [attr.role]="configuracion().pestanas ? 'tabpanel' : null" [attr.aria-labelledby]="formularioExclusivoAbierto() ? null : etiquetaPanel(seccion.recurso)"
+    [attr.aria-label]="formularioExclusivoAbierto() ? (seccion.recurso === 'attendance' ? 'Formulario de asistencia' : 'Formulario de sesión') : null"
     [attr.tabindex]="configuracion().pestanas ? 0 : null"
     [hidden]="!!configuracion().pestanas && pestana()?.recurso !== seccion.recurso">
     @if (!configuracion().pestanas || pestana()?.recurso === seccion.recurso) {
-      <h2>{{ seccion.titulo }}</h2>
+      @if (!formularioExclusivoAbierto()) { <h2>{{ seccion.titulo }}</h2> }
       <app-listado-emision [recurso]="seccion.recurso" [estadoInicial]="estados.get(seccion.recurso) ?? null" />
     }
   </section>

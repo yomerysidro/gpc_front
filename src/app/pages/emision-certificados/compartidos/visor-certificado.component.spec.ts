@@ -20,7 +20,7 @@ describe('Visor institucional preliminar', () => {
     expect(texto).toContain('Pendiente: no hay código');
     expect(texto).toContain('QR pendiente');
     expect(texto).toContain('No hay firmas asociadas');
-    expect(fixture.nativeElement.querySelectorAll('button')[1].disabled).toBeTrue();
+    expect(fixture.nativeElement.textContent).not.toContain('Descargar PDF');
     expect(fixture.nativeElement.querySelector('iframe, canvas, a[download]')).toBeNull();
   });
 

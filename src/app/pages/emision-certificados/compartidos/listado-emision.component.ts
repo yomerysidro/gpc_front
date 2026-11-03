@@ -48,6 +48,8 @@ export class ListadoEmisionComponent implements OnChanges {
   protected readonly errorOperacion = signal<string | null>(null);
   protected readonly eliminando = signal(false);
   protected readonly editar = signal<number | null | undefined>(undefined);
+  readonly formularioExclusivoAbierto = computed(() => this.editar() !== undefined
+    && (this.recurso() === 'activity-session' || this.recurso() === 'attendance'));
   protected readonly detalle = signal<RegistroEmision | null>(null);
   protected readonly cargandoDetalle = signal(false);
   protected readonly relaciones = signal<Readonly<Record<string, Readonly<Record<number, string>>>>>({});
@@ -138,6 +140,17 @@ export class ListadoEmisionComponent implements OnChanges {
 
   protected alGuardar(): void {
     this.editar.set(undefined); this.detalle.set(null); this.aviso.set('Cambios guardados.'); this.cargar(1);
+  }
+
+  protected abrirFormulario(id: number | null): void {
+    if (this.recurso() === 'activity-session' || this.recurso() === 'attendance') {
+      this.aviso.set(null);
+      this.errorOperacion.set(null);
+      this.detalleCarga?.unsubscribe();
+      this.detalle.set(null);
+      this.cargandoDetalle.set(false);
+    }
+    this.editar.set(id);
   }
 
   protected async eliminar(registro: RegistroEmision): Promise<void> {

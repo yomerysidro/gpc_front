@@ -1,0 +1,80 @@
+:host {
+  display: block;
+  min-width: 0;
+  background: var(--neutro-0);
+}
+
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  margin-bottom: var(--espacio-5);
+}
+
+.descripcion { margin: 0; color: var(--neutro-500); }
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--espacio-3);
+  margin-bottom: var(--espacio-5);
+
+  .form-field { flex: 1 1 10rem; min-width: 0; margin-bottom: 0; }
+  .buscador { flex-grow: 2; }
+}
+
+.tabla-caja {
+  overflow-x: auto;
+  border: 1px solid var(--neutro-200);
+  border-radius: var(--radio-lg);
+
+  .table { min-width: 58rem; }
+  td, th { padding-block: var(--espacio-3); }
+  .table th:first-child, .table td:first-child { padding-left: var(--espacio-4); }
+  .table td:last-child { padding-right: var(--espacio-2); }
+}
+
+.nombre-actividad { min-width: 13rem; overflow-wrap: anywhere; }
+tr.registro-inactivo .nombre-actividad { font-weight: 500; }
+.referencia { display: block; color: var(--neutro-500); font-size: 0.8125rem; }
+.acciones-fila { display: flex; justify-content: flex-end; gap: 2px; }
+.tamano-pagina { display: flex; align-items: center; gap: var(--espacio-2); }
+.tamano-pagina .input { width: auto; }
+.formulario { max-width: 44rem; margin-bottom: var(--espacio-5); }
+
+.rejilla-formulario {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--espacio-5);
+}
+
+.ancho-completo { grid-column: 1 / -1; }
+textarea { resize: vertical; }
+.acciones-formulario { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--espacio-3); }
+
+.detalle {
+  margin-block: var(--espacio-4) var(--espacio-5);
+
+  > div { padding-block: var(--espacio-2); border-bottom: 1px solid var(--neutro-100); }
+  dt { color: var(--neutro-500); font-size: 0.8125rem; }
+  dd { margin: 0; overflow-wrap: anywhere; }
+}
+
+.texto-largo { white-space: pre-wrap; }
+.ponentes {
+  padding-left: var(--espacio-5);
+
+  li { margin-bottom: var(--espacio-4); }
+  span { display: block; }
+}
+
+
+@media (max-width: 600px) {
+  .rejilla-formulario { grid-template-columns: minmax(0, 1fr); }
+  .filtros .form-field { flex-basis: 100%; }
+  .limpiar { width: 100%; }
+  .formulario { padding: var(--espacio-4); }
+}

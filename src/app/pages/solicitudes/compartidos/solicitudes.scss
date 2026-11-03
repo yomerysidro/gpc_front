@@ -1,0 +1,38 @@
+:host { display: block; min-width: 0; }
+.encabezado, .acciones, .paginacion { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin: 1rem 0; }
+.acciones { justify-content: flex-start; }
+.indicadores, .documentos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.indicador { border-top: 3px solid #075a9b; }
+.indicador strong { display: block; color: #075a9b; font-size: 1.65rem; }
+.indicador p { margin: .25rem 0; }
+.filtros, .form-grid, .detalle { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; }
+.form-grid { margin: 1rem 0; }
+.ancho { grid-column: 1 / -1; }
+.tabla-scroll { overflow-x: auto; max-width: 100%; }
+.table { min-width: 55rem; }
+.table caption { text-align: left; padding: .75rem 0; color: #526170; }
+.table td { vertical-align: top; }
+.table small { display: block; margin-top: .3rem; }
+.table .acciones { margin: 0; min-width: 12rem; }
+.detalle { margin: 1rem 0; }
+.detalle div { min-width: 0; }
+.detalle dt { font-weight: 600; color: #075a9b; }
+.detalle dd { margin: .3rem 0 1rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.error { color: #a52d2d; margin: .35rem 0; }
+.aviso { padding: .8rem; border: 1px solid #b5cad9; background: #f0f7fb; border-radius: .4rem; margin-bottom: 1rem; }
+.vacio { padding: 2rem 1rem; text-align: center; color: #526170; }
+.encabezado-pagina { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+.encabezado-pagina p, .ayuda { color: #64748b; margin: .25rem 0; font-size: .9rem; }
+.icono-pagina { color: #075a9b; background: #eaf3fa; border-radius: .75rem; padding: .75rem; }
+.form-field { min-width: 0; }
+.form-field label { display: block; font-weight: 600; margin-bottom: .45rem; }
+.form-field .input { width: 100%; min-width: 0; }
+.form-field small { display: block; font-size: .8rem; color: #64748b; margin-top: .4rem; }
+.visor-documento { width: 100%; min-height: 60vh; border: 1px solid #075a9b; background: #fff; }
+@media (max-width: 600px) {
+  .encabezado { align-items: stretch; }
+  .filtros, .form-grid, .detalle { grid-template-columns: 1fr; }
+  .acciones .btn { flex: 1 1 auto; }
+  .card { padding: 1rem; }
+  .icono-pagina { display: none; }
+}

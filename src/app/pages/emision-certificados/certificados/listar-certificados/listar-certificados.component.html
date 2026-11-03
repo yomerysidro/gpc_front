@@ -1,5 +1,5 @@
-<div class="encabezado"><app-page-title title="Gestión de Certificados" />
-@if (auth.tienePermiso('emision.crear')) { <a class="btn btn-primary" routerLink="/certificaciones/certificados/nuevo">Nuevo certificado</a> }
+<div class="encabezado">@if (!seleccionable()) { <app-page-title title="Preparar certificados" /> }
+@if (!seleccionable() && auth.tienePermiso('emision.crear')) { <a class="btn btn-primary" routerLink="/certificaciones/certificados/nuevo">Preparar certificado</a> }
 <button class="btn" type="button" (click)="cargar()" [disabled]="cargando()">Actualizar</button></div>
 <form class="card filtros-certificados" role="search" (submit)="$event.preventDefault()">
   <div class="form-field"><label for="beneficiario">Beneficiario, DNI o código</label><input id="beneficiario" class="input" type="search" [formControl]="filtroBeneficiario" /></div>
@@ -28,8 +28,9 @@
         <dt>Documentos y códigos</dt><dd>@for (documento of item.documentos; track documento.id_certificado_documento) { <p class="codigo">{{ documento.codigo_verificacion }} · {{ documento.estado }}</p> } @empty { Sin documento generado }</dd></dl>
         @if (item.errorDocumentos; as mensaje) { <p role="alert">{{ mensaje }}</p> }
       </div>
-      <footer><a class="btn btn-consulta" [routerLink]="['/certificaciones/certificados', item.registro.id_certificado]">Ver detalle e historial</a>
-      @if (auth.tienePermiso('emision.editar')) { <a class="btn" [routerLink]="['/certificaciones/certificados', item.registro.id_certificado, 'editar']">Editar</a> }</footer>
+      <footer>@if (seleccionable()) { <button class="btn btn-primary" type="button" (click)="seleccionar(item)">Seleccionar certificado</button> }
+      <a class="btn btn-consulta" [routerLink]="['/certificaciones/certificados', item.registro.id_certificado]">Ver detalle e historial</a>
+      @if (auth.tienePermiso('emision.editar') && !item.documentos.length && !item.errorDocumentos) { <a class="btn" [routerLink]="['/certificaciones/certificados', item.registro.id_certificado, 'editar']">Editar</a> } </footer>
     </article>
   }
   </div>
