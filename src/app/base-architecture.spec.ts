@@ -1,4 +1,5 @@
-import { PLATFORM_ID } from '@angular/core';
+import { environment } from '../environments/environment';
+import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   HttpContext, HttpErrorResponse, HttpRequest, HttpResponse, provideHttpClient,
@@ -26,9 +27,10 @@ import { EmisionCertificadosService } from './core/services/emision-certificados
 
 describe('Componentes de la estructura base', () => {
   beforeEach(() => TestBed.configureTestingModule({ providers: [provideRouter([]),
-    { provide: AuthService, useValue: { tienePermiso: () => true } },
+    { provide: AuthService, useValue: { usuario: signal(null), tienePermiso: () => true } },
     { provide: EmisionCertificadosService, useValue: {
       listar: () => of({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }),
+      listarTodos: () => of([]), documentosIdentidad: () => of({}),
     } },
   ] }));
 
@@ -49,34 +51,29 @@ describe('Componentes de la estructura base', () => {
     expect(fixture.nativeElement.querySelector('h1').textContent).toBe('Certificados');
   });
 
-  it('el sidebar conserva las etiquetas y rutas del contrato de navegación', () => {
+  it('el sidebar organiza capacidades conocidas sin activar enlaces desconocidos del backend', () => {
     const fixture = TestBed.createComponent(SidebarComponent);
-    fixture.componentRef.setInput('items', [
-      { label: 'Inicio', path: '/' },
-      { label: 'Certificados', path: '/certificados' },
-    ]);
+    fixture.componentRef.setInput('items', [{ label: 'Consulta adicional', path: '/consulta-adicional' }]);
     fixture.detectChanges();
-    const links: NodeListOf<HTMLAnchorElement> = fixture.nativeElement.querySelectorAll('a');
-    expect(Array.from(links, link => link.textContent?.trim())).toEqual(['Inicio', 'Certificados']);
-    expect(Array.from(links, link => link.getAttribute('href'))).toEqual(['/', '/certificados']);
-    fixture.componentRef.setInput('items', []);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('a').length).toBe(0);
+    expect(fixture.nativeElement.querySelector('a[href="/consulta-adicional"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/certificaciones/generar-emitir"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/certificaciones/certificados"]')).toBeNull();
+    fixture.componentRef.setInput('items', []); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('a[href="/consulta-adicional"]')).toBeNull();
   });
 
-  it('el sidebar muestra el ícono solo si la entrada lo trae y está en la fuente', () => {
+  it('conserva iconos institucionales y evita entradas sueltas fuera de un grupo', () => {
     const fixture = TestBed.createComponent(SidebarComponent);
     fixture.componentRef.setInput('items', [
-      { label: 'Actividades', path: '/actividades', icon: 'event' },
-      { label: 'Inicio', path: '/inicio' },
-      { label: 'Nuevo módulo', path: '/nuevo', icon: 'icono_fuera_de_la_fuente' },
+      { label: 'Eventos adicionales', path: '/eventos-adicionales', icon: 'event' },
+      { label: 'Consulta adicional', path: '/consulta-adicional' },
+      { label: 'Nuevo m?dulo', path: '/nuevo', icon: 'icono_fuera_de_la_fuente' },
     ]);
     fixture.detectChanges();
-    const [conIcono, sinIcono, desconocido]: HTMLAnchorElement[] = Array.from(fixture.nativeElement.querySelectorAll('a'));
-    expect(conIcono.querySelector('.material-symbols-outlined')?.textContent).toBe('event');
-    expect(sinIcono.querySelector('.material-symbols-outlined')).toBeNull();
-    expect(desconocido.querySelector('.material-symbols-outlined')).toBeNull();
-    expect(desconocido.textContent?.trim()).toBe('Nuevo módulo');
+    expect(fixture.nativeElement.querySelector('[aria-controls="submenu-actividades"] .material-symbols-outlined').textContent).toBe('event');
+    expect(fixture.nativeElement.querySelector('a[href="/eventos-adicionales"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/consulta-adicional"] .material-symbols-outlined')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/nuevo"] .material-symbols-outlined')).toBeNull();
   });
 
 });
@@ -177,11 +174,11 @@ describe('Puntos de integración de autenticación', () => {
       TestBed.runInInjectionContext(() => authInterceptor(request, next)).subscribe({ error: () => undefined });
     };
 
-    fallar('/api/auth/me');
-    fallar('/api/auth/login');
+    fallar(environment.apiBaseUrl + '/auth/me');
+    fallar(environment.apiBaseUrl + '/auth/login');
     expect(limpiarSesion).not.toHaveBeenCalled();
 
-    fallar('/api/usuarios');
+    fallar(environment.apiBaseUrl + '/usuarios');
     expect(limpiarSesion).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledOnceWith(['/login'], { queryParams: { returnUrl: '/' } });
   });
@@ -207,7 +204,7 @@ describe('SessionAuthService', () => {
   afterEach(() => http.verify());
 
   it('envía credenciales solo a apiBaseUrl', () => {
-    expect(service.authorizeRequest(new HttpRequest('GET', '/api/auth/me')).withCredentials).toBeTrue();
+    expect(service.authorizeRequest(new HttpRequest('GET', environment.apiBaseUrl + '/auth/me')).withCredentials).toBeTrue();
     expect(service.authorizeRequest(new HttpRequest('GET', 'https://otro.pe/api')).withCredentials).toBeFalse();
     expect(service.authorizeRequest(new HttpRequest('GET', '/apix')).withCredentials).toBeFalse();
   });
@@ -215,11 +212,11 @@ describe('SessionAuthService', () => {
   it('carga /auth/me una sola vez y expone usuario, módulos y permisos', () => {
     service.cargarSesion().subscribe();
     service.cargarSesion().subscribe();
-    const request = http.expectOne('/api/auth/me');
+    const request = http.expectOne(environment.apiBaseUrl + '/auth/me');
     expect(request.request.context.get(AUTHENTICATED_REQUEST)).toBeTrue();
     request.flush(sesion);
     service.cargarSesion().subscribe();
-    http.expectNone('/api/auth/me');
+    http.expectNone(environment.apiBaseUrl + '/auth/me');
     expect(service.isAuthenticated()).toBeTrue();
     expect(service.rutaInicial()).toBe('/actividades');
     expect(service.tienePermiso('actividades.ver')).toBeTrue();
@@ -228,18 +225,18 @@ describe('SessionAuthService', () => {
 
   it('un 401 en /auth/me deja la sesión vacía', async () => {
     const resultado = firstValueFrom(service.cargarSesion());
-    http.expectOne('/api/auth/me').flush({ message: 'No autenticado' }, { status: 401, statusText: '' });
+    http.expectOne(environment.apiBaseUrl + '/auth/me').flush({ message: 'No autenticado' }, { status: 401, statusText: '' });
     expect(await resultado).toBeFalse();
     expect(service.usuario()).toBeNull();
   });
 
   it('login devuelve el mensaje del 401 y bloqueadoHasta del 423', async () => {
     let resultado = firstValueFrom(service.login('maria.rrhh@moralesmuni.pe', 'mala'));
-    http.expectOne('/api/auth/login').flush({ message: 'Usuario desactivado' }, { status: 401, statusText: '' });
+    http.expectOne(environment.apiBaseUrl + '/auth/login').flush({ message: 'Usuario desactivado' }, { status: 401, statusText: '' });
     expect(await resultado).toEqual({ tipo: 'rechazado', mensaje: 'Usuario desactivado' });
 
     resultado = firstValueFrom(service.login('maria.rrhh@moralesmuni.pe', 'mala'));
-    http.expectOne('/api/auth/login').flush(
+    http.expectOne(environment.apiBaseUrl + '/auth/login').flush(
       { message: 'Cuenta bloqueada', bloqueadoHasta: '2026-10-26T22:30:00-05:00' },
       { status: 423, statusText: '' },
     );
@@ -250,29 +247,29 @@ describe('SessionAuthService', () => {
 
   it('login exitoso recarga /auth/me', async () => {
     const resultado = firstValueFrom(service.login('maria.rrhh@moralesmuni.pe', 'Test1234'));
-    http.expectOne('/api/auth/login').flush({ user: sesion.user });
-    http.expectOne('/api/auth/me').flush(sesion);
+    http.expectOne(environment.apiBaseUrl + '/auth/login').flush({ user: sesion.user });
+    http.expectOne(environment.apiBaseUrl + '/auth/me').flush(sesion);
     expect(await resultado).toEqual({ tipo: 'exito' });
     expect(service.usuario()).toEqual(sesion.user);
   });
 
   it('recargarSesion vuelve a pedir /auth/me aunque ya esté cargada', () => {
     service.cargarSesion().subscribe();
-    http.expectOne('/api/auth/me').flush(sesion);
+    http.expectOne(environment.apiBaseUrl + '/auth/me').flush(sesion);
     service.recargarSesion().subscribe();
-    http.expectOne('/api/auth/me').flush({ ...sesion, modulos: [] });
+    http.expectOne(environment.apiBaseUrl + '/auth/me').flush({ ...sesion, modulos: [] });
     expect(service.modulos()).toEqual([]);
   });
 
   it('logout limpia la sesión aunque el backend falle y vuelve a /login', () => {
     const navigateByUrl = spyOn(TestBed.inject(Router), 'navigateByUrl').and.resolveTo(true);
     service.cargarSesion().subscribe();
-    http.expectOne('/api/auth/me').flush(sesion);
+    http.expectOne(environment.apiBaseUrl + '/auth/me').flush(sesion);
     service.logout().subscribe();
-    http.expectOne('/api/auth/logout').flush(null, { status: 500, statusText: '' });
+    http.expectOne(environment.apiBaseUrl + '/auth/logout').flush(null, { status: 500, statusText: '' });
     expect(service.isAuthenticated()).toBeFalse();
     expect(navigateByUrl).toHaveBeenCalledOnceWith('/login');
     service.cargarSesion().subscribe();
-    http.expectNone('/api/auth/me');
+    http.expectNone(environment.apiBaseUrl + '/auth/me');
   });
 });

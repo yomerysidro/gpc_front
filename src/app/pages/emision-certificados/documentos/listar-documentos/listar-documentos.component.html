@@ -1,3 +1,27 @@
-<app-page-title title="Documentos" />
-<a class="btn" routerLink="/certificaciones/certificados">Volver a Certificados</a>
-<app-listado-emision recurso="certificados-documentos" [filtrosFijos]="filtros()" />
+<div class="encabezado"><app-page-title title="Certificados emitidos" /><button class="btn" type="button" [disabled]="cargando()" (click)="cargar()">Actualizar</button></div>
+<p class="nota">Consulta de documentos registrados. Su existencia no acredita validez criptográfica ni firma digital. La API aún no permite obtener el PDF mediante una operación segura.</p>
+<form class="card filtros-documentos" [formGroup]="filtros" (submit)="$event.preventDefault()" role="search" aria-label="Buscar documentos">
+  <div class="form-field"><label for="documento-busqueda">Beneficiario o código</label><input id="documento-busqueda" class="input" type="search" formControlName="busqueda" /></div>
+  <div class="form-field"><label for="documento-estado">Estado del documento</label><select id="documento-estado" class="input" formControlName="estado"><option value="">Todos</option>@for (estado of estados(); track estado) { <option>{{ estado }}</option> }</select></div>
+  <div class="form-field"><label for="documento-tipo">Tipo de certificado</label><select id="documento-tipo" class="input" formControlName="tipo"><option value="">Todos</option>@for (tipo of tipos(); track tipo) { <option>{{ tipo }}</option> }</select></div>
+  <div class="form-field"><label for="documento-origen">Origen</label><select id="documento-origen" class="input" formControlName="origen"><option value="">Todos</option><option>Participación</option><option>Reconocimiento</option><option>Prácticas</option></select></div>
+  <button class="btn" type="button" (click)="filtros.reset()">Limpiar filtros</button>
+</form>
+@if (cargando()) { <p role="status">Consultando documentos y relaciones autorizadas…</p> }
+@if (error()) { <p class="alert alert-error" role="alert">{{ error() }}</p> }
+@if (aviso()) { <p class="alert alert-advertencia" role="alert">{{ aviso() }}</p> }
+@if (!cargando() && !error()) {
+  @if (!filtrados().length) { <section class="card vacio" role="status"><h2>No hay documentos con estos criterios</h2><p>Los documentos aparecerán cuando estén registrados en el sistema y tu sesión autorice su consulta.</p></section> }
+  @else {
+    <div class="tabla-documentos" tabindex="0" role="region" aria-label="Documentos emitidos"><table class="table"><caption>{{ filtrados().length }} documentos registrados</caption><thead><tr><th scope="col">Beneficiario</th><th scope="col">Tipo y origen</th><th scope="col">Fecha de generación</th><th scope="col">Código y estado</th><th scope="col">Acciones</th></tr></thead><tbody>
+      @for (fila of visibles(); track fila.documento.id_certificado_documento) { <tr><td>{{ fila.beneficiario }}@if (fila.aviso) { <p class="error-text" role="alert">Relación no disponible: {{ fila.aviso }}</p> }</td><td>{{ fila.tipo }}<p>{{ fila.origen }}</p></td><td>{{ fila.documento.fecha_generacion | date:'dd/MM/yyyy' }}</td><td><code>{{ fila.documento.codigo_verificacion }}</code><p>{{ fila.documento.estado }}</p></td><td><button class="btn" type="button" (click)="ver(fila)">Ver detalle</button></td></tr> }
+    </tbody></table></div>
+    <nav class="acciones" aria-label="Paginación de documentos"><button class="btn" type="button" [disabled]="paginaActual() <= 1" (click)="pagina.set(paginaActual() - 1)">Anterior</button><span>Página {{ paginaActual() }} de {{ totalPaginas() }}</span><button class="btn" type="button" [disabled]="paginaActual() >= totalPaginas()" (click)="pagina.set(paginaActual() + 1)">Siguiente</button></nav>
+  }
+}
+<app-dialogo titulo="Detalle del documento" (cerrado)="detalle.set(null)">
+  @if (detalle(); as fila) { <h3>{{ fila.beneficiario }}</h3><dl><dt>Documento</dt><dd>#{{ fila.documento.id_certificado_documento }}</dd><dt>Certificado</dt><dd>#{{ fila.documento.id_certificado }}</dd><dt>Tipo y origen</dt><dd>{{ fila.tipo }} · {{ fila.origen }}</dd><dt>Código persistido</dt><dd>{{ fila.documento.codigo_verificacion }}</dd><dt>Estado</dt><dd>{{ fila.documento.estado }}</dd><dt>Generación</dt><dd>{{ fila.documento.fecha_generacion | date:'dd/MM/yyyy HH:mm' }}</dd><dt>Motivo de reemisión</dt><dd>{{ fila.documento.motivo_reemision || 'Sin motivo registrado' }}</dd></dl>
+    <a class="btn" [routerLink]="['/certificaciones/certificados', fila.documento.id_certificado]">Ver certificado e historial</a>
+  }
+  <button class="btn" type="button" autofocus (click)="dialogo().cerrar()">Cerrar</button>
+</app-dialogo>

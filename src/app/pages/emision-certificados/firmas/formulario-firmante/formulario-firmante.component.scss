@@ -1,0 +1,3 @@
+:host { display: block; padding: 1.25rem; }.acciones { display: flex; flex-wrap: wrap; gap: .75rem; }.nota, small { color: var(--neutro-700); font-size: .875rem; }
+fieldset { padding: 0; margin: 0; border: 0; min-width: 0; }.archivo-zona { padding: 1.25rem; border: 2px dashed #9ebace; border-radius: .75rem; text-align: center; margin-block: 1rem; background: #f6fafc; }.archivo-zona input { max-width: 100%; }.archivo-zona .material-symbols-outlined { font-size: 2rem; color: #075a9b; }
+.confirmar-firmante { width: 100%; background: #167445; border-color: #167445; color: white; }.confirmar-firmante:hover:not(:disabled) { background: #105b35; border-color: #105b35; }

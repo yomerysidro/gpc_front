@@ -1,7 +1,9 @@
+import { ESCRITURA_EMISION_AUTORIZADA } from './operaciones-emision';
 import { HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ErrorApi } from '../../interfaces/api/api-response.interface';
 import { PayloadEmision, RecursoEditable, RecursoEliminable, RecursoEmision } from '../../interfaces/emision-certificados/emision-certificados.interface';
@@ -16,7 +18,7 @@ describe('Contrato HTTP de Emisión con Laravel', () => {
   let http: HttpTestingController;
   const recursos: readonly RecursoEmision[] = ['certificados', 'tipos-certificado', 'reconocimientos',
     'certificados-documentos', 'firmas', 'certificados-firmas', 'consultas-certificado', 'actividades-firmas'];
-  const payloads: PayloadEmision = {
+  const payloads: Pick<PayloadEmision, 'certificados' | 'tipos-certificado' | 'reconocimientos' | 'certificados-documentos' | 'firmas' | 'actividades-firmas'> = {
     certificados: { id_persona: 1, id_tipo_certificado: 1, id_reconocimiento: null, id_participacion: 2,
       id_practica: null, fecha_emision: '2026-10-27', estado: true, notificado: false, fecha_notificacion: null },
     'tipos-certificado': { nombre_tipo: 'Asistencia', estado: 'ACTIVO' },
@@ -27,7 +29,7 @@ describe('Contrato HTTP de Emisión con Laravel', () => {
   };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [
+    TestBed.configureTestingModule({ providers: [{ provide: ESCRITURA_EMISION_AUTORIZADA, useValue: true },
       provideRouter([]), provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(),
       { provide: AuthService, useClass: SessionAuthService },
     ] });
@@ -35,6 +37,57 @@ describe('Contrato HTTP de Emisión con Laravel', () => {
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
+
+  it('recorre todas las paginas del historial con el filtro del certificado intacto', () => {
+    let codigos: readonly string[] = [];
+    service.listarTodos('certificados-documentos', { id_certificado: 8 }).subscribe(filas => { codigos = filas.map(fila => fila.codigo_verificacion); });
+    const primera = http.expectOne(req => req.url.endsWith('/certificados-documentos/list') && req.params.get('page') === '1');
+    expect(primera.request.params.get('id_certificado')).toBe('8');
+    expect(primera.request.context.get(AUTHENTICATED_REQUEST)).toBeTrue();
+    primera.flush({ success: true, data: { data: [{ codigo_verificacion: 'VERSION-2' }], current_page: 1, last_page: 2 } });
+    const segunda = http.expectOne(req => req.params.get('page') === '2');
+    expect(segunda.request.params.get('id_certificado')).toBe('8');
+    expect(segunda.request.params.get('per_page')).toBe('100');
+    segunda.flush({ success: true, data: { data: [{ codigo_verificacion: 'VERSION-1' }], current_page: 2, last_page: 2 } });
+    expect(codigos).toEqual(['VERSION-2', 'VERSION-1']);
+  });
+
+  it('no entrega un historial parcial si falla una pagina posterior', () => {
+    service.listarTodos('certificados-documentos', { id_certificado: 8 }).subscribe({
+      next: () => fail('No debe presentar un historial incompleto como completo'),
+      error: (error: ErrorApi) => expect(error.status).toBe(503),
+    });
+    http.expectOne(req => req.params.get('page') === '1').flush({ success: true, data: { data: [], current_page: 1, last_page: 2 } });
+    http.expectOne(req => req.params.get('page') === '2').flush({ message: 'Servicio no disponible.' }, { status: 503, statusText: 'Unavailable' });
+  });
+
+  it('usa trabajadores reales y conserva solo los campos necesarios para la relacion', () => {
+    service.trabajadores().subscribe(filas => expect(filas).toEqual([{ id_persona_trabajador: 4, id_persona: 6, id_area: 2, cargo: 'Cargo de prueba', estado: true }]));
+    const request = http.expectOne(`${environment.apiBaseUrl}/person-workers/list`);
+    expect(request.request.withCredentials).toBeTrue();
+    request.flush({ success: true, data: [{ id_persona_trabajador: 4, id_persona: 6, id_area: 2, cargo: 'Cargo de prueba', estado: true, dato_no_necesario: 'omitido' }] });
+    http.expectNone(req => req.url.includes('/persons/'));
+  });
+
+  it('resuelve persona y area por las rutas de detalle existentes sin conservar datos personales innecesarios', () => {
+    service.personaReconocimiento(6).subscribe(persona => expect(persona).toEqual({ id_persona: 6, nombres: 'Nombre de prueba', apellido_paterno: 'Apellido de prueba', apellido_materno: null }));
+    const persona = http.expectOne(`${environment.apiBaseUrl}/persons/detail/6`);
+    expect(persona.request.context.get(AUTHENTICATED_REQUEST)).toBeTrue();
+    expect(persona.request.withCredentials).toBeTrue();
+    persona.flush({ success: true, data: { id_persona: 6, nombres: 'Nombre de prueba', apellido_paterno: 'Apellido de prueba', apellido_materno: null, telefono: 'no conservar', correo: 'no conservar' } });
+    service.areaReconocimiento(2).subscribe(area => expect(area).toEqual({ id_area: 2, nombre: 'Área de prueba' }));
+    const area = http.expectOne(`${environment.apiBaseUrl}/areas/detail/2`);
+    expect(area.request.context.get(AUTHENTICATED_REQUEST)).toBeTrue();
+    area.flush({ success: true, data: { id_area: 2, nombre: 'Área de prueba', dato_interno: 'no conservar' } });
+  });
+
+  it('respeta la denegacion de Gestion al consultar los nombres y areas', () => {
+    const consultas: readonly (readonly [Observable<unknown>, string])[] = [[service.personaReconocimiento(6), 'persons/detail/6'], [service.areaReconocimiento(2), 'areas/detail/2']];
+    for (const [peticion, ruta] of consultas) {
+      peticion.subscribe({ next: () => fail('No debe conceder acceso'), error: (error: ErrorApi) => expect(error.status).toBe(403) });
+      http.expectOne(`${environment.apiBaseUrl}/${ruta}`).flush({ message: 'No autorizado.' }, { status: 403, statusText: 'Forbidden' });
+    }
+  });
 
   it('usa /list y /detail en las ocho entidades, conserva la paginación anidada y envía cookies', () => {
     for (const recurso of recursos) {
@@ -54,7 +107,7 @@ describe('Contrato HTTP de Emisión con Laravel', () => {
   });
 
   it('usa POST create, PATCH update y DELETE delete únicamente para las operaciones habilitadas', () => {
-    for (const recurso of Object.keys(payloads) as RecursoEditable[]) {
+    for (const recurso of Object.keys(payloads) as (keyof typeof payloads)[]) {
       service.crear(recurso, payloads[recurso]).subscribe();
       const crear = http.expectOne(`${environment.apiBaseUrl}/${recurso}/create`);
       expect(crear.request.method).toBe('POST');
@@ -78,7 +131,7 @@ describe('Contrato HTTP de Emisión con Laravel', () => {
     expect(lista.request.params.get('estado')).toBe('0');
     expect(lista.request.params.get('notificado')).toBe('1');
     expect(lista.request.params.has('id_practica')).toBeFalse();
-    lista.flush({ data: { data: [], total: 0, current_page: 1, per_page: 20, last_page: 1 } });
+    lista.flush({ success: true, data: { data: [], total: 0, current_page: 1, per_page: 20, last_page: 1 } });
     service.crear('tipos-certificado', payloads['tipos-certificado']).subscribe({
       next: () => fail('Debe rechazar el 422'),
       error: (error: ErrorApi) => expect(error.errores['nombre_tipo']).toEqual(['Ya existe.']),
@@ -101,7 +154,7 @@ describe('Contrato HTTP de Emisión con Laravel', () => {
 
   it('solo consulta las rutas reales de las relaciones de Gestión y Actividades', () => {
     const relaciones = [
-      ['id_persona', 'persons/list', 'nombres'], ['id_persona_trabajador', 'person-workers/list', 'cargo'],
+      ['id_persona_trabajador', 'person-workers/list', 'cargo'],
       ['id_practica', 'practices/list', 'carrera'], ['id_participacion', 'participation', 'id_persona'],
       ['id_actividad', 'activity', 'nombre'],
     ];
@@ -109,8 +162,21 @@ describe('Contrato HTTP de Emisión con Laravel', () => {
       service.relaciones(campo).subscribe(opciones => expect(opciones[0].id).toBe(1));
       const request = http.expectOne(`${environment.apiBaseUrl}/${ruta}`);
       expect(request.request.method).toBe('GET');
-      request.flush({ data: [{ [campo]: 1, [texto]: 'Relacionado' }] });
+      request.flush({ success: true, data: [{ [campo]: 1, [texto]: 'Relacionado' }] });
     }
+  });
+
+  it('consulta personas existentes y respeta una denegación de Gestión sin sustituirla por datos locales', () => {
+    service.relaciones('id_persona').subscribe({ next: () => fail('No debe ocultar el 403'), error: (error: ErrorApi) => expect(error.status).toBe(403) });
+    http.expectOne(`${environment.apiBaseUrl}/persons/list`).flush({ message: 'No autorizado' }, { status: 403, statusText: 'Forbidden' });
+  });
+
+  it('consulta la lista real de personas practicantes para resolver beneficiarios de práctica', () => {
+    service.relacionRegistros('practicing-individuals/list').subscribe(filas => expect(filas[0]['id_persona']).toBe(8));
+    const request = http.expectOne(`${environment.apiBaseUrl}/practicing-individuals/list`);
+    expect(request.request.method).toBe('GET');
+    expect(request.request.context.get(AUTHENTICATED_REQUEST)).toBeTrue();
+    request.flush({ success: true, message: '', data: [{ id_persona_practicante: 3, id_persona: 8, codigo: 'P-3', estado: 'ACTIVO' }] });
   });
 
   it('conserva la sesión ante un 403 de Laravel sin conceder acceso ni redirigir al login', () => {

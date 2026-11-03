@@ -1,0 +1,29 @@
+@if (!permitido) { <p class="alert alert-error" role="alert">No tienes permiso para administrar esta credencial.</p> }
+@else {
+  <p class="nota">Selecciona un funcionario existente en Gestión. Registrar una credencial no aplica firmas ni acredita vigencia criptográfica.</p>
+  @if (error()) { <p class="alert alert-error" role="alert">{{ error() }}</p> }
+  @if (!escrituraAutorizada) { <p class="alert alert-advertencia" role="status">{{ bloqueoEscritura }}</p> }
+  <form [formGroup]="form" (ngSubmit)="guardar()" novalidate [attr.aria-busy]="enviando()">
+    <fieldset [disabled]="enviando()">
+      @if (!firma()) { <div class="form-field"><label for="buscar-funcionario">Buscar funcionario</label><input class="input" id="buscar-funcionario" type="search" [formControl]="busqueda" placeholder="Nombre o cargo del trabajador" /></div> }
+      <div class="form-field"><label for="firmante-trabajador">Funcionario municipal *</label><select id="firmante-trabajador" class="input" formControlName="trabajador" required aria-describedby="error-trabajador"><option value="">Selecciona un trabajador existente</option>
+        @if (firma(); as actual) { <option [value]="actual.id_persona_trabajador">{{ trabajador() ? nombres()[trabajador()!.id_persona] || 'Trabajador vinculado' : 'Trabajador vinculado' }}</option> }
+        @for (fila of resultados(); track fila.id_persona_trabajador) { @if (fila.id_persona_trabajador !== firma()?.id_persona_trabajador) { <option [value]="fila.id_persona_trabajador">{{ nombres()[fila.id_persona] || 'Trabajador #' + fila.id_persona_trabajador }} · {{ fila.cargo }}</option> } }
+      </select><small class="error-text" id="error-trabajador">{{ errores()['id_persona_trabajador']?.[0] || (form.controls.trabajador.touched && form.controls.trabajador.invalid ? 'Selecciona un trabajador autorizado.' : '') }}</small></div>
+      <div class="form-field"><label for="firmante-cargo">Cargo o función institucional</label><input class="input" id="firmante-cargo" readonly [value]="trabajador()?.cargo || ''" /><small>Procede del registro laboral; no se modifica desde Certificados.</small></div>
+      <div class="form-field"><label for="firmante-dni">DNI del funcionario</label><input class="input" id="firmante-dni" readonly [value]="trabajador() ? documentos()[trabajador()!.id_persona] || 'No disponible con los permisos actuales' : ''" /></div>
+      <div class="form-field"><label for="firmante-fecha">Fecha de registro *</label><input class="input" id="firmante-fecha" type="date" formControlName="fecha" required /><small class="error-text">{{ errores()['fecha_firma']?.[0] || (form.controls.fecha.touched && form.controls.fecha.invalid ? 'Indica una fecha válida.' : '') }}</small></div>
+      @if (!firma()) {
+        <div class="archivo-zona" (dragover)="$event.preventDefault()" (drop)="soltar($event)"><span class="material-symbols-outlined" aria-hidden="true">upload_file</span><p>Certificado digital PKCS#12 (.pfx o .p12)</p>
+          <input #archivoInput id="firmante-archivo" type="file" accept=".pfx,.p12" (change)="elegir($event)" aria-describedby="archivo-ayuda" />
+          <p>{{ archivo()?.name || 'Selecciona un archivo o arrástralo a esta zona' }}</p>
+          @if (errorArchivo()) { <p class="error-text" role="alert">{{ errorArchivo() }}</p> }
+          <small id="archivo-ayuda">{{ carga.maximoBytes ? 'Máximo autorizado: ' + carga.maximoBytes + ' bytes.' : 'El backend aún no informa un tamaño máximo de carga; el registro permanece bloqueado.' }}</small>
+        </div>
+        <div class="form-field"><label for="firmante-clave">Contraseña del archivo *</label><input id="firmante-clave" class="input" type="password" formControlName="clave" maxlength="255" autocomplete="new-password" required /><small class="error-text">{{ errores()['passphrase']?.[0] || (form.controls.clave.touched && form.controls.clave.invalid ? 'Indica la contraseña (máximo 255 caracteres).' : '') }}</small></div>
+        @if (!carga.disponible) { <p class="alert alert-advertencia" role="status">Falta una API autorizada para cargar y registrar el PFX/PKCS#12. El archivo y la contraseña no se envían. No se admite escribir una ruta de almacenamiento.</p> }
+      } @else { <p class="nota">La identidad está vinculada a la credencial. Esta operación solo actualiza la fecha administrativa. Reemplazar el PFX o contraseña requiere una carga privada segura.</p> }
+      <div class="acciones"><button class="btn btn-primary confirmar-firmante" type="submit" [disabled]="!escrituraAutorizada || enviando() || (!firma() && (!carga.disponible || !archivo()))">{{ enviando() ? 'Guardando…' : firma() ? 'Guardar cambios administrativos' : 'REGISTRAR FIRMANTE MUNICIPAL' }}</button><button class="btn" type="button" (click)="salir()">Cancelar</button></div>
+    </fieldset>
+  </form>
+}

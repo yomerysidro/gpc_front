@@ -1,101 +1,98 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { environment } from '../../../../environments/environment';
+import { provideHttpClient } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
+import { EmisionCertificadosService } from '../../../core/services/emision-certificados/emision-certificados.service';
 import { FormularioEmisionComponent } from './formulario-emision.component';
 
-describe('Formularios de Emisión', () => {
+describe('Formularios y relaciones reales de Emisión', () => {
   let fixture: ComponentFixture<FormularioEmisionComponent>;
-  let http: HttpTestingController;
+  let api: jasmine.SpyObj<EmisionCertificadosService>;
   let permitido: boolean;
   const certificado = { id_certificado: 1, id_persona: 1, id_tipo_certificado: 1, id_reconocimiento: null,
-    id_participacion: 2, id_practica: null, fecha_emision: '2026-10-27', estado: true,
-    notificado: false, fecha_notificacion: null };
-
+    id_participacion: 2, id_practica: null, fecha_emision: '2026-10-27', estado: true, notificado: false, fecha_notificacion: null };
   beforeEach(() => {
     permitido = true;
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(),
-      { provide: AuthService, useValue: { tienePermiso: () => permitido } },
+    api = jasmine.createSpyObj('EmisionCertificadosService', ['obtener', 'listarTodos', 'trabajadores', 'personaReconocimiento', 'relaciones', 'crear', 'actualizar']);
+    api.listarTodos.and.returnValue(of([{ id_tipo_certificado: 1, nombre_tipo: 'Tipo registrado', estado: true }] as any));
+    api.relaciones.and.returnValue(of([{ id: 1, texto: 'Registro existente' }, { id: 2, texto: 'Otro registro existente' }]));
+    api.trabajadores.and.returnValue(of([{ id_persona_trabajador: 4, id_persona: 6, id_area: 2, cargo: 'Cargo registrado', estado: true }]));
+    api.personaReconocimiento.and.returnValue(of({ id_persona: 6, nombres: 'Nombre', apellido_paterno: 'Registrado', apellido_materno: null }));
+    api.crear.and.returnValue(of({ id_reconocimiento: 7 } as any));
+    api.actualizar.and.returnValue(of(certificado));
+    api.obtener.and.returnValue(of(certificado));
+    TestBed.configureTestingModule({ providers: [provideHttpClient(),
+      { provide: EmisionCertificadosService, useValue: api }, { provide: AuthService, useValue: { tienePermiso: () => permitido } },
     ] });
-    http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(FormularioEmisionComponent);
   });
-  afterEach(() => http.verify());
-
-  function escribir(nombre: string, valor: string | boolean): void {
-    const input = fixture.nativeElement.querySelector(`input[id$="-${nombre}"]`) as HTMLInputElement;
-    if (typeof valor === 'boolean') { input.checked = valor; input.dispatchEvent(new Event('change')); }
-    else { input.value = valor; input.dispatchEvent(new Event('input')); }
-    fixture.detectChanges();
+  function iniciar(recurso = 'reconocimientos', id: number | null = null): void {
+    fixture.componentRef.setInput('recurso', recurso); fixture.componentRef.setInput('id', id); fixture.detectChanges();
   }
-  function enviar(): void {
-    fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-    fixture.detectChanges();
+  function completar(): void {
+    const form = (fixture.componentInstance as any).form();
+    form.patchValue({ id_persona_trabajador: '4', titulo: 'Título', descripcion: 'Descripción', motivo: 'Motivo', fecha_reconocimiento: '2026-10-30', estado: 'Activo' });
   }
+  function enviar(): void { fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit')); fixture.detectChanges(); }
 
-  it('envía solo los cambios con PATCH y permite reintentar después de un 422', () => {
-    fixture.componentRef.setInput('recurso', 'certificados');
-    fixture.componentRef.setInput('id', 1);
-    fixture.detectChanges();
-    http.expectOne(`${environment.apiBaseUrl}/certificados/detail/1`).flush({ data: certificado });
-    fixture.detectChanges();
-    escribir('estado', false); enviar();
-    const request = http.expectOne(`${environment.apiBaseUrl}/certificados/update/1`);
-    expect(request.request.method).toBe('PATCH');
-    expect(request.request.body).toEqual({ estado: false });
-    request.flush({ message: 'Invalid validation data.', data: { estado: ['Revisa el estado.'] } }, { status: 422, statusText: '' });
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Revisa el estado.');
+  it('selecciona trabajadores existentes y muestra el nombre de Gestión sin crear personas', () => {
+    iniciar(); completar(); enviar();
+    expect(fixture.nativeElement.textContent).toContain('Nombre Registrado');
+    expect(api.crear).toHaveBeenCalledOnceWith('reconocimientos', { id_persona_trabajador: 4, titulo: 'Título', descripcion: 'Descripción', motivo: 'Motivo', fecha_reconocimiento: '2026-10-30', estado: 'Activo' });
+  });
+  it('rechaza una relación que no pertenece al catálogo HTTP', () => {
+    iniciar(); completar(); (fixture.componentInstance as any).form().controls.id_persona_trabajador.setValue('999');
+    enviar(); expect(api.crear).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('registro existente');
+  });
+  it('no comunica éxito ni emite guardado cuando Laravel rechaza el registro', () => {
+    api.crear.and.returnValue(throwError(() => ({ status: 422, mensaje: 'Datos rechazados', errores: { titulo: ['Título rechazado'] } })));
+    iniciar(); completar();
+    const guardado = jasmine.createSpy('guardado'); fixture.componentInstance.guardado.subscribe(guardado);
     enviar();
-    const reintento = http.expectOne(`${environment.apiBaseUrl}/certificados/update/1`);
-    expect(reintento.request.body).toEqual({ estado: false });
-    reintento.flush({ data: { ...certificado, estado: false } });
+    expect(guardado).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Título rechazado');
   });
-
-  it('rechaza orígenes múltiples sin enviar una petición y convierte los IDs al crear', () => {
-    fixture.componentRef.setInput('recurso', 'certificados'); fixture.detectChanges();
-    escribir('id_persona', '1'); escribir('id_tipo_certificado', '1');
-    escribir('id_participacion', '2'); escribir('id_practica', '3');
-    enviar();
-    expect(fixture.nativeElement.textContent).toContain('Selecciona como máximo un origen');
-    http.expectNone(request => request.method === 'POST');
-    escribir('id_practica', ''); enviar();
-    const request = http.expectOne(`${environment.apiBaseUrl}/certificados/create`);
-    expect(request.request.body.id_persona).toBe(1);
-    expect(request.request.body.id_participacion).toBe(2);
-    expect(request.request.body.id_practica).toBeNull();
-    expect(request.request.body.id_certificado).toBeUndefined();
-    request.flush({ data: certificado });
+  it('maneja un catálogo vacío sin ofrecer registrar trabajadores desde Certificaciones', () => {
+    api.trabajadores.and.returnValue(of([])); iniciar();
+    expect(fixture.nativeElement.textContent).toContain('Los trabajadores se registran exclusivamente desde Gestión');
+    completar(); enviar(); expect(api.crear).not.toHaveBeenCalled();
   });
-
-  it('permite crear sin origen como permite Laravel', () => {
-    fixture.componentRef.setInput('recurso', 'certificados'); fixture.detectChanges();
-    escribir('id_persona', '1'); escribir('id_tipo_certificado', '1'); enviar();
-    const request = http.expectOne(`${environment.apiBaseUrl}/certificados/create`);
-    expect(request.request.body.id_reconocimiento).toBeNull();
-    expect(request.request.body.id_participacion).toBeNull();
-    expect(request.request.body.id_practica).toBeNull();
-    request.flush({ data: { ...certificado, id_participacion: null } });
+  it('respeta el 403 al cargar relaciones y bloquea el envío', () => {
+    api.trabajadores.and.returnValue(throwError(() => ({ status: 403, mensaje: 'No autorizado', errores: {} })));
+    iniciar(); completar(); enviar();
+    expect(fixture.nativeElement.textContent).toContain('No autorizado');
+    expect(api.crear).not.toHaveBeenCalled();
   });
-
-  it('no reconstruye rutas PFX ni contraseñas ocultas en la edición de una firma', () => {
-    fixture.componentRef.setInput('recurso', 'firmas'); fixture.componentRef.setInput('id', 2); fixture.detectChanges();
-    http.expectOne(`${environment.apiBaseUrl}/firmas/detail/2`).flush({ data: { id_firma: 2, id_persona_trabajador: 3, fecha_firma: '2026-10-20' } });
-    fixture.detectChanges();
-    escribir('fecha_firma', '2026-10-27'); enviar();
-    const request = http.expectOne(`${environment.apiBaseUrl}/firmas/update/2`);
-    expect(request.request.body).toEqual({ fecha_firma: '2026-10-27' });
-    request.flush({ data: { id_firma: 2, id_persona_trabajador: 3, fecha_firma: '2026-10-27' } });
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('input[type="password"]').value).toBe('');
+  it('envía solo campos cambiados con PATCH y permite reintentar un 422', () => {
+    iniciar('certificados', 1);
+    const control = (fixture.componentInstance as any).form().controls.estado;
+    control.setValue(false); control.markAsDirty();
+    api.actualizar.and.returnValue(throwError(() => ({ status: 422, mensaje: 'Revisar', errores: { estado: ['Estado rechazado'] } })));
+    enviar(); expect(api.actualizar).toHaveBeenCalledWith('certificados', 1, { estado: false });
+    expect(fixture.nativeElement.textContent).toContain('Estado rechazado');
+    api.actualizar.and.returnValue(of({ ...certificado, estado: false }));
+    enviar(); expect(api.actualizar).toHaveBeenCalledTimes(2);
   });
-
-  it('no carga ni permite formularios para usuarios sin autorización', () => {
-    permitido = false;
-    fixture.componentRef.setInput('recurso', 'firmas'); fixture.componentRef.setInput('id', 2); fixture.detectChanges();
+  it('conserva rutas PFX y contraseñas ocultas cuando solo cambia la fecha', () => {
+    api.obtener.and.returnValue(of({ id_firma: 2, id_persona_trabajador: 1, fecha_firma: '2026-10-20' } as any));
+    iniciar('firmas', 2);
+    const control = (fixture.componentInstance as any).form().controls.fecha_firma;
+    control.setValue('2026-10-27'); control.markAsDirty(); enviar();
+    expect(api.actualizar).toHaveBeenCalledWith('firmas', 2, { fecha_firma: '2026-10-27' });
+    expect(fixture.nativeElement.querySelector('input[type=password]').value).toBe('');
+  });
+  it('no carga ni presenta formularios sin autorización', () => {
+    permitido = false; iniciar('firmas', 2);
     expect(fixture.nativeElement.querySelector('form')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('No tienes permiso');
-    http.expectNone(() => true);
+    expect(api.obtener).not.toHaveBeenCalled(); expect(api.relaciones).not.toHaveBeenCalled();
+  });
+  it('exige exactamente un origen de certificado', () => {
+    iniciar('certificados');
+    const form = (fixture.componentInstance as any).form();
+    form.patchValue({ id_persona: '1', id_tipo_certificado: '1' }); enviar();
+    expect(api.crear).not.toHaveBeenCalled();
+    form.patchValue({ id_participacion: '2', id_practica: '1' }); enviar();
+    expect(api.crear).not.toHaveBeenCalled();
   });
 });

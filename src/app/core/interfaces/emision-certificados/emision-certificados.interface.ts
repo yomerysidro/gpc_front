@@ -11,14 +11,14 @@ export interface CertificadoRow extends RegistroEmision {
   id_participacion: number | null;
   id_practica: number | null;
   fecha_emision: string | null;
-  estado: boolean;
+  estado: boolean | string;
   notificado: boolean;
   fecha_notificacion: string | null;
 }
 export interface TipoCertificado extends RegistroEmision {
   id_tipo_certificado: number;
   nombre_tipo: string;
-  estado: string;
+  estado: string | boolean;
 }
 export interface Reconocimiento extends RegistroEmision {
   id_reconocimiento: number;
@@ -35,7 +35,7 @@ export interface CertificadoDocumento extends RegistroEmision {
   codigo_verificacion: string;
   hash_certificado: string;
   motivo_reemision: string | null;
-  estado: 'GENERADO' | 'ANULADO';
+  estado: 'GENERADO' | 'ANULADO' | 'Vigente' | 'Anulado';
   fecha_generacion: string;
 }
 export interface Firma extends RegistroEmision {
@@ -66,6 +66,13 @@ export interface ActividadFirma extends RegistroEmision {
 }
 
 export interface EntidadesEmision {
+  activity: RegistroEmision;
+  'activity-session': RegistroEmision;
+  'activity-speaker': RegistroEmision;
+  'ativicty-type': RegistroEmision;
+  participation: RegistroEmision;
+  'participation-type': RegistroEmision;
+  attendance: RegistroEmision;
   certificados: CertificadoRow;
   'tipos-certificado': TipoCertificado;
   reconocimientos: Reconocimiento;
@@ -79,6 +86,13 @@ export type RecursoEmision = keyof EntidadesEmision;
 export type RecursoEditable = Exclude<RecursoEmision, 'certificados-firmas' | 'consultas-certificado'>;
 export type RecursoEliminable = Exclude<RecursoEditable, 'certificados-documentos'>;
 export interface PayloadEmision {
+  activity: RegistroEmision;
+  'activity-session': RegistroEmision;
+  'activity-speaker': RegistroEmision;
+  'ativicty-type': RegistroEmision;
+  participation: RegistroEmision;
+  'participation-type': RegistroEmision;
+  attendance: RegistroEmision;
   certificados: {
     id_persona: number; id_tipo_certificado: number; id_reconocimiento: number | null;
     id_participacion: number | null; id_practica: number | null; fecha_emision: string | null;
@@ -107,3 +121,24 @@ export interface PaginaEmision<T> {
 }
 export type FiltrosEmision = Readonly<Record<string, string | number | boolean | null | undefined>>;
 export interface OpcionRelacion { readonly id: number; readonly texto: string }
+
+/** Campos de person-workers/list; los nombres y el area se resuelven por sus APIs de lectura. */
+export interface TrabajadorEmision {
+  readonly id_persona_trabajador: number;
+  readonly id_persona: number;
+  readonly id_area: number;
+  readonly cargo: string;
+  readonly estado: boolean;
+}
+
+/** Proyecciones minimas de Gestion: excluyen contacto y documentos personales. */
+export interface PersonaReconocimiento {
+  readonly id_persona: number;
+  readonly nombres: string;
+  readonly apellido_paterno: string;
+  readonly apellido_materno: string | null;
+}
+export interface AreaReconocimiento {
+  readonly id_area: number;
+  readonly nombre: string;
+}

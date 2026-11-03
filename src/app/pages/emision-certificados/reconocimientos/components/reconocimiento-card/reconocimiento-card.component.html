@@ -1,0 +1,44 @@
+<article class="tarjeta" [attr.aria-labelledby]="'reconocimiento-' + reconocimiento().id_reconocimiento">
+  <div class="identidad">
+    <span class="material-symbols-outlined medalla" aria-hidden="true">military_tech</span>
+    <span class="etiqueta">Reconocimiento institucional</span>
+    <span class="badge">{{ reconocimiento().estado }}</span>
+  </div>
+  <div class="contenido">
+    <p class="trabajador">{{ nombre() || 'Trabajador #' + reconocimiento().id_persona_trabajador }}</p>
+    <p>DNI: {{ dni() || 'No disponible' }}</p>
+    @if (!nombre()) { <p class="dato-relacion">{{ estadoRelacion(persona(), 'Nombre') || 'Nombre no disponible.' }}</p> }
+    @if (trabajadorActual(); as fila) { <p class="cargo">{{ fila.cargo }}</p> }
+    @else { <p class="dato-relacion">{{ estadoRelacion(trabajador(), 'Trabajador') }}</p> }
+    <p class="dato-relacion">{{ areaActual()?.nombre || estadoRelacion(area(), 'Área') || 'Área no disponible.' }}</p>
+    <h2 [id]="'reconocimiento-' + reconocimiento().id_reconocimiento">{{ reconocimiento().titulo }}</h2>
+    <p class="descripcion">{{ reconocimiento().descripcion }}</p>
+    <dl><dt>Motivo</dt><dd>{{ reconocimiento().motivo }}</dd><dt>Fecha del reconocimiento</dt><dd>{{ reconocimiento().fecha_reconocimiento }}</dd></dl>
+    <section class="certificacion" aria-label="Estado de certificación">
+      <h3>Certificación</h3>
+      @if (certificacion().estado !== 'disponible') { <p role="status">{{ estadoRelacion(certificacion(), 'Certificados') }}</p> }
+      @else if (!certificados().length) { <p>Sin certificado asociado.</p> }
+      @for (fila of certificados(); track fila.certificado.id_certificado) {
+        <p class="estado-certificado">Certificado #{{ fila.certificado.id_certificado }} · {{ estadoRegistro(fila.certificado.estado) }}</p>
+        @if (fila.documentos.estado === 'disponible') {
+          @if (!fila.documentos.datos.length) { <p>Documento pendiente de generación.</p> }
+          @for (documento of fila.documentos.datos.slice(0, 3); track documento.id_certificado_documento) {
+            <p class="documento">Documento #{{ documento.id_certificado_documento }} · <span [class.anulado]="anulado(documento.estado)">{{ documento.estado }}</span><br />
+              <span class="codigo">{{ documento.codigo_verificacion || 'Código pendiente' }}</span>
+            </p>
+          }
+          @if (fila.documentos.datos.length > 3) { <p class="dato-relacion">{{ fila.documentos.datos.length }} versiones. Consulta el historial completo en el detalle.</p> }
+        } @else { <p role="status">{{ estadoRelacion(fila.documentos, 'Documentos') }}</p> }
+        <a class="btn" [routerLink]="['/certificaciones/certificados', fila.certificado.id_certificado]">Detalle del certificado</a>
+      }
+      @if (certificados().length) {
+        <button class="btn btn-consulta" type="button" disabled [attr.aria-describedby]="'archivo-pendiente-' + reconocimiento().id_reconocimiento">Ver certificado</button>
+        <p class="dato-relacion" [id]="'archivo-pendiente-' + reconocimiento().id_reconocimiento">El documento oficial aún no tiene una operación autorizada de visualización.</p>
+      }
+    </section>
+  </div>
+  <footer>
+    @if (puedeVerDetalle()) { <a class="btn btn-consulta" [routerLink]="['/certificaciones/reconocimientos', reconocimiento().id_reconocimiento]">Ver detalle</a> }
+    @if (puedeEditar()) { <a class="btn" [routerLink]="['/certificaciones/reconocimientos', reconocimiento().id_reconocimiento, 'editar']">Editar</a> }
+  </footer>
+</article>

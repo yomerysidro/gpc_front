@@ -1,0 +1,45 @@
+@if (certificado(); as certificadoActual) {
+<section aria-label="Visor institucional">
+  <h2>Previsualización institucional</h2>
+  <p class="alert alert-advertencia">Borrador de metadatos. Esta vista no es el PDF oficial ni acredita una firma digital.</p>
+  <div class="acciones">
+    <button class="btn" type="button" (click)="imprimir()" [disabled]="anulado(documento()?.estado) || cargandoFirmas()">Imprimir previsualización</button>
+  </div>
+  <p class="nota" id="pdf-pendiente">PDF oficial pendiente de integración: Laravel no ofrece una operación autorizada de visualización o descarga. No se puede confirmar la disponibilidad del archivo.</p>
+  <article class="certificado-borrador">
+    <header>
+      <img src="/marca/escudo-160.webp" srcset="/marca/escudo-160.webp 1x, /marca/escudo-320.webp 2x" width="80" height="80" alt="Escudo original de la Municipalidad Distrital de Morales" />
+      <p>Municipalidad Distrital de Morales</p><strong>PREVISUALIZACIÓN · NO ES UN DOCUMENTO OFICIAL FIRMADO</strong>
+    </header>
+    <h2>{{ tipo() || 'Tipo de certificado pendiente de consulta' }}</h2>
+    @if (reconocimiento(); as registro) {
+      <h3>{{ registro.titulo }}</h3>
+      <p>{{ registro.descripcion }}</p>
+      <dl><dt>Motivo del reconocimiento</dt><dd>{{ registro.motivo }}</dd><dt>Fecha del reconocimiento</dt><dd>{{ registro.fecha_reconocimiento }}</dd></dl>
+    } @else { <p>{{ origen() || 'Contenido del origen no disponible mediante el API autorizado.' }}</p> }
+    <dl>
+      <dt>Beneficiario</dt><dd>{{ beneficiario() || 'Persona #' + certificadoActual.id_persona + ' · Nombre no disponible' }}</dd>
+      <dt>Fecha de emisión</dt><dd>{{ certificadoActual.fecha_emision || 'Pendiente' }}</dd>
+      <dt>Estado del certificado</dt><dd>{{ estadoRegistro(certificadoActual.estado) }}</dd>
+      <dt>Código único de este documento</dt><dd class="codigo">{{ documento()?.codigo_verificacion || 'Pendiente: no hay código de documento disponible' }}</dd>
+      <dt>Estado del documento</dt><dd>{{ documento()?.estado || 'Pendiente: no hay documento generado' }}</dd>
+      @if (documento(); as documentoActual) {
+        <dt>Fecha de generación</dt><dd>{{ documentoActual.fecha_generacion }}</dd>
+        <dt>Reemisión</dt><dd>{{ documentoActual.motivo_reemision || 'Documento inicial' }}</dd>
+      }
+    </dl>
+    @if (anulado(documento()?.estado)) { <p class="alert alert-error">DOCUMENTO ANULADO</p> }
+    <h3>Firmas asociadas al documento</h3>
+    @if (cargandoFirmas()) { <p role="status">Consultando firmas…</p> }
+    @else if (errorFirmas()) { <p role="alert">No se pudieron determinar las firmas asociadas: {{ errorFirmas() }}</p> }
+    @else if (!firmas().length) { <p>No hay firmas asociadas registradas.</p> }
+    @for (firma of firmas(); track firma.id_certificado_firma) {
+      <p>Firma #{{ firma.id_firma }} · Orden {{ firma.orden_firma }} · Fecha registrada {{ firma.fecha_firma }}
+        @if (firmantes()[firma.id_firma]; as firmante) { · Trabajador #{{ firmante.trabajador }} · {{ firmante.cargo }} }
+      </p>
+    }
+    <p>El registro de firmas asociadas no confirma la validez criptográfica del documento.</p>
+    <footer>QR pendiente: no hay una URL pública de verificación confirmada y configurada.</footer>
+  </article>
+</section>
+}

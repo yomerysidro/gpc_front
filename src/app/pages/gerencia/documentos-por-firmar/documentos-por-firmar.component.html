@@ -1,0 +1,16 @@
+<app-page-title title="Documentos por firmar" /><app-integracion-solicitudes />
+<div class="encabezado"><p>Certificados oficiales pendientes de tu firma, según la asignación y el orden autorizados por el servidor.</p><button class="btn" type="button" [disabled]="!api.integrado || cargando()" (click)="cargar()">Actualizar</button></div>
+<section class="card indicador"><strong>{{ pagina()?.total ?? '—' }}</strong><p>Documentos pendientes autorizados</p></section>
+@if (cargando()) { <p role="status">Consultando documentos pendientes…</p> }
+@if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+@if (pagina(); as datos) {
+  <div class="documentos">@for (documento of datos.registros; track documento.id) { <app-documento-pendiente-card [documento]="documento" (ver)="ver($event)" /> }</div>
+  @if (!datos.registros.length) { <section class="card vacio" role="status">No tienes documentos pendientes de firma.</section> }
+  <nav class="paginacion" aria-label="Paginación de documentos"><button class="btn" type="button" [disabled]="datos.pagina <= 1" (click)="cargar(datos.pagina - 1)">Anterior</button><span>Página {{ datos.pagina }} de {{ datos.ultimaPagina }}</span><button class="btn" type="button" [disabled]="datos.pagina >= datos.ultimaPagina" (click)="cargar(datos.pagina + 1)">Siguiente</button></nav>
+}
+<app-dialogo titulo="Documento de certificado" (cerrado)="cerrar()">
+  @if (cargandoDocumento()) { <p role="status">Consultando documento autorizado…</p> }
+  @if (errorDocumento()) { <p class="error" role="alert">{{ errorDocumento() }}</p> }
+  @if (documentoUrl(); as url) { <iframe class="visor-documento" [src]="url" title="Documento de certificado autorizado"></iframe> }
+  <div class="acciones"><button class="btn" type="button" autofocus (click)="dialogo().cerrar()">Cerrar</button><button class="btn btn-primary" type="button" disabled>Firmar</button></div>
+</app-dialogo>

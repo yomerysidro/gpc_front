@@ -1,0 +1,159 @@
+<section [attr.aria-label]="titulo()">
+  @if (embedded()) { <h2>{{ titulo() }}</h2> } @else { <app-page-title [title]="titulo()" /> }
+  <div class="encabezado">
+    <p class="descripcion">{{ descripcion() }}</p>
+    <button type="button" class="btn btn-primary" [disabled]="!puede('crear') || guardando()" (click)="abrirFormulario('nuevo')">
+      <span class="material-symbols-outlined" aria-hidden="true">add</span>Nuevo registro
+    </button>
+  </div>
+  @if (estadoPermisos()) { <p class="alert alert-advertencia" role="note">{{ estadoPermisos() }}</p> }
+  @if (mensaje()) { <p class="alert" role="status">{{ mensaje() }}</p> }
+  <form class="filtros" role="search" [attr.aria-label]="'Buscar en ' + titulo()" (submit)="$event.preventDefault()">
+    <label class="form-field">Buscar registros
+      <input #buscar class="input" type="search" [value]="busqueda()" (input)="busqueda.set(buscar.value)"
+        placeholder="Buscar en los campos de la tabla" autocomplete="off" />
+    </label>
+    <button type="button" class="btn" (click)="cargar()" [disabled]="cargando() || !puede('ver')">{{ cargando() ? 'Cargando…' : 'Recargar listado' }}</button>
+  </form>
+  <div [attr.aria-busy]="cargando()">
+    @if (errorCarga()) {
+      <div class="alert alert-error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>
+        <span>{{ titulo() }}: {{ errorCarga() }}</span>
+      </div>
+    }
+    @if (cargando()) {
+      <p class="sr-only" role="status">Cargando {{ titulo() }}…</p>
+      <div class="esqueleto" aria-hidden="true"><span></span><span></span><span></span></div>
+    } @else {
+      <div class="tabla-caja" role="region" [attr.aria-label]="'Tabla de ' + titulo()" tabindex="0">
+        <table class="table">
+          <caption class="sr-only">{{ titulo() }}</caption>
+          <thead><tr>
+            @for (columna of columnas(); track columna.clave) { <th scope="col">{{ columna.etiqueta }}</th> }
+            <th scope="col">Acciones</th>
+          </tr></thead>
+          <tbody>
+            @for (registro of filtrados(); track registro[clavePrimaria()]) {
+              <tr>
+                @for (columna of columnas(); track columna.clave) {
+                  <td [attr.data-label]="columna.etiqueta">
+                    @if (columna.formato === 'booleano') {
+                      <span class="badge" [class.badge-exito]="registro[columna.clave] === true">{{ mostrar(registro, columna) }}</span>
+                    } @else { {{ mostrar(registro, columna) }} }
+                  </td>
+                }
+                <td><div class="acciones">
+                  <button type="button" class="btn" [disabled]="!puede('ver') || guardando()" (click)="ver(registro)" [attr.aria-label]="'Ver registro ' + registro[clavePrimaria()]">
+                    <span class="material-symbols-outlined" aria-hidden="true">visibility</span>Ver
+                  </button>
+                  <button type="button" class="btn" [disabled]="!puede('editar') || guardando()" (click)="abrirFormulario('editar', registro)">Editar</button>
+                  <button type="button" class="btn" [disabled]="!puede('eliminar') || guardando()" (click)="solicitarEliminar(registro)">Eliminar</button>
+                </div></td>
+              </tr>
+            } @empty {
+              <tr><td [attr.colspan]="columnas().length + 1" class="estado" role="status">
+                @if (!puede('ver')) { No tienes acceso autorizado a este listado. }
+                @else if (errorCarga()) { No hay datos disponibles para mostrar. }
+                @else if (!registros().length) { No hay registros disponibles. }
+                @else {
+                  No se encontraron registros con esa búsqueda.
+                  <button type="button" class="btn" (click)="busqueda.set('')">Limpiar búsqueda</button>
+                }
+              </td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (!errorCarga()) { <p class="form-ayuda resultados" role="status">{{ filtrados().length }} de {{ registros().length }} registros</p> }
+    }
+  </div>
+</section>
+<app-dialogo #modal [titulo]="(modo() === 'nuevo' ? 'Nuevo registro' : modo() === 'editar' ? 'Editar' : modo() === 'eliminar' ? 'Confirmar eliminación' : 'Detalle') + ' - ' + titulo()" (cerrado)="cancelarDetalle()">
+  @if (errorOperacion()) { <p class="alert alert-error" role="alert">{{ errorOperacion() }}</p> }
+  @if (modo() === 'eliminar') {
+    @if (detalle(); as registro) {
+      <p>{{ identificar(registro) }}</p>
+      <p class="alert alert-advertencia">La eliminación afectará datos reales. Confirma antes de continuar.</p>
+      <div class="acciones pie">
+        <button type="button" class="btn" [disabled]="guardando()" (click)="modal.cerrar()">Cancelar</button>
+        <button type="button" class="btn btn-primary" [disabled]="guardando() || !puede('eliminar')" (click)="confirmando.set(true); ejecutar()">Confirmar eliminación</button>
+      </div>
+    }
+  } @else if (cargandoDetalle()) { <p role="status">Cargando detalle…</p> }
+  @else if (errorDetalle()) { <p class="alert alert-error" role="alert">{{ errorDetalle() }}</p> }
+  @else if (modo() !== 'detalle') {
+    <form [formGroup]="formulario" (ngSubmit)="validar()" novalidate>
+      <p class="form-ayuda">Los campos con * son obligatorios.</p>
+      <fieldset [disabled]="guardando() || confirmando() || cargandoRelaciones()">
+        <div class="formulario">
+        @for (campo of config().campos; track campo.clave) {
+          <div class="form-field">
+            <label [for]="clavePrimaria() + '-' + campo.clave">{{ etiqueta(campo) }}{{ campo.obligatorio ? ' *' : '' }}</label>
+            @if (campo.relacion) {
+              <select class="input" [id]="clavePrimaria() + '-' + campo.clave" [formControlName]="campo.clave">
+                <option [ngValue]="null">Sin seleccionar</option>
+                @if (relacionSinOpcion(campo)) {
+                  <option [ngValue]="relacionActual(campo)">Relación actual (ID {{ relacionActual(campo) }})</option>
+                }
+                @for (opcion of opcionesRelacion()[campo.clave] || []; track opcion) {
+                  <option [ngValue]="opcion[campo.clave]">{{ nombreRelacion(opcion, campo.clave) }}</option>
+                }
+              </select>
+              @if (erroresRelacion()[campo.clave]) { <p class="error-text" role="alert">{{ erroresRelacion()[campo.clave] }} En edición se conserva la relación actual si no la cambias.</p> }
+              @if (!cargandoRelaciones() && !erroresRelacion()[campo.clave] && !(opcionesRelacion()[campo.clave] || []).length) { <p class="form-ayuda">No hay registros disponibles en este catálogo.</p> }
+            } @else if (campo.clave === 'estado' && campo.tipo !== 'boolean') {
+              <input class="input" [id]="clavePrimaria() + '-' + campo.clave" [formControlName]="campo.clave" [attr.maxlength]="campo.maximo ?? null" [attr.list]="clavePrimaria() + '-estados'" required />
+              <datalist [id]="clavePrimaria() + '-estados'">
+                @for (opcion of estados(campo); track opcion.valor) { <option [value]="opcion.valor">{{ opcion.etiqueta }}</option> }
+              </datalist>
+              <small class="form-ayuda">Laravel valida el estado. Las sugerencias corresponden a registros existentes.</small>
+            } @else if (campo.clave === 'estado') {
+              <select class="input" [id]="clavePrimaria() + '-' + campo.clave" [formControlName]="campo.clave" required>
+                <option [ngValue]="null" disabled>Selecciona un estado</option>
+                @for (opcion of estados(campo); track opcion.etiqueta) {
+                  <option [ngValue]="opcion.valor">{{ opcion.etiqueta }}</option>
+                }
+              </select>
+              @if (formulario.controls[campo.clave].hasError('estado')) {
+                <p class="error-text" role="alert">Selecciona Activo o Inactivo. Valor actual: {{ formulario.controls[campo.clave].value ?? 'Sin estado' }}.</p>
+              }
+            } @else if (campo.tipo === 'boolean') {
+              <select class="input" [id]="clavePrimaria() + '-' + campo.clave" [formControlName]="campo.clave">
+                <option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option>
+              </select>
+            } @else {
+              <input class="input" [id]="clavePrimaria() + '-' + campo.clave" [type]="campo.tipo" [formControlName]="campo.clave" [attr.maxlength]="campo.maximo ?? null" [attr.required]="campo.obligatorio ? '' : null" />
+            }
+            @if (formulario.controls[campo.clave].touched && formulario.controls[campo.clave].invalid) {
+              <p class="error-text" role="alert">{{ formulario.controls[campo.clave].getError('servidor') || ('Revisa el campo. ' + (campo.obligatorio ? 'Es obligatorio. ' : '') + (campo.maximo ? 'Máximo ' + campo.maximo + ' caracteres.' : 'Ingresa un valor válido.')) }}</p>
+            }
+          </div>
+        }
+        </div>
+      </fieldset>
+      @if (formulario.hasError('ordenFechas')) { <p class="error-text" role="alert">La fecha final debe ser igual o posterior a la fecha inicial.</p> }
+      @if (cargandoRelaciones()) { <p role="status">Cargando opciones autorizadas...</p> }
+      @if (confirmando()) {
+        <p class="alert alert-advertencia">Confirma el envío de estos datos al servidor.</p>
+        <div class="acciones pie">
+          <button type="button" class="btn" [disabled]="guardando()" (click)="confirmando.set(false)">Volver al formulario</button>
+          <button type="button" class="btn btn-primary" [disabled]="guardando()" (click)="ejecutar()">{{ guardando() ? 'Guardando...' : 'Confirmar y guardar' }}</button>
+        </div>
+      } @else {
+        <div class="acciones pie">
+          <button type="button" class="btn" (click)="modal.cerrar()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="formulario.invalid || relacionesInvalidas() || cargandoRelaciones() || !puede(modo() === 'nuevo' ? 'crear' : 'editar')">{{ modo() === 'nuevo' ? 'Guardar' : 'Guardar cambios' }}</button>
+        </div>
+      }
+    </form>
+  } @else {
+    @if (detalle(); as registro) {
+    <dl class="detalle">
+      @for (columna of columnasDetalle(); track columna.clave) {
+        <div><dt>{{ columna.etiqueta }}</dt><dd>{{ mostrar(registro, columna) }}</dd></div>
+      }
+    </dl>
+    }
+  }
+  @if (modo() === 'detalle' || errorDetalle()) { <div class="acciones pie"><button type="button" class="btn" (click)="modal.cerrar()">Cerrar</button></div> }
+</app-dialogo>
