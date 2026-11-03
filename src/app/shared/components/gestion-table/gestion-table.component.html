@@ -29,7 +29,7 @@
         <table class="table">
           <caption class="sr-only">{{ titulo() }}</caption>
           <thead><tr>
-            @for (columna of columnas(); track columna.clave) { <th scope="col">{{ columna.etiqueta }}</th> }
+            @for (columna of columnas(); track columna.clave) { <th scope="col">{{ encabezadoNumerado() && columna.clave === clavePrimaria() && columna.etiqueta === 'ID' ? 'Nº' : columna.etiqueta }}</th> }
             <th scope="col">Acciones</th>
           </tr></thead>
           <tbody>
