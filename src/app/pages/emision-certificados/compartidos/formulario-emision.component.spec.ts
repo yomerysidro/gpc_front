@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { EmisionCertificadosService } from '../../../core/services/emision-certificados/emision-certificados.service';
 import { FormularioEmisionComponent } from './formulario-emision.component';
@@ -13,8 +13,9 @@ describe('Formularios y relaciones reales de Emisión', () => {
     id_participacion: 2, id_practica: null, fecha_emision: '2026-10-27', estado: true, notificado: false, fecha_notificacion: null };
   beforeEach(() => {
     permitido = true;
-    api = jasmine.createSpyObj('EmisionCertificadosService', ['obtener', 'listarTodos', 'trabajadores', 'personaReconocimiento', 'relaciones', 'crear', 'actualizar']);
-    api.listarTodos.and.returnValue(of([{ id_tipo_certificado: 1, nombre_tipo: 'Tipo registrado', estado: true }] as any));
+    api = jasmine.createSpyObj('EmisionCertificadosService', ['obtener', 'listarTodos', 'trabajadores', 'personaReconocimiento', 'areaReconocimiento', 'relaciones', 'crear', 'actualizar']);
+    api.listarTodos.and.callFake((recurso: any) => of((recurso === 'reconocimientos' ? [{ estado: 'Activo' }] : [{ id_tipo_certificado: 1, nombre_tipo: 'Tipo registrado', estado: true }]) as any));
+    api.areaReconocimiento.and.returnValue(of({ id_area: 2, nombre: 'Area registrada' }));
     api.relaciones.and.returnValue(of([{ id: 1, texto: 'Registro existente' }, { id: 2, texto: 'Otro registro existente' }]));
     api.trabajadores.and.returnValue(of([{ id_persona_trabajador: 4, id_persona: 6, id_area: 2, cargo: 'Cargo registrado', estado: true }]));
     api.personaReconocimiento.and.returnValue(of({ id_persona: 6, nombres: 'Nombre', apellido_paterno: 'Registrado', apellido_materno: null }));
@@ -44,6 +45,40 @@ describe('Formularios y relaciones reales de Emisión', () => {
     iniciar(); completar(); (fixture.componentInstance as any).form().controls.id_persona_trabajador.setValue('999');
     enviar(); expect(api.crear).not.toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('registro existente');
+  });
+  it('carga el reconocimiento y envía únicamente los campos editados con su ID real', () => {
+    api.obtener.and.returnValue(of({ id_reconocimiento: 7, id_persona_trabajador: 4, titulo: 'Original', descripcion: 'Descripción', motivo: 'Motivo', fecha_reconocimiento: '2026-10-30', estado: 'Activo' } as any));
+    iniciar('reconocimientos', 7);
+    expect(api.obtener).toHaveBeenCalledWith('reconocimientos', 7);
+    expect(fixture.nativeElement.querySelector('#reconocimientos-id_persona_trabajador').value).toBe('4');
+    expect(fixture.nativeElement.querySelector('#reconocimientos-estado').value).toBe('Activo');
+    const control = (fixture.componentInstance as any).form().controls.titulo;
+    control.setValue('Actualizado'); control.markAsDirty(); enviar();
+    expect(api.actualizar).toHaveBeenCalledOnceWith('reconocimientos', 7, { titulo: 'Actualizado' });
+  });
+  it('bloquea envíos duplicados hasta completar la respuesta y emite éxito', () => {
+    const respuesta = new Subject<any>(); api.crear.and.returnValue(respuesta);
+    iniciar(); completar();
+    const guardado = jasmine.createSpy('guardado'); fixture.componentInstance.guardado.subscribe(guardado);
+    enviar(); enviar(); expect(api.crear).toHaveBeenCalledTimes(1);
+    expect(guardado).not.toHaveBeenCalled();
+    respuesta.next({ id_reconocimiento: 7 }); respuesta.complete();
+    expect(guardado).toHaveBeenCalledOnceWith({ id_reconocimiento: 7 });
+  });
+  it('valida longitudes, fechas y espacios sin enviar escrituras', () => {
+    iniciar(); completar();
+    const form = (fixture.componentInstance as any).form();
+    for (const [campo, valor] of [['titulo', 'a'.repeat(151)], ['descripcion', 'a'.repeat(501)], ['motivo', ' '], ['fecha_reconocimiento', '2026-02-30']]) {
+      completar(); form.controls[campo].setValue(valor); enviar();
+      expect(form.controls[campo].invalid).toBeTrue();
+    }
+    expect(api.crear).not.toHaveBeenCalled();
+  });
+  it('muestra solo los estados devueltos por Reconocimientos sin inventar Activo/Inactivo', () => {
+    api.listarTodos.and.returnValue(of([{ estado: 'Otorgado' }, { estado: 'Revocado' }] as any)); iniciar();
+    const selector = fixture.nativeElement.querySelector('#reconocimientos-estado') as HTMLSelectElement;
+    expect(Array.from(selector.options).map(opcion => opcion.value)).toEqual(['', 'Otorgado', 'Revocado']);
+    expect(fixture.nativeElement.querySelector('#reconocimientos-id_persona_trabajador').textContent).toContain('Area registrada');
   });
   it('no comunica éxito ni emite guardado cuando Laravel rechaza el registro', () => {
     api.crear.and.returnValue(throwError(() => ({ status: 422, mensaje: 'Datos rechazados', errores: { titulo: ['Título rechazado'] } })));

@@ -14,6 +14,7 @@ type Acceso = {
   validar(): void; ejecutar(): void;
   formulario: FormGroup;
   puede(a: string): boolean;
+  nombreRelacion(registro: GestionRecord, clave: string): string;
 };
 describe('CRUD de Gestion aislado de Laravel y Neon', () => {
   let fixture: ComponentFixture<GestionTableComponent>;
@@ -53,6 +54,16 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
     fixture.detectChanges();
   }
   function completar() { componente.formulario.patchValue({ id_persona: 2, codigo: 'P02', estado: 'Activo' }); }
+
+  it('omite solo el sufijo construido y conserva los números y paréntesis del dato original', () => {
+    for (const nombre of ['Universidad Peruana Unión', 'DNI', 'sistemas', 'supervisor', 'Área 2 (piso 3)', 'Nombre (ID 25) original']) {
+      expect(componente.nombreRelacion({ id_area: 4, nombre }, 'id_area')).toBe(nombre);
+    }
+    expect(componente.nombreRelacion({ id_persona: 2 }, 'id_persona')).toBe('Persona del test');
+    expect(componente.nombreRelacion({ id_area: 4 }, 'id_area')).toBe('Registro');
+    expect(componente.nombreRelacion({ id_practica: 9, codigo: 'P01' }, 'id_practica')).toBe('P01');
+    expect(vista().querySelector('tbody td')?.textContent?.trim()).toBe('7');
+  });
 
   it('lista, filtra y conecta Ver al detalle real del servicio', () => {
     expect(vista().querySelector('tbody')?.textContent).toContain('P01');
@@ -216,8 +227,8 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
     componente.abrirFormulario('editar', actual); opcionesPersona();
     http.expectOne(r => r.url.endsWith('/document-types/list')).flush({ success: true, message: '', data: [{ id_tipo_documento: 3, nombre: 'DNI', estado: true }] });
     fixture.detectChanges();
-    expect(vista().querySelector<HTMLSelectElement>('#id_persona_documento-id_persona')?.selectedOptions[0].textContent).toContain('Persona del test');
-    expect(vista().querySelector<HTMLSelectElement>('#id_persona_documento-id_tipo_documento')?.selectedOptions[0].textContent).toContain('DNI');
+    expect(vista().querySelector<HTMLSelectElement>('#id_persona_documento-id_persona')?.selectedOptions[0].textContent?.trim()).toBe('Persona del test');
+    expect(vista().querySelector<HTMLSelectElement>('#id_persona_documento-id_tipo_documento')?.selectedOptions[0].textContent?.trim()).toBe('DNI');
     expect(vista().querySelector<HTMLInputElement>('#id_persona_documento-estado')?.value).toBe('Inactivo');
     componente.validar(); componente.ejecutar();
     expect(servicio.actualizar).toHaveBeenCalledOnceWith(6, { id_persona: 2, id_tipo_documento: 3, numero_documento: '12345678', estado: 'Inactivo' });

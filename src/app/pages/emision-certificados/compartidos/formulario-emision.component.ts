@@ -2,7 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Component, DestroyRef, inject, input, OnChanges, output, PLATFORM_ID, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
-import { catchError, from, map, mergeMap, Observable, of, Subscription, toArray } from 'rxjs';
+import { catchError, forkJoin, from, map, mergeMap, Observable, of, shareReplay, Subscription, toArray } from 'rxjs';
 import { ErrorApi } from '../../../core/interfaces/api/api-response.interface';
 import { OpcionRelacion, PayloadEmision, RecursoEditable, RegistroEmision } from '../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { EmisionCertificadosService, PERMISOS_EMISION } from '../../../core/services/emision-certificados/emision-certificados.service';
@@ -38,6 +38,10 @@ export class FormularioEmisionComponent implements OnChanges {
   protected readonly opciones = signal<Readonly<Partial<Record<string, readonly OpcionRelacion[]>>>>({});
   protected readonly errorRelacion = signal<Readonly<Record<string, string>>>({});
   protected readonly cargandoRelacion = signal<ReadonlySet<string>>(new Set());
+  protected readonly estadosReconocimiento = signal<readonly string[]>([]);
+  protected readonly errorEstados = signal<string | null>(null);
+  protected readonly advertenciaTrabajador = signal<string | null>(null);
+  protected readonly cargandoEstados = signal(false);
   protected readonly busquedaTrabajador = signal('');
   protected readonly estadosAsistencias = ESTADOS_ASISTENCIAS;
   protected readonly estadoHistorico = signal<string | null>(null);
@@ -45,7 +49,8 @@ export class FormularioEmisionComponent implements OnChanges {
 
   protected opcionesTrabajador(): readonly OpcionRelacion[] {
     const busqueda = this.busquedaTrabajador().trim().toLocaleLowerCase();
-    return (this.opciones()['id_persona_trabajador'] ?? []).filter(fila => fila.texto.toLocaleLowerCase().includes(busqueda));
+    const seleccionado = String(this.form().controls['id_persona_trabajador']?.value ?? '');
+    return (this.opciones()['id_persona_trabajador'] ?? []).filter(fila => String(fila.id) === seleccionado || fila.texto.toLocaleLowerCase().includes(busqueda));
   }
 
   protected trabajadorSinOpcion(): string | null {
@@ -67,12 +72,22 @@ export class FormularioEmisionComponent implements OnChanges {
     this.errores.set({});
     this.opciones.set({});
     this.errorRelacion.set({});
+    this.estadosReconocimiento.set([]);
+    this.errorEstados.set(null);
+    this.advertenciaTrabajador.set(null);
     const controles: Record<string, FormControl<string | boolean>> = {};
     for (const campo of this.config.campos) {
       const reglas: ValidatorFn[] = [];
       if (!this.opcional(campo) && campo.tipo !== 'booleano') reglas.push(Validators.required);
+      if (this.recurso() === 'reconocimientos' && campo.tipo === 'multilinea') reglas.push(control => String(control.value).trim() ? null : { required: true });
+      if (this.recurso() === 'reconocimientos' && !campo.tipo && !campo.relacion) reglas.push(control => String(control.value).trim() ? null : { required: true });
       if (campo.max) reglas.push(Validators.maxLength(campo.max));
       if (campo.tipo === 'numero') reglas.push(Validators.min(1), Validators.pattern(/^\d+$/));
+      if (this.recurso() === 'reconocimientos' && campo.tipo === 'fecha') reglas.push(control => {
+        const valor = String(control.value);
+        const fecha = new Date(`${valor}T00:00:00Z`);
+        return /^\d{4}-\d{2}-\d{2}$/.test(valor) && !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === valor ? null : { fecha: true };
+      });
       const estadoAsistencia = this.recurso() === 'attendance' && campo.nombre === 'estado';
       if (estadoAsistencia) reglas.push(control => ESTADOS_ASISTENCIAS.some(estado => estado.valor === control.value) ? null : { estado: true });
       controles[campo.nombre] = new FormControl<string | boolean>(estadoAsistencia && this.id() === null ? ESTADOS_ASISTENCIAS[0].valor : campo.tipo === 'booleano' ? false : '', { nonNullable: true, validators: reglas });
@@ -88,6 +103,7 @@ export class FormularioEmisionComponent implements OnChanges {
     }
     this.busquedaTrabajador.set('');
     if (isPlatformBrowser(this.plataforma) && this.permitido) {
+      if (this.recurso() === 'reconocimientos') this.cargarEstados();
       for (const campo of this.config.campos.filter(campo => campo.relacion)) this.cargarOpciones(campo);
     }
     if (this.id() !== null && isPlatformBrowser(this.plataforma) && this.permitido) this.cargar();
@@ -114,6 +130,9 @@ export class FormularioEmisionComponent implements OnChanges {
         }
         if (this.clasificacion() && this.recurso() === 'tipos-certificado') valores['estado'] = estadoClasificacion(registro['estado']);
         this.form().patchValue(valores);
+        if (this.recurso() === 'reconocimientos' && valores['estado']) {
+          this.estadosReconocimiento.update(estados => [...new Set([...estados, String(valores['estado'])])].sort());
+        }
         this.cargando.set(false);
       },
       error: (error: ErrorApi) => { this.cargando.set(false); this.errorCarga.set(error.mensaje); },
@@ -127,7 +146,12 @@ export class FormularioEmisionComponent implements OnChanges {
   protected errorCampo(campo: CampoEmision): string | null {
     const control = this.form().controls[campo.nombre];
     if (this.errores()[campo.nombre]?.length) return this.errores()[campo.nombre][0];
-    return control.touched && control.invalid ? 'Completa este campo con un valor válido.' : null;
+    if (!control.touched || !control.invalid) return null;
+    if (this.recurso() !== 'reconocimientos') return 'Completa este campo con un valor válido.';
+    if (control.hasError('required')) return 'Este campo es obligatorio.';
+    if (control.hasError('maxlength')) return `Máximo ${campo.max} caracteres.`;
+    if (control.hasError('fecha')) return 'Selecciona una fecha válida.';
+    return 'Completa este campo con un valor válido.';
   }
 
   protected cargarOpciones(campo: CampoEmision): void {
@@ -136,10 +160,20 @@ export class FormularioEmisionComponent implements OnChanges {
     const peticion: Observable<readonly OpcionRelacion[]> = this.enDialogo() && this.recurso() === 'attendance' && campo.nombre === 'id_participacion'
       ? this.opcionesParticipacion()
       : this.recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador'
-      ? this.api.trabajadores().pipe(mergeMap(filas => from(filas).pipe(mergeMap(fila => this.api.personaReconocimiento(fila.id_persona).pipe(
-          map(persona => ({ id: fila.id_persona_trabajador, texto: [persona.nombres, persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' ') + ` · ${fila.cargo}` })),
-          catchError(() => of({ id: fila.id_persona_trabajador, texto: `Trabajador #${fila.id_persona_trabajador} · ${fila.cargo} · Nombre no disponible` })),
-        ), 4), toArray())) )
+      ? this.api.trabajadores().pipe(mergeMap(filas => {
+          const personas = new Map<number, Observable<string>>();
+          const areas = new Map<number, Observable<string>>();
+          const referencia = (id: number, cache: Map<number, Observable<string>>, permiso: string, consulta: () => Observable<string>, etiqueta: string) => {
+            if (!cache.has(id)) cache.set(id, this.auth.tienePermiso(permiso)
+              ? consulta().pipe(catchError((error: ErrorApi) => { this.advertenciaTrabajador.set(`${etiqueta}: ${error.status === 401 || error.status === 403 ? 'faltan permisos de consulta.' : error.mensaje}`); return of(`${etiqueta} no disponible`); }), shareReplay(1))
+              : of(`${etiqueta} no disponible (requiere ${permiso})`));
+            return cache.get(id)!;
+          };
+          return from(filas).pipe(mergeMap(fila => forkJoin({
+            nombre: referencia(fila.id_persona, personas, 'personas.verpersonas', () => this.api.personaReconocimiento(fila.id_persona).pipe(map(persona => [persona.nombres, persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' '))), 'Nombre'),
+            area: referencia(fila.id_area, areas, 'areas.ver', () => this.api.areaReconocimiento(fila.id_area).pipe(map(area => area.nombre)), 'Área'),
+          }).pipe(map(({ nombre, area }) => ({ id: fila.id_persona_trabajador, texto: `${nombre} — ${fila.cargo || 'Cargo no registrado'} — ${area} — #${fila.id_persona_trabajador}` }))), 4), toArray());
+        }))
       : campo.relacion === 'gestion'
       ? this.api.relaciones(campo.nombre)
       : this.api.listarTodos(campo.relacion!).pipe(map(registros => registros.map(registro => {
@@ -179,6 +213,21 @@ export class FormularioEmisionComponent implements OnChanges {
     }));
   }
 
+  protected cargarEstados(): void {
+    if (!this.auth.tienePermiso('reconocimientos.ver')) {
+      this.errorEstados.set('Se requiere reconocimientos.ver para consultar los estados registrados.'); return;
+    }
+    this.cargandoEstados.set(true); this.errorEstados.set(null);
+    this.api.listarTodos('reconocimientos').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: filas => {
+        const actual = String(this.form().controls['estado']?.value ?? '');
+        this.estadosReconocimiento.set([...new Set([...filas.map(fila => fila.estado).filter(Boolean), ...(actual ? [actual] : [])])].sort());
+        this.cargandoEstados.set(false);
+      },
+      error: (error: ErrorApi) => { this.errorEstados.set(error.mensaje); this.cargandoEstados.set(false); },
+    });
+  }
+
   private finRelacion(nombre: string): void {
     this.cargandoRelacion.update(actual => { const copia = new Set(actual); copia.delete(nombre); return copia; });
   }
@@ -188,6 +237,9 @@ export class FormularioEmisionComponent implements OnChanges {
     this.errorGeneral.set(null);
     if (this.form().invalid) { this.form().markAllAsTouched(); return; }
     const valores = this.form().getRawValue();
+    if (this.recurso() === 'reconocimientos' && (!this.estadosReconocimiento().includes(String(valores['estado'])) || this.cargandoEstados())) {
+      this.errores.set({ estado: ['Selecciona un estado registrado y autorizado.'] }); return;
+    }
     for (const campo of this.config.campos.filter(campo => campo.relacion)) {
       const valor = Number(valores[campo.nombre]);
       if (valores[campo.nombre] === '' && this.opcional(campo)) continue;

@@ -30,7 +30,7 @@
             } @else if (campo.tipo === 'booleano') {
               <input [id]="recurso() + '-' + campo.nombre" type="checkbox" [formControlName]="campo.nombre" />
             } @else if (recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador') {
-              <label for="buscar-trabajador-form">Buscar por cargo o ID de trabajador</label>
+              <label for="buscar-trabajador-form">Buscar por nombre, apellido, cargo o ID de trabajador</label>
               <input class="input" id="buscar-trabajador-form" type="search" [value]="busquedaTrabajador()" (input)="busquedaTrabajador.set($any($event.target).value)" />
               <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
                 [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
@@ -40,6 +40,14 @@
               </select>
               @if (!puedeLeerTrabajadores) { <p class="nota">Se requiere el permiso institucional de lectura de trabajadores para seleccionar uno. No se pueden registrar personas desde este formulario.</p> }
               @else if (!cargandoRelacion().has(campo.nombre) && !errorRelacion()[campo.nombre] && !opcionesTrabajador().length) { <p class="nota" role="status">No hay trabajadores con esta búsqueda. Los trabajadores se registran exclusivamente desde Gestión.</p> }
+            } @else if (recurso() === 'reconocimientos' && campo.nombre === 'estado') {
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre" [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
+                <option value="">Seleccionar estado registrado</option>
+                @for (estado of estadosReconocimiento(); track estado) { <option [value]="estado">{{ estado }}</option> }
+              </select>
+              @if (cargandoEstados()) { <small role="status">Consultando estados…</small> }
+              @if (errorEstados(); as error) { <small class="errores" role="alert">{{ error }}</small><button type="button" class="btn" (click)="cargarEstados()">Reintentar estados</button> }
+              @else if (!cargandoEstados() && !estadosReconocimiento().length) { <small role="status">No hay estados registrados. Se requiere definir el catálogo institucional en Laravel antes de registrar el primer reconocimiento.</small> }
             } @else if (campo.opciones) {
               <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
                 [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
@@ -75,6 +83,7 @@
               @if (errorRelacion()[campo.nombre]; as error) { <small class="errores" role="alert">{{ error }}</small> }
             }
             @if (recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador') {
+              @if (advertenciaTrabajador(); as advertencia) { <p class="nota" role="status">{{ advertencia }}</p> }
               @if (cargandoRelacion().has(campo.nombre)) { <p role="status">Cargando trabajadores…</p> }
               @if (errorRelacion()[campo.nombre]; as error) {
                 <p class="errores" role="alert">{{ error }}</p><button class="btn btn-consulta" type="button" (click)="cargarOpciones(campo)">Reintentar</button>

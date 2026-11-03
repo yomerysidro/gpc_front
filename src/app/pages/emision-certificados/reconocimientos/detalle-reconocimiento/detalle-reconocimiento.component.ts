@@ -1,7 +1,7 @@
 import { afterNextRender, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { catchError, forkJoin, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { ErrorApi } from '../../../../core/interfaces/api/api-response.interface';
 import { CertificadoDocumento, CertificadoRow, Reconocimiento, TrabajadorEmision } from '../../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { AuthService } from '../../../../core/services/autenticacion/auth.service';
@@ -42,6 +42,7 @@ export class DetalleReconocimientoComponent {
       switchMap(params => {
         const id = Number(params.get('id'));
         if (!Number.isSafeInteger(id) || id <= 0) { this.error.set('El identificador no es válido.'); return of(null); }
+        if (!this.auth.tienePermiso('reconocimientos.ver')) { this.error.set('No tienes permiso para consultar reconocimientos.'); return of(null); }
         return this.api.obtener('reconocimientos', id).pipe(catchError((error: ErrorApi) => { this.error.set(error.mensaje); return of(null); }));
       }),
       switchMap(registro => {
@@ -62,9 +63,9 @@ export class DetalleReconocimientoComponent {
         this.certificados.set(relaciones.certificados);
         const trabajador = this.trabajador();
         const identidad = trabajador ? forkJoin({
-          persona: this.api.personaReconocimiento(trabajador.id_persona).pipe(tap(persona => this.nombre.set([persona.nombres, persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' '))), catchError((error: ErrorApi) => { this.errorRelacion.set(error.mensaje); return of(null); })),
-          area: this.api.areaReconocimiento(trabajador.id_area).pipe(tap(area => this.area.set(area.nombre)), catchError((error: ErrorApi) => { this.errorRelacion.set(error.mensaje); return of(null); })),
-          dni: this.api.documentosIdentidad().pipe(tap(dni => this.dni.set(dni[trabajador.id_persona] ?? null)), catchError((error: ErrorApi) => { this.errorRelacion.set(error.mensaje); return of(null); })),
+          persona: this.autorizada('personas.verpersonas', () => this.api.personaReconocimiento(trabajador.id_persona)).pipe(tap(persona => this.nombre.set([persona.nombres, persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' '))), catchError((error: ErrorApi) => { this.errorRelacion.set(error.mensaje); return of(null); })),
+          area: this.autorizada('areas.ver', () => this.api.areaReconocimiento(trabajador.id_area)).pipe(tap(area => this.area.set(area.nombre)), catchError((error: ErrorApi) => { this.errorRelacion.set(error.mensaje); return of(null); })),
+          dni: this.autorizada('personas.verpersonas', () => this.autorizada('tipos-documento.ver', () => this.api.documentosIdentidad())).pipe(tap(dni => this.dni.set(dni[trabajador.id_persona] ?? null)), catchError((error: ErrorApi) => { this.errorRelacion.set(error.mensaje); return of(null); })),
         }) : of(null);
         const documentos = relaciones.certificados.length ? forkJoin(relaciones.certificados.map(certificado => this.api.listarTodos('certificados-documentos', { id_certificado: certificado.id_certificado }).pipe(
           map(documentos => [certificado.id_certificado, documentos] as const),
@@ -74,4 +75,9 @@ export class DetalleReconocimientoComponent {
       }), takeUntilDestroyed(this.destroyRef),
     ).subscribe(documentos => { this.documentos.set(documentos); this.cargando.set(false); }));
   }
+  private autorizada<T>(permiso: string, consulta: () => Observable<T>): Observable<T> {
+    return this.auth.tienePermiso(permiso) ? consulta()
+      : throwError(() => ({ status: 403, mensaje: `Falta el permiso ${permiso}.`, errores: {} }));
+  }
+
 }

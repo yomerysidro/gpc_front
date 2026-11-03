@@ -1,4 +1,13 @@
 <app-page-title title="Reconocimientos institucionales" />
+@if (mensaje(); as texto) { <p class="alert" role="status">{{ texto }}</p> }
+@if (pendienteEliminar(); as registro) {
+  <section class="card" role="alertdialog" aria-modal="false" aria-labelledby="confirmar-eliminar">
+    <h2 id="confirmar-eliminar">Eliminar reconocimiento</h2>
+    <p>¿Deseas eliminar «{{ registro.titulo }}»? Esta acción no se puede deshacer. No se puede eliminar si tiene certificados asociados.</p>
+    <div class="acciones"><button class="btn" [disabled]="eliminando()" (click)="eliminar()">{{ eliminando() ? 'Eliminando…' : 'Confirmar eliminación' }}</button>
+    <button class="btn" [disabled]="eliminando()" (click)="pendienteEliminar.set(null)">Cancelar</button></div>
+  </section>
+}
 @if (sinPermiso()) {
   <section class="card" role="alert"><h2>Sin permiso de consulta</h2><p>{{ error() || 'No tienes permiso para consultar reconocimientos.' }}</p></section>
 } @else {
@@ -10,10 +19,10 @@
     <h2 id="buscar-reconocimientos-titulo">Buscar reconocimientos</h2>
     <div class="campos-busqueda">
       <div class="form-field"><label for="reconocimiento-titulo">Título exacto</label><input class="input" id="reconocimiento-titulo" formControlName="titulo" maxlength="150" /></div>
-      <div class="form-field"><label for="reconocimiento-estado">Estado exacto</label><input class="input" id="reconocimiento-estado" formControlName="estado" maxlength="30" /></div>
+      <div class="form-field"><label for="reconocimiento-estado">Estado</label><select class="input" id="reconocimiento-estado" formControlName="estado"><option value="">Todos los estados</option>@for (estado of estados(); track estado) { <option [value]="estado">{{ estado }}</option> }</select></div>
       <div class="form-field"><label for="reconocimiento-fecha">Fecha del reconocimiento</label><input class="input" id="reconocimiento-fecha" type="date" formControlName="fecha" /></div>
       @if (auth.tienePermiso('ponentes-firmantes.ver')) {
-        <div class="form-field"><label for="buscar-trabajador">Buscar trabajador por cargo o ID</label><input class="input" id="buscar-trabajador" type="search" formControlName="buscarTrabajador" /></div>
+        <div class="form-field"><label for="buscar-trabajador">Buscar trabajador por nombre, apellido, cargo o ID</label><input class="input" id="buscar-trabajador" type="search" formControlName="buscarTrabajador" /></div>
         <div class="form-field"><label for="reconocimiento-trabajador">Trabajador registrado en Gestión</label>
           <select class="input" id="reconocimiento-trabajador" formControlName="trabajador"><option value="">Todos los trabajadores</option>
             @for (fila of opcionesTrabajador(); track fila.id_persona_trabajador) { <option [value]="fila.id_persona_trabajador">{{ trabajador(fila.id_persona_trabajador) }}</option> }
@@ -25,7 +34,7 @@
       <button class="btn btn-consulta" type="submit" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">search</span>Buscar</button>
       <button class="btn btn-neutro" type="button" (click)="limpiar()" [disabled]="cargando()">Limpiar</button>
     </div>
-    <p class="nota">Los filtros de título, fecha y estado coinciden exactamente con los registros. La búsqueda por cargo o ID filtra el catálogo de trabajadores para seleccionarlos.</p>
+    <p class="nota">Título, fecha y estado utilizan coincidencias exactas. Busca por nombre, apellido, cargo o ID y selecciona un trabajador para filtrar los reconocimientos. Los estados se obtienen de los registros existentes.</p>
   </form>
   @if (estadoTrabajadores(); as estadoGestion) {
     @if (estadoGestion.estado === 'sin-permiso') { <p class="alert alert-advertencia" role="status">Gestión restringida: {{ estadoGestion.mensaje }} Los reconocimientos siguen disponibles.</p> }
@@ -41,7 +50,7 @@
       <div class="tarjetas">
         @for (registro of paginaActual.data; track registro.id_reconocimiento) {
           <app-reconocimiento-card [reconocimiento]="registro" [dni]="dni()[trabajadoresPorId().get(registro.id_persona_trabajador)?.id_persona ?? 0] ?? null" [trabajador]="trabajadorRelacion(registro)" [persona]="personaRelacion(registro)" [area]="areaRelacion(registro)"
-            [certificacion]="certificacionRelacion(registro.id_reconocimiento)" [puedeEditar]="auth.tienePermiso('reconocimientos.editar')" [puedeVerDetalle]="auth.tienePermiso('reconocimientos.ver')" />
+            [certificacion]="certificacionRelacion(registro.id_reconocimiento)" [puedeEliminar]="auth.tienePermiso('reconocimientos.eliminar')" (eliminar)="solicitarEliminar(registro)" [puedeEditar]="auth.tienePermiso('reconocimientos.editar')" [puedeVerDetalle]="auth.tienePermiso('reconocimientos.ver')" />
         }
       </div>
       @if (paginaActual.data.length) {

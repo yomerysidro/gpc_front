@@ -150,7 +150,7 @@ export class GestionTableComponent implements OnInit {
     const datosPersona = persona ?? registro;
     const nombre = [datosPersona['nombres'], datosPersona['apellido_paterno'], datosPersona['apellido_materno']].filter(Boolean).join(' ')
       || String(registro['nombre'] ?? registro['nombre_institucion'] ?? registro['codigo'] ?? registro['carrera'] ?? registro['cargo'] ?? 'Registro');
-    return `${nombre} (ID ${registro[clave]})`;
+    return nombre;
   }
 
   private cargarDescripciones(claves: readonly string[]): void {
