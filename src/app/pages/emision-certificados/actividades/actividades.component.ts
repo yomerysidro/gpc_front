@@ -27,7 +27,6 @@ export class ActividadesComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly listado = viewChild(ListadoEmisionComponent);
-  protected readonly formularioExclusivoAbierto = computed(() => this.listado()?.formularioExclusivoAbierto() ?? false);
   protected readonly estados = new Map<RecursoEmision, EstadoNavegacionListado>();
   protected readonly configuracion = toSignal(this.route.data.pipe(map(data => data as ConfiguracionActividades)), { requireSync: true });
   private readonly parametros = toSignal(this.route.queryParamMap.pipe(

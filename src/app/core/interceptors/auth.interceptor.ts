@@ -1,7 +1,8 @@
-import { inject } from '@angular/core';
+import { isPlatformServer } from '@angular/common';
+import { inject, PLATFORM_ID } from '@angular/core';
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { catchError, throwError } from 'rxjs';
+import { catchError, EMPTY, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AUTHENTICATED_REQUEST } from '../security/auth-request.context';
 import { AuthService } from '../services/autenticacion/auth.service';
@@ -20,6 +21,11 @@ const RUTAS_SIN_REDIRECCION = [
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   if (!request.context.get(AUTHENTICATED_REQUEST)) {
     return next(request);
+  }
+
+  // La cookie httpOnly pertenece al navegador y no se reenvia durante SSR.
+  if (isPlatformServer(inject(PLATFORM_ID))) {
+    return EMPTY;
   }
 
   const auth = inject(AuthService);

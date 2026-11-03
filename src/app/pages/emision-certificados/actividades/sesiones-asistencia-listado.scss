@@ -1,0 +1,23 @@
+.filtros-sesiones {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: var(--espacio-3);
+  .form-field { margin: 0; }
+  .input, .btn { height: var(--alto-control); box-sizing: border-box; }
+  .input { width: 100%; min-width: 0; }
+  .btn { margin: 0; white-space: nowrap; }
+}
+@media (max-width: 64rem) {
+  .filtros-sesiones { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 36rem) {
+  .filtros-sesiones { grid-template-columns: minmax(0, 1fr); }
+}
+.cantidad-sesiones {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--espacio-3);
+  select { width: auto; }
+}

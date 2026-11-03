@@ -1,4 +1,5 @@
-import { afterNextRender, Component, computed, DestroyRef, inject, signal, viewChild, WritableSignal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, Injector, signal, viewChild, WritableSignal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs';
@@ -6,7 +7,7 @@ import { ErrorApi } from '../../../core/interfaces/api/api-response.interface';
 import { ActividadInscripcion, DocumentoInscripcion, FiltrosInscripcion, Inscripcion, InscripcionPayload, PersonaInscripcion, TipoInscripcion } from '../../../core/interfaces/participantes/participante.interface';
 import { ParticipantesService } from '../../../core/services/participantes/participantes.service';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
-import { fechaHoyLima, filtrarInscripciones, hayDuplicado } from '../../../models/participantes/inscripcion.model';
+import { ESTADOS_INSCRIPCION, estadoInscripcion, fechaHoyLima, filtrarInscripciones, hayDuplicado } from '../../../models/participantes/inscripcion.model';
 import { DialogoComponent } from '../../../shared/components/dialogo/dialogo.component';
 import { PageTitleComponent } from '../../../shared/components/page-title/page-title.component';
 import { HasPermissionDirective } from '../../../shared/directives/has-permission.directive';
@@ -22,6 +23,12 @@ export class ListarParticipantesComponent {
   private readonly servicio = inject(ParticipantesService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly documento = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
+  private readonly dialogoFormulario = viewChild.required<DialogoComponent>('dialogoFormulario');
+  private readonly elementoFormulario = viewChild.required('dialogoFormulario', { read: ElementRef<HTMLElement> });
+  private readonly botonInscribir = viewChild.required<ElementRef<HTMLButtonElement>>('botonInscribir');
+  private overflowAnterior: string | null = null;
   private readonly dialogoDetalle = viewChild.required<DialogoComponent>('dialogoDetalle');
   private readonly dialogoEstado = viewChild.required<DialogoComponent>('dialogoEstado');
   private solicitudDetalle?: Subscription;
@@ -48,7 +55,7 @@ export class ListarParticipantesComponent {
     for (const documento of this.documentos()) mapa.set(documento.id_persona, [...(mapa.get(documento.id_persona) ?? []), documento.numero_documento]);
     return mapa;
   });
-  protected readonly estados = computed(() => [...new Set(this.inscripciones().map(item => item.estado))].sort());
+  protected readonly estados = ESTADOS_INSCRIPCION;
   protected readonly filtros = signal<FiltrosInscripcion>({ busqueda: '', actividad: '', tipo: '', estado: '' });
   protected readonly filtradas = computed(() => filtrarInscripciones(this.inscripciones(), this.filtros(),
     id => `${this.nombrePersona(id)} ${this.documentoPersona(id)}`));
@@ -78,11 +85,18 @@ export class ListarParticipantesComponent {
     id_actividad: ['', [Validators.required, Validators.pattern(/^[1-9]\d*$/)]],
     id_tipo_participacion: ['', [Validators.required, Validators.pattern(/^[1-9]\d*$/)]],
     fecha_inscripcion: [fechaHoyLima(), Validators.required],
-    estado: ['', [Validators.required, Validators.pattern(/.*\S.*/), Validators.maxLength(30)]],
+    estado: ['Activo', [Validators.required, Validators.pattern(/.*\S.*/), Validators.maxLength(30)]],
   });
 
   constructor() {
-    afterNextRender(() => { this.cargar(); this.cargarCatalogos(); });
+    this.destroyRef.onDestroy(() => this.restaurarDesplazamiento());
+    afterNextRender(() => {
+      const dialogo = this.elementoFormulario().nativeElement.querySelector('dialog')!;
+      const cancelar = (evento: Event) => { evento.preventDefault(); this.cerrarFormulario(); };
+      dialogo.addEventListener('cancel', cancelar);
+      this.destroyRef.onDestroy(() => dialogo.removeEventListener('cancel', cancelar));
+      this.cargar(); this.cargarCatalogos();
+    });
     this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.erroresServidor.set({}));
   }
   protected cargar(): void {
@@ -112,6 +126,10 @@ export class ListarParticipantesComponent {
   protected filtrar(clave: keyof FiltrosInscripcion, valor: string): void { this.filtros.update(filtros => ({ ...filtros, [clave]: valor })); this.pagina.set(1); }
   protected limpiarFiltros(): void { this.filtros.set({ busqueda: '', actividad: '', tipo: '', estado: '' }); this.pagina.set(1); }
   protected cambiarTamano(valor: string): void { if ([10, 20, 50].includes(Number(valor))) { this.porPagina.set(Number(valor)); this.pagina.set(1); } }
+  protected etiquetaEstado(valor: string): string {
+    return valor === 'sd' ? 'Estado sin descripción (sd)' : estadoInscripcion(valor);
+  }
+  protected esEstadoOfrecido(valor: string): boolean { return this.estados.some(estado => estado.valor === valor); }
   protected nombrePersona(id: number): string {
     const persona = this.personasPorId().get(id);
     return persona ? [persona.nombres, persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' ') : `Persona no disponible (#${id})`;
@@ -121,8 +139,11 @@ export class ListarParticipantesComponent {
   protected nombreTipo(id: number): string { return this.tiposPorId().get(id) ?? `Tipo no disponible (#${id})`; }
   protected fecha(valor: string): string { const [anio, mes, dia] = valor.slice(0, 10).split('-'); return `${dia}/${mes}/${anio}`; }
   protected abrirFormulario(item: Inscripcion | null): void {
-    if (this.enviando() || this.guardandoEstado() || (item && !this.auth.tienePermiso('participantes.editar'))) return;
+    if (this.formularioAbierto() || this.enviando() || this.guardandoEstado() || (item && !this.auth.tienePermiso('participantes.editar'))) return;
     this.solicitudDetalle?.unsubscribe(); this.editando.set(item?.id_participacion ?? null);
+    this.overflowAnterior = this.documento.body.style.overflow;
+    this.documento.body.style.overflow = 'hidden';
+    this.dialogoFormulario().abrir();
     this.formularioAbierto.set(true); this.errorFormulario.set(null); this.erroresServidor.set({});
     this.form.reset({ fecha_inscripcion: fechaHoyLima() }); this.cargandoEdicion.set(!!item);
     if (!item) return;
@@ -132,7 +153,28 @@ export class ListarParticipantesComponent {
       error: (error: ErrorApi) => { this.cargandoEdicion.set(false); this.errorFormulario.set(this.mensajeError(error)); },
     });
   }
-  protected cerrarFormulario(): void { if (!this.enviando()) { this.solicitudDetalle?.unsubscribe(); this.formularioAbierto.set(false); } }
+  protected cerrarFormulario(): void {
+    if (this.enviando()) return;
+    this.dialogoFormulario().cerrar();
+    this.alCerrarFormulario();
+    afterNextRender(() => {
+      if (!this.formularioAbierto()) this.dialogoFormulario().cerrar();
+    }, { injector: this.injector });
+  }
+  protected alCerrarFormulario(): void {
+    if (!this.formularioAbierto() || this.elementoFormulario().nativeElement.querySelector('dialog')?.open) return;
+    this.solicitudDetalle?.unsubscribe();
+    this.formularioAbierto.set(false);
+    this.form.reset(); this.editando.set(null); this.cargandoEdicion.set(false);
+    this.errorFormulario.set(null); this.erroresServidor.set({});
+    this.restaurarDesplazamiento();
+    afterNextRender(() => this.botonInscribir().nativeElement.focus(), { injector: this.injector });
+  }
+  private restaurarDesplazamiento(): void {
+    if (this.overflowAnterior === null) return;
+    this.documento.body.style.overflow = this.overflowAnterior;
+    this.overflowAnterior = null;
+  }
   protected errorCampo(clave: keyof typeof this.form.controls): string | null {
     if (this.erroresServidor()[clave]?.[0]) return this.erroresServidor()[clave][0];
     const control = this.form.controls[clave];
@@ -160,7 +202,7 @@ export class ListarParticipantesComponent {
     const consulta = id === null ? this.servicio.crear(payload) : this.servicio.actualizar(id, payload);
     consulta.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: respuesta => {
-        this.form.enable({ emitEvent: false }); this.enviando.set(false); this.formularioAbierto.set(false);
+        this.form.enable({ emitEvent: false }); this.enviando.set(false); this.cerrarFormulario();
         this.aviso.set({ tipo: 'exito', texto: respuesta.message }); this.limpiarFiltros(); this.cargar();
       },
       error: (error: ErrorApi) => {

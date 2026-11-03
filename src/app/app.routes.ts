@@ -54,7 +54,14 @@ const gestionRoutes: Routes = [
     loadComponent: () => import('./shared/components/gestion-tabs/gestion-tabs.component').then(pagina => pagina.GestionTabsComponent),
     canActivate: [configuracionGestionGuard],
     runGuardsAndResolvers: 'paramsOrQueryParamsChange',
-    data: { titulo: 'Configuración de Gestión', seccion: 'configuracion' },
+    data: { titulo: 'Gestión institucional', seccion: 'configuracion' },
+  },
+  {
+    path: 'tipos-clasificaciones',
+    loadComponent: () => import('./shared/components/gestion-tabs/gestion-tabs.component').then(pagina => pagina.GestionTabsComponent),
+    canActivate: [configuracionGestionGuard],
+    runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+    data: { titulo: 'Tipos y clasificaciones', seccion: 'clasificaciones' },
   },
 ];
 

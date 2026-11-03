@@ -72,7 +72,7 @@ export class SidebarComponent {
   private puntuacion(entrada: EntradaSidebarVisible, actual: UrlTree): number {
     const segmentos = (arbol: UrlTree) => arbol.root.children[PRIMARY_OUTLET]?.segments.map(segmento => segmento.path) ?? [];
     const destino = segmentos(actual);
-    for (const [clave, valor] of Object.entries(entrada.queryParams ?? {})) {
+    for (const [clave, valor] of Object.entries(entrada.catalogos ? {} : entrada.queryParams ?? {})) {
       if ((actual.queryParamMap.get(clave) ?? entrada.parametrosPredeterminados?.[clave]) !== valor) return -1;
     }
     const puntuaciones = [entrada.path, ...(entrada.rutasActivas ?? [])].map(path => {

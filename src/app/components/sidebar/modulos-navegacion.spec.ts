@@ -14,7 +14,7 @@ import { SidebarComponent } from './sidebar.component';
 @Component({ standalone: true, template: '' })
 class DestinoPruebaComponent {}
 
-const permisosLectura = [DASHBOARD_SIDEBAR.permiso, ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.map(hijo => hijo.permiso))]
+const permisosLectura = [DASHBOARD_SIDEBAR.permiso, ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.flatMap(hijo => hijo.catalogos?.map(catalogo => catalogo.permiso) ?? [hijo.permiso]))]
   .filter((clave): clave is string => clave !== undefined);
 
 describe('Configuración única del Sidebar institucional', () => {
@@ -41,8 +41,8 @@ describe('Configuración única del Sidebar institucional', () => {
     const seguridad = SIDEBAR_CONFIG.find(grupo => grupo.id === 'seguridad')!;
     expect(seguridad.hijos.map(hijo => hijo.id)).toEqual(['usuarios', 'roles']);
     const configuracion = SIDEBAR_CONFIG.find(grupo => grupo.id === 'configuracion')!;
-    expect(configuracion.hijos.map(hijo => hijo.id)).toEqual(['areas', 'instituciones', 'tipos-documento', 'tipos-actividad', 'tipos-participacion', 'tipos-certificado']);
-    expect(configuracion.hijos.slice(0, 3).every(hijo => hijo.path === '/gestion/configuracion' && !!hijo.queryParams?.['pestana'])).toBeTrue();
+    expect(configuracion.hijos.map(hijo => hijo.id)).toEqual(['gestion-institucional', 'tipos-clasificaciones']);
+    expect(configuracion.hijos.every(hijo => hijo.catalogos?.length === 3)).toBeTrue();
     const personas = SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos).find(hijo => hijo.id === 'personas')!;
     expect(personas.path).toBe('/gestion/personas');
     expect(SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos).some(hijo => hijo.path?.includes('verificacion'))).toBeFalse();
@@ -121,7 +121,7 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
       ['/certificaciones/reconocimientos/17/editar', 'recursos-humanos', 'Reconocimientos'],
       ['/certificaciones/certificados/9/documentos/11/visor', 'emision', 'Certificados emitidos'],
       ['/certificaciones/firmas/asignar-firmantes', 'emision', 'Firmas digitales'],
-      ['/certificaciones/configuracion/tipos-actividad', 'configuracion', 'Tipos de actividad'],
+      ['/gestion/tipos-clasificaciones?pestana=tipos-actividad', 'configuracion', 'Tipos y clasificaciones'],
     ]) {
       await router.navigateByUrl(url); fixture.detectChanges();
       const activo = vista().querySelectorAll('a[aria-current="page"]');
@@ -132,12 +132,12 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
     }
   });
 
-  it('distingue los tres catálogos que comparten ruta y reconoce la pestaña predeterminada', async () => {
+  it('mantiene Gestión institucional activa en sus tres pestañas', async () => {
     const router = TestBed.inject(Router);
-    for (const [query, texto] of [['', 'Áreas municipales'], ['?pestana=instituciones', 'Instituciones'], ['?pestana=tipos-documento', 'Tipos de documento']]) {
+    for (const query of ['', '?pestana=instituciones', '?pestana=tipos-documento']) {
       await router.navigateByUrl('/gestion/configuracion' + query); fixture.detectChanges();
       expect(vista().querySelectorAll('a[aria-current="page"]').length).toBe(1);
-      expect(vista().querySelector('a[aria-current="page"]')?.textContent).toContain(texto);
+      expect(vista().querySelector('a[aria-current="page"]')?.textContent).toContain('Gestión institucional');
       expect(vista().querySelector('#submenu-seguridad a[aria-current]')).toBeNull();
     }
   });
@@ -219,14 +219,19 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
     ['/gestion/configuracion?pestana=areas', 'app-area'],
     ['/gestion/configuracion?pestana=instituciones', 'app-institution'],
     ['/gestion/configuracion?pestana=tipos-documento', 'app-document-type'],
-    ['/certificaciones/configuracion/tipos-actividad', 'app-actividades'],
-    ['/certificaciones/configuracion/tipos-participacion', 'app-actividades'],
+    ['/certificaciones/configuracion/tipos-actividad', 'app-tipos-certificado'],
+    ['/certificaciones/configuracion/tipos-participacion', 'app-tipos-certificado'],
     ['/certificaciones/configuracion', 'app-tipos-certificado'],
   ];
   for (const [url, selector] of destinos) {
     it('reutiliza el componente existente de ' + url, async () => {
       const harness = await RouterTestingHarness.create(url); resolverLecturas(); harness.detectChanges();
-      expect(TestBed.inject(Router).url).toBe(url);
+      const anteriores: Record<string, string> = {
+        '/certificaciones/configuracion/tipos-actividad': '/gestion/tipos-clasificaciones?pestana=tipos-actividad',
+        '/certificaciones/configuracion/tipos-participacion': '/gestion/tipos-clasificaciones?pestana=tipos-participacion',
+        '/certificaciones/configuracion': '/gestion/tipos-clasificaciones?pestana=tipos-certificado',
+      };
+      expect(TestBed.inject(Router).url).toBe(anteriores[url] ?? url);
       expect(harness.routeNativeElement!.querySelector(selector)).withContext(url).not.toBeNull();
       expect(harness.routeNativeElement!.querySelectorAll('app-sidebar').length).toBe(1);
       expect(harness.routeNativeElement!.querySelectorAll('app-sidebar a[aria-current="page"]').length).toBe(1);

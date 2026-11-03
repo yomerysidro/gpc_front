@@ -10,12 +10,24 @@
   @if (errorGeneral(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
   <form [formGroup]="form()" (ngSubmit)="guardar()" [attr.aria-busy]="enviando()">
     <fieldset [disabled]="enviando()" class="card">
-      <legend>{{ id() === null ? 'Nuevo registro' : 'Editar registro #' + id() }}</legend>
+      <legend [class.sr-only]="enDialogo()">{{ id() === null ? 'Nuevo registro' : 'Editar registro #' + id() }}</legend>
       <div class="grid">
         @for (campo of config.campos; track campo.nombre) {
           <div class="form-field">
             <label [for]="recurso() + '-' + campo.nombre">{{ campo.titulo }}{{ opcional(campo) ? ' (opcional)' : '' }}</label>
-            @if (campo.tipo === 'booleano') {
+            @if (clasificacion() && recurso() === 'tipos-certificado' && campo.nombre === 'estado') {
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
+                @for (estado of estadosClasificaciones; track estado.valor) { <option [value]="estado.valor">{{ estado.etiqueta }}</option> }
+              </select>
+            } @else if (recurso() === 'attendance' && campo.nombre === 'estado') {
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
+                @if (estadoHistorico() !== null) { <option value="" disabled>Seleccionar estado</option> }
+                @for (estado of estadosAsistencias; track estado.valor) { <option [value]="estado.valor">{{ estado.etiqueta }}</option> }
+              </select>
+              @if (estadoHistorico(); as actual) { <small class="nota">Estado actual: {{ actual }}. Selecciona Activo o Inactivo para actualizarlo.</small> }
+            } @else if (campo.tipo === 'booleano') {
               <input [id]="recurso() + '-' + campo.nombre" type="checkbox" [formControlName]="campo.nombre" />
             } @else if (recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador') {
               <label for="buscar-trabajador-form">Buscar por cargo o ID de trabajador</label>
@@ -39,7 +51,7 @@
                 [attr.maxlength]="campo.max" [attr.aria-invalid]="!!errorCampo(campo)"
                 [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'"></textarea>
             } @else if (campo.relacion) {
-              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre">
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre" [attr.autofocus]="enDialogo() && campo === config.campos[0] ? true : null">
                 <option value="">Seleccionar registro existente</option>
                 @for (opcion of opciones()[campo.nombre] ?? []; track opcion.id) { <option [value]="opcion.id">{{ opcion.texto }}</option> }
               </select>
@@ -54,11 +66,11 @@
             @if (campo.relacion && !(recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador')) {
               <button type="button" class="btn btn-consulta" [disabled]="cargandoRelacion().has(campo.nombre)"
                 (click)="cargarOpciones(campo)">{{ cargandoRelacion().has(campo.nombre) ? 'Cargando…' : 'Ver registros disponibles' }}</button>
-              <datalist [id]="recurso() + '-' + campo.nombre + '-opciones'">
+              @if (!enDialogo()) { <datalist [id]="recurso() + '-' + campo.nombre + '-opciones'">
                 @for (opcion of opciones()[campo.nombre] ?? []; track opcion.id) {
                   <option [value]="opcion.id">{{ opcion.texto }}</option>
                 }
-              </datalist>
+              </datalist> }
               <small class="nota">Selecciona un registro existente. Los catálogos se administran en su módulo de origen.</small>
               @if (errorRelacion()[campo.nombre]; as error) { <small class="errores" role="alert">{{ error }}</small> }
             }

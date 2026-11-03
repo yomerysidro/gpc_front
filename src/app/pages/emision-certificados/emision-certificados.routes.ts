@@ -89,20 +89,13 @@ export const EMISION_CERTIFICADOS_ROUTES: Routes = [
   {
     path: 'configuracion', children: [
       {
-        path: '', pathMatch: 'full', canActivate: [permissionGuard], data: { permiso: 'emision.ver' },
-        loadComponent: () => import('./configuracion/tipos-certificado/tipos-certificado.component').then(m => m.TiposCertificadoComponent),
+        path: '', pathMatch: 'full', redirectTo: '/gestion/tipos-clasificaciones?pestana=tipos-certificado',
       },
       {
-        path: 'tipos-actividad', canActivate: [permissionGuard], data: { permiso: 'actividades.ver', titulo: 'Tipos de actividad', secciones: [
-          { titulo: 'Tipos de actividad', recurso: 'ativicty-type' },
-        ] },
-        loadComponent: () => import('./actividades/actividades.component').then(m => m.ActividadesComponent),
+        path: 'tipos-actividad', pathMatch: 'full', redirectTo: '/gestion/tipos-clasificaciones?pestana=tipos-actividad',
       },
       {
-        path: 'tipos-participacion', canActivate: [permissionGuard], data: { permiso: 'participantes.ver', titulo: 'Tipos de participación', secciones: [
-          { titulo: 'Tipos de participación', recurso: 'participation-type' },
-        ] },
-        loadComponent: () => import('./actividades/actividades.component').then(m => m.ActividadesComponent),
+        path: 'tipos-participacion', pathMatch: 'full', redirectTo: '/gestion/tipos-clasificaciones?pestana=tipos-participacion',
       },
     ],
   },

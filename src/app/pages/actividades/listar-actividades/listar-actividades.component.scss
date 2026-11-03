@@ -39,11 +39,18 @@
 
 .nombre-actividad { min-width: 13rem; overflow-wrap: anywhere; }
 tr.registro-inactivo .nombre-actividad { font-weight: 500; }
-.referencia { display: block; color: var(--neutro-500); font-size: 0.8125rem; }
 .acciones-fila { display: flex; justify-content: flex-end; gap: 2px; }
 .tamano-pagina { display: flex; align-items: center; gap: var(--espacio-2); }
 .tamano-pagina .input { width: auto; }
-.formulario { max-width: 44rem; margin-bottom: var(--espacio-5); }
+.formulario { min-width: 0; }
+
+// Alcance exclusivo del diálogo de Actividades; conserva el diseño compartido de Áreas.
+:host ::ng-deep app-dialogo.modal-actividad > dialog.dialogo {
+  width: min(48rem, calc(100vw - 2 * var(--espacio-4)));
+  max-height: calc(100dvh - 2 * var(--espacio-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 
 .rejilla-formulario {
   display: grid;
