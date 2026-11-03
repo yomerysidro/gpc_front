@@ -1,0 +1,4 @@
+:host { display: block; min-width: 0; }
+.enlaces-gestion { display: flex; gap: var(--espacio-1); overflow-x: auto; border-bottom: 1px solid var(--neutro-200); margin-bottom: var(--espacio-5); }
+a { display: flex; align-items: center; min-height: var(--alto-control); padding: var(--espacio-2) var(--espacio-4); white-space: nowrap; text-decoration: none; border-bottom: 2px solid transparent; color: var(--neutro-700); }
+a.seleccionado { color: var(--color-primario); border-bottom-color: var(--color-primario); font-weight: 600; }

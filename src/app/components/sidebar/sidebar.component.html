@@ -26,7 +26,7 @@
           <a [routerLink]="entrada.path" [queryParams]="entrada.queryParams ?? null"
             [class.active]="entradaActiva() === entrada.id" [attr.aria-current]="entradaActiva() === entrada.id ? 'page' : null">
             <span class="material-symbols-outlined" aria-hidden="true">{{ entrada.icon }}</span>
-              <span class="texto-enlace">{{ entrada.label }}@if (entrada.preliminar && !entrada.interfazDisponible) { <small class="etiqueta-desarrollo">En desarrollo</small> }</span>
+              <span class="texto-enlace">{{ entrada.label }}@if (entrada.pendiente && !entrada.interfazDisponible) { <small class="etiqueta-desarrollo">En desarrollo</small> }</span>
           </a>
         }
       </div>

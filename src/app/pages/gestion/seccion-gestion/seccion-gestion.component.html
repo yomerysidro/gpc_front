@@ -1,0 +1,10 @@
+<app-page-title [title]="titulo" />
+@if (enlaces.length > 1) {
+  <nav class="enlaces-gestion" [attr.aria-label]="'Secciones de ' + titulo">
+    @for (enlace of enlaces; track enlace.ruta) {
+      <a [routerLink]="enlace.ruta" routerLinkActive="seleccionado" [routerLinkActiveOptions]="{ exact: enlace.exacto }"
+        ariaCurrentWhenActive="page">{{ enlace.titulo }}</a>
+    }
+  </nav>
+}
+<router-outlet />

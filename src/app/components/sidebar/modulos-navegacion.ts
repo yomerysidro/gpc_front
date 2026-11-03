@@ -71,10 +71,10 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
     { id: 'historial-decisiones', interfazDisponible: true, label: 'Historial de decisiones', icon: 'visibility', habilitado: false, pendiente: 'La consulta global está preparada; su ruta sigue comentada y requiere autorización de Gerencia.' },
   ] },
   { id: 'reportes', label: 'REPORTES', icon: 'bar_chart', hijos: [
-    { id: 'indicadores', label: 'Indicadores generales', icon: 'bar_chart', habilitado: false, pendiente: 'El módulo de menú existe; no hay pantalla ni endpoint de indicadores.' },
-    { id: 'reportes-actividades', label: 'Reportes de actividades', icon: 'event', habilitado: false, pendiente: 'Sin pantalla ni endpoint de reportes de actividades.' },
-    { id: 'reportes-certificados', label: 'Reportes de certificados', icon: 'workspace_premium', habilitado: false, pendiente: 'Sin pantalla ni endpoint de reportes de certificados.' },
-    { id: 'reportes-asistencia', label: 'Reportes de asistencia', icon: 'how_to_reg', habilitado: false, pendiente: 'Sin pantalla ni endpoint de reportes de asistencia.' },
+    { id: 'indicadores', label: 'Indicadores generales', icon: 'bar_chart', habilitado: true, path: '/reportes/indicadores', permiso: 'reportes.ver', pendiente: 'Agregados generales y series mensuales pendientes del backend.' },
+    { id: 'reportes-actividades', label: 'Reportes de actividades', icon: 'event', habilitado: true, path: '/reportes/actividades', permiso: 'reportes.ver' },
+    { id: 'reportes-certificados', label: 'Reportes de certificados', icon: 'workspace_premium', habilitado: true, path: '/reportes/certificados', permiso: 'reportes.ver', pendiente: 'Consulta paginada disponible; relaciones y filtros globales pendientes del backend.' },
+    { id: 'reportes-asistencia', label: 'Reportes de asistencia', icon: 'how_to_reg', habilitado: true, path: '/reportes/asistencia', permiso: 'reportes.ver', pendiente: 'Consulta por actividad y sesión pendiente del backend.' },
   ] },
   { id: 'configuracion', label: 'CONFIGURACIÓN GENERAL', icon: 'tune', hijos: [
     { id: 'areas', label: 'Áreas municipales', icon: 'group', path: '/gestion/configuracion', queryParams: { pestana: 'areas' }, parametrosPredeterminados: { pestana: 'areas' }, permiso: 'areas.ver', aliases: ['/areas'], habilitado: true },

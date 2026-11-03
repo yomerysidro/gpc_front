@@ -1,0 +1,30 @@
+:host { display: block; }
+.encabezado, .acciones, .filtros { display: flex; flex-wrap: wrap; align-items: center; gap: var(--espacio-3); }
+.encabezado { justify-content: space-between; margin-bottom: var(--espacio-4); }
+h2 { font-size: 1.25rem; margin-bottom: var(--espacio-2); }
+.descripcion, .ayuda { color: var(--neutro-500); margin: 0; }
+.descripcion { max-width: 48rem; }
+.ayuda { font-size: .875rem; }
+.filtros { justify-content: space-between; margin: var(--espacio-4) 0; }
+.filtros .form-field { flex: 1; max-width: 30rem; margin: 0; }
+.dependencias { padding: var(--espacio-3); border: 1px solid var(--neutro-200); border-radius: var(--radio-sm); }
+.dependencias summary { cursor: pointer; font-weight: 500; }
+.dependencias p { margin-bottom: 0; }
+.tabla-caja { overflow-x: auto; border: 1px solid var(--neutro-200); border-radius: var(--radio-lg); }
+.table { width: 100%; }
+.table td { overflow-wrap: anywhere; min-width: 7rem; }
+.acciones-fila { flex-wrap: nowrap; }
+.btn-peligro { color: var(--color-error); }
+.detalle { display: grid; gap: var(--espacio-3); }
+.detalle dt { color: var(--neutro-500); font-size: .875rem; }
+.detalle dd { margin: 0; overflow-wrap: anywhere; }
+.error-text:empty { display: none; }
+@media (max-width: 768px) {
+  .encabezado > *, .filtros .form-field { width: 100%; max-width: none; }
+  .table, .table tbody, .table tr, .table td { display: block; }
+  .table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .table tr { padding: var(--espacio-3); border-bottom: 1px solid var(--neutro-200); }
+  .table td { border: 0; padding: var(--espacio-1) 0; }
+  .table td::before { content: attr(data-label); display: block; color: var(--neutro-500); font-size: .8125rem; }
+  .acciones-fila { flex-wrap: wrap; }
+}
