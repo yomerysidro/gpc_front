@@ -1,25 +1,91 @@
-@if (!formularioExclusivoAbierto()) {
+@if (mostrarModal()) {
+  <div class="encabezado encabezado-registro">
+    <h2>{{ tituloEncabezado() || config().titulo }}</h2>
+    @if (!soloLectura() && permitido('crear')) {
+      <button class="btn btn-primary" type="button" (click)="abrirFormulario(null, $event)" [disabled]="eliminando()">
+        <span class="material-symbols-outlined" aria-hidden="true">add</span>Nuevo registro
+      </button>
+    }
+  </div>
+}
 @if (config().aviso) { <p class="nota">{{ config().aviso }}</p> }
 @if (aviso(); as mensaje) { <p class="alert alert-exito" role="status">{{ mensaje }}</p> }
 @if (errorOperacion(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
 @for (mensaje of erroresRelaciones(); track mensaje) { <p class="alert alert-advertencia" role="alert">{{ mensaje }}</p> }
-}
 @if (editable(); as recursoEditable) {
-  @if (!formularioExclusivoAbierto() && !soloLectura() && permitido('crear')) {
+  @if (!mostrarModal() && !soloLectura() && permitido('crear')) {
     <div class="acciones">
       @if (nuevoUrl(); as url) {
         <a class="btn btn-primary" [routerLink]="url">Nuevo registro</a>
       } @else {
-        <button class="btn btn-primary" type="button" (click)="abrirFormulario(null)">Nuevo registro</button>
+        <button class="btn btn-primary" type="button" (click)="abrirFormulario(null, $event)">Nuevo registro</button>
       }
     </div>
   }
-  @if (editar() !== undefined) {
+  @if (!mostrarModal() && editar() !== undefined) {
     <app-formulario-emision [recurso]="recursoEditable" [id]="editar() ?? null"
-      (guardado)="alGuardar()" (cancelar)="editar.set(undefined)" />
+      (guardado)="alGuardar()" (cancelar)="cerrarFormulario()" />
   }
 }
-@if (!formularioExclusivoAbierto()) {
+@if (esClasificacion()) {
+  <form class="filtros filtros-clasificacion" role="search" [attr.aria-label]="'Filtrar ' + config().titulo"
+    [formGroup]="filtrosClasificacion" (ngSubmit)="cargar(1)">
+    <div class="form-field">
+      <label [for]="recurso() + '-buscar-nombre'">Buscar por nombre</label>
+      <input class="input" type="search" [id]="recurso() + '-buscar-nombre'" formControlName="nombre" placeholder="Nombre del tipo" (input)="cargar(1)" />
+    </div>
+    <div class="form-field">
+      <label [for]="recurso() + '-buscar-estado'">Estado</label>
+      <select class="input" [id]="recurso() + '-buscar-estado'" formControlName="estado" (change)="cargar(1)">
+        <option value="">Todos los estados</option>
+        @for (opcion of estadosClasificaciones; track opcion.valor) { <option [value]="opcion.valor">{{ opcion.etiqueta }}</option> }
+      </select>
+    </div>
+    <button class="btn btn-neutro" type="button" (click)="limpiarClasificacion()">Limpiar filtros</button>
+  </form>
+} @else if (usaModal()) {
+  <form class="filtros filtros-sesiones" role="search" [attr.aria-label]="'Filtrar ' + config().titulo"
+    [formGroup]="filtrosSesiones" (ngSubmit)="aplicarFiltros()">
+    <div class="form-field">
+      <label [for]="recurso() + '-buscar-nombre'">{{ recurso() === 'attendance' ? 'Participante' : 'Buscar por nombre' }}</label>
+      <input class="input" [id]="recurso() + '-buscar-nombre'" formControlName="nombre"
+        [placeholder]="recurso() === 'attendance' ? 'Nombre del participante' : 'Nombre de la sesión'" (input)="aplicarFiltros()" />
+    </div>
+    <div class="form-field">
+      <label [for]="recurso() + '-buscar-actividad'">Actividad</label>
+      <select class="input" [id]="recurso() + '-buscar-actividad'" formControlName="actividad" (change)="cambiarActividad()">
+        <option value="">Todas las actividades</option>
+        @for (actividad of catalogosSesiones.actividades; track actividad['id_actividad']) {
+          <option [value]="actividad['id_actividad']">{{ actividad['nombre'] }}</option>
+        }
+      </select>
+    </div>
+    @if (recurso() === 'attendance') {
+      <div class="form-field">
+        <label for="attendance-buscar-sesion">Sesión</label>
+        <select class="input" id="attendance-buscar-sesion" formControlName="sesion" (change)="aplicarFiltros()">
+          <option value="">Todas las sesiones</option>
+          @for (sesion of catalogosSesiones.sesionesDisponibles(filtrosSesiones.controls.actividad.value); track sesion['id_actividad_sesion']) {
+            <option [value]="sesion['id_actividad_sesion']">{{ sesion['nombre'] }}</option>
+          }
+        </select>
+      </div>
+    } @else {
+      <div class="form-field">
+        <label for="activity-session-buscar-fecha">Fecha</label>
+        <input class="input" id="activity-session-buscar-fecha" type="date" formControlName="fecha" (input)="aplicarFiltros()" />
+      </div>
+    }
+    <div class="form-field">
+      <label [for]="recurso() + '-buscar-estado'">Estado</label>
+      <select class="input" [id]="recurso() + '-buscar-estado'" formControlName="estado" (change)="aplicarFiltros()">
+        <option value="">Todos los estados</option>
+        @for (estado of opcionesEstado(); track estado.valor) { <option [value]="estado.valor">{{ estado.etiqueta }}</option> }
+      </select>
+    </div>
+    <button type="button" class="btn btn-neutro" (click)="limpiarFiltros()">Limpiar filtros</button>
+  </form>
+} @else {
 <form class="filtros" role="search" [attr.aria-label]="'Filtrar ' + config().titulo" [formGroup]="filtro" (ngSubmit)="cargar(1)">
   <div class="form-field">
     <label [for]="recurso() + '-filtro-campo'">Filtrar por</label>
@@ -35,6 +101,7 @@
   <button type="submit" class="btn btn-consulta" [disabled]="cargando()">Buscar</button>
   <button type="button" class="btn btn-neutro" [disabled]="cargando()" (click)="filtro.reset(); cargar(1)">Limpiar</button>
 </form>
+}
 <div [attr.aria-busy]="cargando()">
   @if (cargando()) { <p role="status">Cargando registros…</p> }
   @else if (errorCarga()) {
@@ -47,14 +114,20 @@
       <div class="tabla">
         <table class="table">
           <caption class="sr-only">{{ config().titulo }}</caption>
-          <thead><tr><th scope="col">ID</th>
-            @for (campo of config().columnas; track campo.nombre) { <th scope="col">{{ campo.titulo }}</th> }
+          <thead><tr><th scope="col">{{ usaModal() || esClasificacion() ? 'N.º' : 'ID' }}</th>
+            @for (campo of config().columnas; track campo.nombre) { <th scope="col">{{ tituloColumna(campo.nombre, campo.titulo) }}</th> }
             <th scope="col">Acciones</th>
           </tr></thead>
           <tbody>
-            @for (registro of paginaActual.data; track identificar(registro)) {
-              <tr><th scope="row">{{ identificar(registro) }}</th>
-                @for (campo of config().columnas; track campo.nombre) { <td>{{ mostrarCampo(registro, campo.nombre) }}</td> }
+            @for (registro of paginaActual.data; track identificar(registro); let indice = $index) {
+              <tr><th scope="row">{{ usaModal() || esClasificacion() ? inicioRango(paginaActual) + indice : identificar(registro) }}</th>
+                @for (campo of config().columnas; track campo.nombre) {
+                  <td>
+                    @if ((usaModal() || esClasificacion()) && campo.nombre === 'estado') {
+                      <span class="badge" [class.badge-exito]="mostrarCampo(registro, campo.nombre) === 'Activo'">{{ mostrarCampo(registro, campo.nombre) }}</span>
+                    } @else { {{ mostrarCampo(registro, campo.nombre) }} }
+                  </td>
+                }
                 <td><div class="acciones">
                   @if (detalleBase(); as base) {
                     <a class="btn" [routerLink]="[base, identificar(registro)]">Ver detalle</a>
@@ -65,7 +138,7 @@
                     @if (editarBase(); as base) {
                       <a class="btn" [routerLink]="[base, identificar(registro), 'editar']">Editar</a>
                     } @else {
-                      <button class="btn" type="button" (click)="abrirFormulario(identificar(registro))">Editar</button>
+                      <button class="btn" type="button" (click)="abrirFormulario(identificar(registro), $event)">Editar</button>
                     }
                   }
                   @if (puedeEliminar()) {
@@ -79,7 +152,17 @@
       </div>
     }
     <div class="paginacion" aria-label="Paginación">
-      <span>{{ paginaActual.total }} registros · Página {{ paginaActual.current_page }} de {{ paginaActual.last_page }}</span>
+      @if (usaModal() || esClasificacion()) {
+        <div class="form-field cantidad-sesiones">
+          <label [for]="recurso() + '-cantidad'">Registros por página</label>
+          <select class="input" [id]="recurso() + '-cantidad'" [value]="cantidad()" (change)="cambiarCantidad($any($event.target).value)">
+            <option value="5">5</option><option value="10">10</option><option value="50">50</option>
+          </select>
+        </div>
+        <span aria-live="polite">{{ inicioRango(paginaActual) }}–{{ finRango(paginaActual) }} de {{ paginaActual.total }} · Página {{ paginaActual.current_page }} de {{ paginaActual.last_page }}</span>
+      } @else {
+        <span>{{ paginaActual.total }} registros · Página {{ paginaActual.current_page }} de {{ paginaActual.last_page }}</span>
+      }
       <button class="btn" type="button" [disabled]="paginaActual.current_page <= 1" (click)="cargar(paginaActual.current_page - 1)">Anterior</button>
       <button class="btn" type="button" [disabled]="paginaActual.current_page >= paginaActual.last_page" (click)="cargar(paginaActual.current_page + 1)">Siguiente</button>
     </div>
@@ -98,5 +181,13 @@
     <button class="btn" type="button" (click)="detalle.set(null)">Cerrar detalle</button>
   </section>
 }
-}
 <app-dialogo-confirmacion titulo="Eliminar registro" texto="¿Deseas eliminar este registro? Si tiene dependencias históricas, la operación será rechazada." confirmar="Eliminar" />
+
+<app-dialogo #modalRegistro class="modal-registro" [titulo]="tituloModal()" (cerrado)="alCerrarModal()">
+  @if (mostrarModal() && editar() !== undefined) {
+    @if (editable(); as recursoEditable) {
+      <app-formulario-emision [recurso]="recursoEditable" [id]="editar() ?? null" [enDialogo]="true" [clasificacion]="esClasificacion()"
+        (guardado)="alGuardar()" (cancelar)="cerrarFormulario()" />
+    }
+  }
+</app-dialogo>

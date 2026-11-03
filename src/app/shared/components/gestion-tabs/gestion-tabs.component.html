@@ -11,7 +11,7 @@
     <div role="tabpanel" [id]="'gestion-panel-' + opcion.id" [attr.aria-labelledby]="'gestion-tab-' + opcion.id"
       [hidden]="pestana() !== opcion.id" tabindex="0">
       @if (pestana() === opcion.id) {
-        <ng-container *ngComponentOutlet="opcion.componente; inputs: entradas" />
+        <ng-container *ngComponentOutlet="opcion.componente; inputs: opcion.entradas ?? entradas" />
       }
     </div>
   }

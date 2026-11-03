@@ -1,4 +1,5 @@
 import { NavigationItem } from '../../core/interfaces/navigation/navigation-item.interface';
+import { CATALOGOS_CLASIFICACIONES, CATALOGOS_INSTITUCIONALES } from './catalogos-configuracion';
 
 /** Organización visual. Las capacidades son las que ya exigen las rutas y CRUD. */
 export interface EntradaSidebar {
@@ -11,6 +12,7 @@ export interface EntradaSidebar {
   readonly parametrosPredeterminados?: Readonly<Record<string, string>>;
   readonly permiso?: string;
   readonly requiere?: readonly string[];
+  readonly catalogos?: readonly { readonly id: string; readonly permiso: string }[];
   readonly aliases?: readonly string[];
   readonly rutasActivas?: readonly string[];
   readonly pendiente?: string;
@@ -77,12 +79,8 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
     { id: 'reportes-asistencia', label: 'Reportes de asistencia', icon: 'how_to_reg', habilitado: false, pendiente: 'Sin pantalla ni endpoint de reportes de asistencia.' },
   ] },
   { id: 'configuracion', label: 'CONFIGURACIÓN GENERAL', icon: 'tune', hijos: [
-    { id: 'areas', label: 'Áreas municipales', icon: 'group', path: '/gestion/configuracion', queryParams: { pestana: 'areas' }, parametrosPredeterminados: { pestana: 'areas' }, permiso: 'areas.ver', aliases: ['/areas'], habilitado: true },
-    { id: 'instituciones', label: 'Instituciones', icon: 'people', path: '/gestion/configuracion', queryParams: { pestana: 'instituciones' }, permiso: 'instituciones.ver', aliases: ['/instituciones'], habilitado: true },
-    { id: 'tipos-documento', label: 'Tipos de documento', icon: 'tune', path: '/gestion/configuracion', queryParams: { pestana: 'tipos-documento' }, permiso: 'tipos-documento.ver', aliases: ['/documentos', '/tipos-documento'], habilitado: true },
-    { id: 'tipos-actividad', label: 'Tipos de actividad', icon: 'event', path: '/certificaciones/configuracion/tipos-actividad', permiso: 'actividades.ver', habilitado: true },
-    { id: 'tipos-participacion', label: 'Tipos de participación', icon: 'group', path: '/certificaciones/configuracion/tipos-participacion', permiso: 'participantes.ver', habilitado: true },
-    { id: 'tipos-certificado', label: 'Tipos de certificado', icon: 'workspace_premium', path: '/certificaciones/configuracion', permiso: 'emision.ver', habilitado: true },
+    { id: 'gestion-institucional', label: 'Gestión institucional', icon: 'account_balance', path: '/gestion/configuracion', permiso: 'areas.ver', catalogos: CATALOGOS_INSTITUCIONALES, aliases: ['/areas', '/instituciones', '/documentos', '/tipos-documento'], habilitado: true },
+    { id: 'tipos-clasificaciones', label: 'Tipos y clasificaciones', icon: 'category', path: '/gestion/tipos-clasificaciones', permiso: 'actividades.ver', catalogos: CATALOGOS_CLASIFICACIONES, aliases: ['/certificaciones/configuracion'], habilitado: true },
   ] },
 ];
 
@@ -95,11 +93,14 @@ export function resolverEntradaSidebar(
     return { ...entrada, path: rutaPantallaPendiente(entrada), preliminar: true };
   }
   const path = entrada.path;
-  if (!entrada.habilitado || !path || !entrada.permiso || !tienePermiso(entrada.permiso)
+  const catalogo = entrada.catalogos?.find(opcion => tienePermiso(opcion.permiso));
+  const autorizado = entrada.catalogos ? !!catalogo : !!entrada.permiso && tienePermiso(entrada.permiso);
+  if (!entrada.habilitado || !path || !autorizado
     || entrada.requiere?.some(permiso => !tienePermiso(permiso))) return null;
   const rutas = [path, ...(entrada.aliases ?? [])];
   const backend = items.find(item => rutas.includes(item.path.split('?')[0].replace(/\/$/, '') || '/'));
-  return { ...entrada, path, backend };
+  return { ...entrada, path, backend,
+    ...(catalogo && entrada.catalogos?.[0].id !== catalogo.id ? { queryParams: { pestana: catalogo.id } } : {}) };
 }
 
 export function rutaPantallaPendiente(entrada: EntradaSidebar): string {

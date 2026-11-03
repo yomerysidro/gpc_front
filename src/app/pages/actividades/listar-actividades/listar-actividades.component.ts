@@ -1,4 +1,5 @@
-import { afterNextRender, Component, computed, DestroyRef, inject, signal, viewChild } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, Injector, signal, viewChild } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -25,6 +26,12 @@ export class ListarActividadesComponent {
   private readonly servicio = inject(ActividadesService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly documento = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
+  private readonly dialogoFormulario = viewChild.required<DialogoComponent>('dialogoFormulario');
+  private readonly elementoFormulario = viewChild.required('dialogoFormulario', { read: ElementRef<HTMLElement> });
+  private readonly botonNueva = viewChild.required<ElementRef<HTMLButtonElement>>('botonNueva');
+  private overflowAnterior: string | null = null;
   private readonly dialogoDetalle = viewChild.required<DialogoComponent>('dialogoDetalle');
   private readonly confirmacion = viewChild.required(DialogoConfirmacionComponent);
   private readonly confirmacionEstado = viewChild.required<DialogoConfirmacionComponent>('confirmacionEstado');
@@ -91,8 +98,15 @@ export class ListarActividadesComponent {
   }, { validators: periodoActividad });
 
   constructor() {
-    this.destroyRef.onDestroy(() => { this.destruido = true; });
+    this.destroyRef.onDestroy(() => { this.destruido = true; this.restaurarDesplazamiento(); });
     afterNextRender(() => {
+      const dialogo = this.elementoFormulario().nativeElement.querySelector('dialog')!;
+      const cancelar = (evento: Event) => {
+        evento.preventDefault();
+        this.cerrarFormulario();
+      };
+      dialogo.addEventListener('cancel', cancelar);
+      this.destroyRef.onDestroy(() => dialogo.removeEventListener('cancel', cancelar));
       this.cargar();
       this.cargarCatalogos();
     });
@@ -177,8 +191,8 @@ export class ListarActividadesComponent {
     });
   }
 
-  protected nombreArea(id: number): string { return this.nombresAreas().get(id) ?? `Área #${id}`; }
-  protected nombreTipo(id: number): string { return this.nombresTipos().get(id) ?? `Tipo #${id}`; }
+  protected nombreArea(id: number): string { return this.nombresAreas().get(id) ?? 'Área no disponible'; }
+  protected nombreTipo(id: number): string { return this.nombresTipos().get(id) ?? 'Tipo no disponible'; }
 
   protected fecha(valor: string | null): string {
     if (!valor) return '—';
@@ -190,9 +204,12 @@ export class ListarActividadesComponent {
   protected abrirFormulario(actividad: Actividad | null): void {
     // La apertura del alta es visual; guardar sigue exigiendo el permiso real.
     if (actividad && !this.auth.tienePermiso('actividades.editar')) return;
-    if (this.eliminando() || this.cambiandoEstado()) return;
+    if (this.formularioAbierto() || this.enviando() || this.eliminando() || this.cambiandoEstado()) return;
     this.solicitudEdicion?.unsubscribe();
     this.formularioAbierto.set(true);
+    this.overflowAnterior = this.documento.body.style.overflow;
+    this.documento.body.style.overflow = 'hidden';
+    this.dialogoFormulario().abrir();
     this.editando.set(actividad?.id_actividad ?? null);
     this.errorFormulario.set(null);
     this.erroresServidor.set({});
@@ -213,7 +230,7 @@ export class ListarActividadesComponent {
         },
         error: (error: ErrorApi) => {
           this.cargandoEdicion.set(false);
-          this.formularioAbierto.set(false);
+          this.cerrarFormulario();
           this.aviso.set({ tipo: 'error', texto: this.mensajeError(error) });
         },
       });
@@ -222,7 +239,32 @@ export class ListarActividadesComponent {
   protected cerrarFormulario(): void {
     if (this.enviando()) return;
     this.solicitudEdicion?.unsubscribe();
+    this.dialogoFormulario().cerrar();
+    this.alCerrarFormulario();
+    // También cubre un rechazo inmediato del detalle antes de showModal().
+    afterNextRender(() => {
+      if (!this.formularioAbierto()) this.dialogoFormulario().cerrar();
+    }, { injector: this.injector });
+  }
+
+  protected alCerrarFormulario(): void {
+    // Ignora un evento close anterior si el usuario ya volvió a abrir el modal.
+    if (!this.formularioAbierto() || this.elementoFormulario().nativeElement.querySelector('dialog')?.open) return;
+    this.solicitudEdicion?.unsubscribe();
     this.formularioAbierto.set(false);
+    this.form.reset();
+    this.editando.set(null);
+    this.cargandoEdicion.set(false);
+    this.errorFormulario.set(null);
+    this.erroresServidor.set({});
+    this.restaurarDesplazamiento();
+    afterNextRender(() => this.botonNueva().nativeElement.focus(), { injector: this.injector });
+  }
+
+  private restaurarDesplazamiento(): void {
+    if (this.overflowAnterior === null) return;
+    this.documento.body.style.overflow = this.overflowAnterior;
+    this.overflowAnterior = null;
   }
 
   protected errorCampo(campo: keyof typeof this.form.controls): string | null {
@@ -265,7 +307,7 @@ export class ListarActividadesComponent {
       next: respuesta => {
         this.form.enable({ emitEvent: false });
         this.enviando.set(false);
-        this.formularioAbierto.set(false);
+        this.cerrarFormulario();
         this.aviso.set({ tipo: 'exito', texto: respuesta.message });
         if (id === null) this.limpiarFiltros();
         this.cargar();

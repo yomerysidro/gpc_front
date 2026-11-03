@@ -1,0 +1,21 @@
+.encabezado-registro {
+  align-items: baseline;
+  margin-bottom: var(--espacio-5);
+
+  h2 { margin: 0; }
+  .btn { margin-left: auto; }
+}
+
+// Solo afecta a los formularios modales de Sesiones y Asistencias.
+:host ::ng-deep app-dialogo.modal-registro > dialog.dialogo {
+  width: min(48rem, calc(100vw - 2 * var(--espacio-4)));
+  max-height: calc(100dvh - 2 * var(--espacio-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  app-formulario-emision {
+    fieldset.card { min-width: 0; margin: 0; padding: 0; border: 0; box-shadow: none; }
+    .acciones { justify-content: flex-end; margin-bottom: 0; }
+    .acciones button[type='submit'] { order: 1; }
+  }
+}

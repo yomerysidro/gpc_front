@@ -62,8 +62,8 @@ describe('Pantalla de Actividades', () => {
     expect($('tbody').textContent).toContain('Capacitación');
     expect($('tbody').textContent).toContain('Jornada');
     expect($('tbody').textContent).toContain('01/10/2026');
-    expect($('tbody').textContent).toContain('ID área: 2');
-    expect($('tbody').textContent).toContain('ID tipo: 3');
+    expect($('tbody').textContent).not.toContain('ID área: 2');
+    expect($('tbody').textContent).not.toContain('ID tipo: 3');
     expect($('app-sidebar')).toBeNull();
     expect($('app-header')).toBeNull();
     await escribir('#buscar-actividad', 'no existe');
@@ -267,8 +267,8 @@ describe('Pantalla de Actividades', () => {
     await fixture.whenStable();
     expect(servicio.consultarPonentes).toHaveBeenCalledOnceWith(7);
     expect($('dialog[open]').textContent).toContain('No hay ponentes asignados');
-    expect($('dialog[open]').textContent).toContain('ID área: 2');
-    expect($('dialog[open]').textContent).toContain('ID tipo: 3');
+    expect($('dialog[open]').textContent).not.toContain('ID área: 2');
+    expect($('dialog[open]').textContent).not.toContain('ID tipo: 3');
     expect($('dialog[open]').textContent).toContain(ACTIVIDAD.descripcion!);
     boton('Cerrar').click();
   });
@@ -323,7 +323,7 @@ describe('Pantalla de Actividades', () => {
     expect($('.formulario [role=alert]').textContent).toContain('Guardado pendiente de autorización');
     permisos.set(['actividades.ver', 'actividades.crear']);
     await fixture.whenStable();
-    expect($('.encabezado .btn-primary')).toBeNull();
+    expect($('.encabezado .btn-primary')).not.toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('El guardado está pendiente de autorización');
   });
 
@@ -380,9 +380,9 @@ describe('Pantalla de Actividades', () => {
     expect($<HTMLSelectElement>('#actividad-area').options.length).toBe(1);
     expect($<HTMLSelectElement>('#actividad-tipo').options.length).toBe(1);
     expect($<HTMLSelectElement>('#actividad-estado').value).toBe('Activa');
-    expect($('#buscar-actividad')).toBeNull();
-    expect($('table')).toBeNull();
-    expect($('.paginacion')).toBeNull();
+    expect($('#buscar-actividad')).not.toBeNull();
+    expect($('table')).not.toBeNull();
+    expect($('.paginacion')).not.toBeNull();
     await escribir('#actividad-nombre', 'Actividad por completar');
     await guardar();
     expect($('#actividad-area-error').textContent).toContain('Completa');
@@ -394,17 +394,17 @@ describe('Pantalla de Actividades', () => {
     expect($('table')).not.toBeNull();
   });
 
-  it('alterna exclusivamente entre listado y formulario, y Cancelar conserva los filtros sin guardar', async () => {
+  it('abre el formulario modal sobre el listado, y Cancelar conserva los filtros sin guardar', async () => {
     expect($('.encabezado').textContent).toContain('Actividades');
     expect($('form')).toBeNull();
     expect($('table')).not.toBeNull();
     await escribir('#buscar-actividad', 'FORMACION');
     await nueva();
-    expect($('#titulo-formulario').textContent).toBe('Nueva actividad');
-    expect($('.encabezado')).toBeNull();
-    expect($('.filtros')).toBeNull();
-    expect($('table')).toBeNull();
-    expect($('.paginacion')).toBeNull();
+    expect($('.modal-actividad dialog h2').textContent).toBe('Nueva actividad');
+    expect($('.encabezado')).not.toBeNull();
+    expect($('.filtros')).not.toBeNull();
+    expect($('table')).not.toBeNull();
+    expect($('.paginacion')).not.toBeNull();
     boton('Cancelar').click();
     await fixture.whenStable();
     expect($('form')).toBeNull();
@@ -414,4 +414,68 @@ describe('Pantalla de Actividades', () => {
     expect($<HTMLInputElement>('#buscar-actividad').value).toBe('FORMACION');
     expect(servicio.crear).not.toHaveBeenCalled();
   });
+  it('abre un dialogo modal sin cambiar URL, bloquea el fondo y restaura foco al cancelar', async () => {
+    const url = location.href;
+    const overflow = document.body.style.overflow;
+    const abrir = $<HTMLButtonElement>('.encabezado .btn-primary');
+    abrir.focus();
+    await nueva();
+    const dialogo = $<HTMLDialogElement>('.modal-actividad dialog');
+    expect(dialogo.open).toBeTrue();
+    expect(dialogo.matches(':modal')).toBeTrue();
+    expect(dialogo.contains(document.activeElement)).toBeTrue();
+    expect(document.activeElement?.id).toBe('actividad-nombre');
+    expect(location.href).toBe(url);
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(fixture.nativeElement.querySelectorAll('table').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('form [formControlName]').length).toBe(8);
+    await escribir('#actividad-nombre', 'Sin guardar');
+    boton('Cancelar').click();
+    await fixture.whenStable();
+    expect(dialogo.open).toBeFalse();
+    expect(document.body.style.overflow).toBe(overflow);
+    expect(document.activeElement).toBe(abrir);
+    await nueva();
+    expect($<HTMLInputElement>('#actividad-nombre').value).toBe('');
+  });
+
+  it('permite cancelar con Escape salvo durante el guardado y cierra al confirmar Laravel', async () => {
+    await nueva();
+    const dialogo = $<HTMLDialogElement>('.modal-actividad dialog');
+    const cancelar = new Event('cancel', { cancelable: true });
+    dialogo.dispatchEvent(cancelar);
+    expect(cancelar.defaultPrevented).toBeTrue();
+    expect(dialogo.open).toBeFalse();
+    await fixture.whenStable();
+    expect($('form')).toBeNull();
+    await nueva();
+    await completar();
+    const respuesta = new Subject<ApiResponse<Actividad>>();
+    servicio.crear.and.returnValue(respuesta);
+    await guardar();
+    const duranteGuardado = new Event('cancel', { cancelable: true });
+    dialogo.dispatchEvent(duranteGuardado);
+    expect(duranteGuardado.defaultPrevented).toBeTrue();
+    expect(dialogo.open).toBeTrue();
+    expect(boton('Cancelar').disabled).toBeTrue();
+    respuesta.next({ success: true, message: 'Actividad registrada.', data: ACTIVIDAD });
+    respuesta.complete();
+    await fixture.whenStable();
+    expect(dialogo.open).toBeFalse();
+    expect($('form')).toBeNull();
+    expect($('table')).not.toBeNull();
+  });
+
+  it('edita con el mismo modal, mantiene los IDs y actualiza el listado al guardar', async () => {
+    $<HTMLButtonElement>('button[title=Editar]').click();
+    await fixture.whenStable();
+    expect($<HTMLDialogElement>('.modal-actividad dialog').open).toBeTrue();
+    expect($('.modal-actividad h2').textContent).toBe('Editar actividad');
+    expect($('table')).not.toBeNull();
+    await guardar();
+    expect(servicio.actualizar).toHaveBeenCalledWith(7, jasmine.objectContaining({ id_area: 2, id_tipo_actividad: 3 }));
+    expect($<HTMLDialogElement>('.modal-actividad dialog').open).toBeFalse();
+    expect(servicio.listar).toHaveBeenCalledTimes(2);
+  });
+
 });

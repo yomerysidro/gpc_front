@@ -8,6 +8,8 @@ import { OpcionRelacion, PayloadEmision, RecursoEditable, RegistroEmision } from
 import { EmisionCertificadosService, PERMISOS_EMISION } from '../../../core/services/emision-certificados/emision-certificados.service';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { CampoEmision, CONFIGURACION_EMISION } from './emision.config';
+import { ESTADOS_ASISTENCIAS, estadoListado } from '../actividades/estados-sesiones-asistencia';
+import { estadoClasificacion, ESTADOS_CLASIFICACIONES } from '../configuracion/tipos-certificado/clasificaciones-listado';
 
 @Component({
   selector: 'app-formulario-emision', standalone: true, imports: [ReactiveFormsModule],
@@ -16,6 +18,9 @@ import { CampoEmision, CONFIGURACION_EMISION } from './emision.config';
 export class FormularioEmisionComponent implements OnChanges {
   readonly recurso = input.required<RecursoEditable>();
   readonly id = input<number | null>(null);
+  readonly enDialogo = input(false);
+  readonly clasificacion = input(false);
+  protected readonly estadosClasificaciones = ESTADOS_CLASIFICACIONES;
   readonly guardado = output<RegistroEmision>();
   readonly cancelar = output<void>();
   protected readonly api = inject(EmisionCertificadosService);
@@ -26,7 +31,7 @@ export class FormularioEmisionComponent implements OnChanges {
   private original: RegistroEmision | null = null;
   protected readonly form = signal(new FormGroup<Record<string, FormControl<string | boolean>>>({}));
   protected readonly cargando = signal(false);
-  protected readonly enviando = signal(false);
+  readonly enviando = signal(false);
   protected readonly errorCarga = signal<string | null>(null);
   protected readonly errorGeneral = signal<string | null>(null);
   protected readonly errores = signal<Readonly<Record<string, readonly string[]>>>({});
@@ -34,6 +39,8 @@ export class FormularioEmisionComponent implements OnChanges {
   protected readonly errorRelacion = signal<Readonly<Record<string, string>>>({});
   protected readonly cargandoRelacion = signal<ReadonlySet<string>>(new Set());
   protected readonly busquedaTrabajador = signal('');
+  protected readonly estadosAsistencias = ESTADOS_ASISTENCIAS;
+  protected readonly estadoHistorico = signal<string | null>(null);
   protected get puedeLeerTrabajadores(): boolean { return this.auth.tienePermiso('ponentes-firmantes.ver'); }
 
   protected opcionesTrabajador(): readonly OpcionRelacion[] {
@@ -54,6 +61,7 @@ export class FormularioEmisionComponent implements OnChanges {
   ngOnChanges(): void {
     this.carga?.unsubscribe();
     this.original = null;
+    this.estadoHistorico.set(null);
     this.errorCarga.set(null);
     this.errorGeneral.set(null);
     this.errores.set({});
@@ -65,12 +73,19 @@ export class FormularioEmisionComponent implements OnChanges {
       if (!this.opcional(campo) && campo.tipo !== 'booleano') reglas.push(Validators.required);
       if (campo.max) reglas.push(Validators.maxLength(campo.max));
       if (campo.tipo === 'numero') reglas.push(Validators.min(1), Validators.pattern(/^\d+$/));
-      controles[campo.nombre] = new FormControl<string | boolean>(campo.tipo === 'booleano' ? false : '', { nonNullable: true, validators: reglas });
+      const estadoAsistencia = this.recurso() === 'attendance' && campo.nombre === 'estado';
+      if (estadoAsistencia) reglas.push(control => ESTADOS_ASISTENCIAS.some(estado => estado.valor === control.value) ? null : { estado: true });
+      controles[campo.nombre] = new FormControl<string | boolean>(estadoAsistencia && this.id() === null ? ESTADOS_ASISTENCIAS[0].valor : campo.tipo === 'booleano' ? false : '', { nonNullable: true, validators: reglas });
       controles[campo.nombre].valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
         this.errores.update(actual => { const copia = { ...actual }; delete copia[campo.nombre]; return copia; });
       });
     }
     this.form.set(new FormGroup(controles));
+    if (this.clasificacion() && this.recurso() === 'tipos-certificado') {
+      controles['estado'].setValue('1');
+      controles['estado'].addValidators(Validators.pattern(/^[01]$/));
+      controles['estado'].updateValueAndValidity();
+    }
     this.busquedaTrabajador.set('');
     if (isPlatformBrowser(this.plataforma) && this.permitido) {
       for (const campo of this.config.campos.filter(campo => campo.relacion)) this.cargarOpciones(campo);
@@ -92,6 +107,12 @@ export class FormularioEmisionComponent implements OnChanges {
             : campo.tipo === 'fecha' ? String(valor).slice(0, 10)
             : campo.tipo === 'fecha-hora' ? String(valor).replace(' ', 'T').slice(0, 16) : String(valor);
         }
+        if (this.recurso() === 'attendance') {
+          const estado = estadoListado(registro['estado'], true);
+          if (ESTADOS_ASISTENCIAS.some(opcion => opcion.valor === estado)) valores['estado'] = estado;
+          else { this.estadoHistorico.set(String(registro['estado'] ?? '')); valores['estado'] = ''; }
+        }
+        if (this.clasificacion() && this.recurso() === 'tipos-certificado') valores['estado'] = estadoClasificacion(registro['estado']);
         this.form().patchValue(valores);
         this.cargando.set(false);
       },
@@ -112,7 +133,9 @@ export class FormularioEmisionComponent implements OnChanges {
   protected cargarOpciones(campo: CampoEmision): void {
     if (this.recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador' && !this.puedeLeerTrabajadores) return;
     this.cargandoRelacion.update(actual => new Set([...actual, campo.nombre]));
-    const peticion: Observable<readonly OpcionRelacion[]> = this.recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador'
+    const peticion: Observable<readonly OpcionRelacion[]> = this.enDialogo() && this.recurso() === 'attendance' && campo.nombre === 'id_participacion'
+      ? this.opcionesParticipacion()
+      : this.recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador'
       ? this.api.trabajadores().pipe(mergeMap(filas => from(filas).pipe(mergeMap(fila => this.api.personaReconocimiento(fila.id_persona).pipe(
           map(persona => ({ id: fila.id_persona_trabajador, texto: [persona.nombres, persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' ') + ` · ${fila.cargo}` })),
           catchError(() => of({ id: fila.id_persona_trabajador, texto: `Trabajador #${fila.id_persona_trabajador} · ${fila.cargo} · Nombre no disponible` })),
@@ -126,7 +149,8 @@ export class FormularioEmisionComponent implements OnChanges {
       })));
     peticion.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: opciones => {
-        this.opciones.update(actual => ({ ...actual, [campo.nombre]: opciones }));
+        this.opciones.update(actual => ({ ...actual, [campo.nombre]: this.enDialogo()
+          ? opciones.map(opcion => ({ ...opcion, texto: opcion.texto.replace(/^#\d+\s*[\u00b7]\s*/, '') || 'Nombre no disponible' })) : opciones }));
         this.errorRelacion.update(actual => ({ ...actual, [campo.nombre]: '' }));
         this.finRelacion(campo.nombre);
       },
@@ -135,6 +159,24 @@ export class FormularioEmisionComponent implements OnChanges {
         this.finRelacion(campo.nombre);
       },
     });
+  }
+
+  private opcionesParticipacion(): Observable<readonly OpcionRelacion[]> {
+    return this.api.relacionRegistros('participation').pipe(mergeMap(participaciones => {
+      const ids = [...new Set(participaciones.map(fila => Number(fila['id_persona'])))];
+      return from(ids).pipe(
+        mergeMap(id => this.api.personaReconocimiento(id).pipe(
+          map(persona => ({ id, nombre: [persona.nombres, persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' ') })),
+          catchError(() => of({ id, nombre: 'Nombre de participante no disponible' })),
+        ), 4),
+        toArray(),
+        map(personas => participaciones.map(fila => ({
+          id: Number(fila['id_participacion']),
+          texto: [personas.find(persona => persona.id === Number(fila['id_persona']))?.nombre || 'Nombre de participante no disponible',
+            fila['fecha_inscripcion'] ? String(fila['fecha_inscripcion']).slice(0, 10) : ''].filter(Boolean).join(' \u00b7 '),
+        }))),
+      );
+    }));
   }
 
   private finRelacion(nombre: string): void {

@@ -11,9 +11,11 @@ import { AreaComponent } from '../../../pages/area/area';
 import { DocumentTypeComponent } from '../../../pages/document-type/document-type';
 import { InstitutionComponent } from '../../../pages/institution/institution';
 import { PageTitleComponent } from '../page-title/page-title.component';
+import { TiposCertificadoComponent } from '../../../pages/emision-certificados/configuracion/tipos-certificado/tipos-certificado.component';
+import { CATALOGOS_CLASIFICACIONES, CATALOGOS_INSTITUCIONALES } from '../../../components/sidebar/catalogos-configuracion';
 
-type Pestana = { id: string; etiqueta: string; componente: Type<unknown> };
-type Seccion = 'personas' | 'practicas' | 'configuracion';
+type Pestana = { id: string; etiqueta: string; componente: Type<unknown>; entradas?: Record<string, unknown> };
+type Seccion = 'personas' | 'practicas' | 'configuracion' | 'clasificaciones';
 const SECCIONES: Record<Seccion, { titulo: string; pestanas: readonly Pestana[] }> = {
   personas: { titulo: 'Gestión de Personas', pestanas: [
     { id: 'personas', etiqueta: 'Personas', componente: PersonComponent },
@@ -24,11 +26,15 @@ const SECCIONES: Record<Seccion, { titulo: string; pestanas: readonly Pestana[] 
     { id: 'practicas', etiqueta: 'Prácticas', componente: PracticeComponent },
     { id: 'supervisores', etiqueta: 'Supervisores', componente: PracticeSupervisorComponent },
   ] },
-  configuracion: { titulo: 'Configuración de Gestión', pestanas: [
-    { id: 'areas', etiqueta: 'Áreas', componente: AreaComponent },
-    { id: 'tipos-documento', etiqueta: 'Tipos de documento', componente: DocumentTypeComponent },
-    { id: 'instituciones', etiqueta: 'Instituciones', componente: InstitutionComponent },
+  configuracion: { titulo: 'Gestión institucional', pestanas: [
+    { ...CATALOGOS_INSTITUCIONALES[0], componente: AreaComponent },
+    { ...CATALOGOS_INSTITUCIONALES[1], componente: DocumentTypeComponent },
+    { ...CATALOGOS_INSTITUCIONALES[2], componente: InstitutionComponent },
   ] },
+  clasificaciones: { titulo: 'Tipos y clasificaciones', pestanas: CATALOGOS_CLASIFICACIONES.map((catalogo, indice) => ({
+    ...catalogo, componente: TiposCertificadoComponent,
+    entradas: { embedded: true, recurso: ['ativicty-type', 'participation-type', 'tipos-certificado'][indice] },
+  })) },
 };
 
 /** Misma navegación de pestañas que Roles: query param, teclado y un componente activo. */

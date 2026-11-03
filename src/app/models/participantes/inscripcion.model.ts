@@ -1,5 +1,16 @@
 import { FiltrosInscripcion, Inscripcion } from '../../core/interfaces/participantes/participante.interface';
 
+// PARTICIPACION admite texto libre; estos son los estados ofrecidos por la interfaz.
+export const ESTADOS_INSCRIPCION = [
+  { valor: 'Activo', etiqueta: 'Activo' },
+  { valor: 'Cerrado', etiqueta: 'Cerrado' },
+] as const;
+
+export function estadoInscripcion(valor: string): string {
+  const estado = valor.trim().toLocaleLowerCase('es');
+  return ESTADOS_INSCRIPCION.find(opcion => opcion.valor.toLocaleLowerCase('es') === estado)?.valor ?? valor;
+}
+
 export function filtrarInscripciones(
   datos: readonly Inscripcion[], filtros: FiltrosInscripcion, textoPersona: (id: number) => string,
 ): readonly Inscripcion[] {
@@ -8,7 +19,7 @@ export function filtrarInscripciones(
   return datos.filter(item => (!busqueda || normalizar(textoPersona(item.id_persona)).includes(busqueda))
     && (!filtros.actividad || String(item.id_actividad) === filtros.actividad)
     && (!filtros.tipo || String(item.id_tipo_participacion) === filtros.tipo)
-    && (!filtros.estado || item.estado === filtros.estado));
+    && (!filtros.estado || estadoInscripcion(item.estado) === estadoInscripcion(filtros.estado)));
 }
 
 export function hayDuplicado(datos: readonly Inscripcion[], persona: number, actividad: number, excluir: number | null): boolean {

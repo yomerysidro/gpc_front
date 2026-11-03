@@ -146,6 +146,19 @@ describe('Puntos de integración de autenticación', () => {
     expect(next).toHaveBeenCalledOnceWith(request);
   });
 
+  it('no consulta recursos autenticados ni termina la sesion durante SSR', () => {
+    TestBed.configureTestingModule({ providers: [
+      { provide: PLATFORM_ID, useValue: 'server' },
+    ] });
+    const request = new HttpRequest('GET', environment.apiBaseUrl + '/attendance', {
+      context: new HttpContext().set(AUTHENTICATED_REQUEST, true),
+    });
+    const next = jasmine.createSpy('next');
+    const complete = jasmine.createSpy('complete');
+    TestBed.runInInjectionContext(() => authInterceptor(request, next)).subscribe({ complete });
+    expect(next).not.toHaveBeenCalled();
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
   it('delega solicitudes autorizadas sin suponer tokens ni endpoints', () => {
     const request = new HttpRequest('GET', '/resource', {
       context: new HttpContext().set(AUTHENTICATED_REQUEST, true),
