@@ -43,6 +43,8 @@ export class ListadoEmisionComponent implements OnChanges {
   readonly formularioModal = input(false);
   readonly clasificacion = input(false);
   readonly estadoInicial = input<EstadoNavegacionListado | null>(null);
+  readonly actividadContexto = input<{ id_actividad: number; nombre: string } | null>(null);
+  protected readonly actividadFormulario = signal<{ id_actividad: number; nombre: string } | null>(null);
   private numeroPagina = 1;
   private readonly api = inject(EmisionCertificadosService);
   private readonly auth = inject(AuthService);
@@ -91,7 +93,10 @@ export class ListadoEmisionComponent implements OnChanges {
     this.filtrosSesiones.controls.sesion.setValue('');
     this.aplicarFiltros();
   }
-  protected limpiarFiltros(): void { this.filtrosSesiones.reset(); this.cargar(1); }
+  protected limpiarFiltros(): void {
+    this.filtrosSesiones.reset({ ...FILTROS_SESIONES_VACIOS, actividad: this.actividadContexto() ? String(this.actividadContexto()!.id_actividad) : '' });
+    this.cargar(1);
+  }
   protected cambiarCantidad(valor: string): void {
     const cantidad = Number(valor);
     if (![5, 10, 50].includes(cantidad)) return;
@@ -127,6 +132,10 @@ export class ListadoEmisionComponent implements OnChanges {
     this.catalogoClasificacion.invalidar();
     this.filtrosClasificacion.reset();
     this.filtrosSesiones.reset(estado?.filtrosSesiones ?? FILTROS_SESIONES_VACIOS, { emitEvent: false });
+    if (this.actividadContexto()) {
+      this.filtrosSesiones.controls.actividad.setValue(String(this.actividadContexto()!.id_actividad), { emitEvent: false });
+      this.filtrosSesiones.controls.actividad.disable({ emitEvent: false });
+    } else this.filtrosSesiones.controls.actividad.enable({ emitEvent: false });
     this.cantidad.set(estado?.cantidad ?? 10);
     if (estado) this.filtro.patchValue({ campo: estado.campo, valor: estado.valor }, { emitEvent: false });
     if (isPlatformBrowser(this.plataforma)) this.cargar(estado?.pagina ?? 1);
@@ -165,7 +174,7 @@ export class ListadoEmisionComponent implements OnChanges {
     }
     if (this.usaModal()) {
       this.cargando.set(true);
-      this.carga = this.catalogosSesiones.cargar(this.recurso() === 'attendance').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      this.carga = this.catalogosSesiones.cargar(this.recurso() === 'attendance', this.actividadContexto()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.pagina.set(this.catalogosSesiones.paginar(this.filtrosSesiones.getRawValue(), this.recurso() === 'attendance', numero, this.cantidad()));
           this.cargando.set(false);
@@ -249,6 +258,8 @@ export class ListadoEmisionComponent implements OnChanges {
   }
 
   protected abrirFormulario(id: number | null, evento?: Event): void {
+    const seleccion = this.catalogosSesiones.actividades.find(a => String(a['id_actividad']) === this.filtrosSesiones.controls.actividad.value);
+    this.actividadFormulario.set(this.actividadContexto() ?? (seleccion ? { id_actividad: Number(seleccion['id_actividad']), nombre: String(seleccion['nombre']) } : null));
     if (this.mostrarModal()) {
       if (this.editar() !== undefined || this.eliminando()) return;
       this.aviso.set(null);

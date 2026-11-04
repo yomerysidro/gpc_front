@@ -44,16 +44,18 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     }
   }
 
-  it('muestra los ocho grupos, Dashboard y los tres enlaces de Solicitudes para el Administrador autorizado', async () => {
+  it('muestra dos enlaces de Solicitudes y una única Revisión bajo Recursos Humanos', async () => {
     const harness = await RouterTestingHarness.create('/inicio');
     const vista = harness.routeNativeElement!;
     expect(vista.querySelectorAll('app-sidebar button.modulo').length).toBe(8);
     expect(vista.querySelector('app-sidebar a[href="/inicio"]')).not.toBeNull();
     const solicitudes = vista.querySelector('#submenu-solicitudes')!;
-    expect(solicitudes.querySelectorAll('a').length).toBe(3);
+    expect(solicitudes.querySelectorAll('a').length).toBe(2);
     expect(solicitudes.textContent).toContain('Nueva solicitud de actividad');
     expect(solicitudes.textContent).toContain('Mis solicitudes');
-    expect(solicitudes.textContent).toContain('Revisión de solicitudes');
+    expect(solicitudes.textContent).not.toContain('Revisión de solicitudes');
+    expect(vista.querySelectorAll('app-sidebar a[href="/solicitudes/revision"]').length).toBe(1);
+    expect(vista.querySelector('#submenu-recursos-humanos a[href="/solicitudes/revision"]')?.textContent).toContain('Revisión de solicitudes');
     expect(vista.querySelectorAll('app-sidebar a').length).toBe(26);
     for (const entrada of pendientes.filter(entrada => entrada.interfazDisponible)) {
       const enlace = vista.querySelector(`app-sidebar a[href="${rutaPantallaPendiente(entrada)}"]`)!;
@@ -127,10 +129,12 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     expect(puedeConsultarPantallasPendientes(null, () => true)).toBeFalse();
   });
 
-  it('consultar una página preliminar no concede acceso a Usuarios ni a otros CRUD', async () => {
+  it('consultar una página preliminar no concede acceso a Reportes, Usuarios ni a otros CRUD', async () => {
     permisos.set(['roles.ver', 'roles.editar']);
-    const harness = await RouterTestingHarness.create('/pendientes/indicadores');
-    expect(harness.routeNativeElement!.querySelector('app-vista-temporal')).not.toBeNull();
+    const harness = await RouterTestingHarness.create('/pendientes/documentos-firmar');
+    expect(TestBed.inject(Router).url).toBe('/pendientes/documentos-firmar');
+    await harness.navigateByUrl('/pendientes/indicadores');
+    expect(TestBed.inject(Router).url).toBe('/acceso-denegado');
     await harness.navigateByUrl('/usuarios');
     expect(TestBed.inject(Router).url).toBe('/acceso-denegado');
     http.expectNone(() => true);

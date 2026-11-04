@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal, WritableSignal } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { FormGroup } from '@angular/forms';
 import { of, Subject, throwError } from 'rxjs';
 import { ApiResponse } from '../../../core/interfaces/api/api-response.interface';
 import { Actividad } from '../../../core/interfaces/actividades/actividad.interface';
@@ -8,6 +10,7 @@ import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { ListarActividadesComponent } from './listar-actividades.component';
 
 const ACTIVIDAD: Actividad = {
+  origen: 'sin_solicitud', id_solicitud_actividad: null,
   id_actividad: 7, id_area: 2, id_tipo_actividad: 3, nombre: 'Jornada de formación',
   descripcion: 'Formación para el equipo.', fecha_inicio: '2026-10-01', fecha_fin: '2026-10-02', sede: 'Auditorio', estado: 'Activa',
 };
@@ -25,7 +28,14 @@ describe('Pantalla de Actividades', () => {
     campo.dispatchEvent(new Event(campo.tagName === 'SELECT' ? 'change' : 'input'));
     await fixture.whenStable();
   }
-  async function nueva(): Promise<void> { $<HTMLButtonElement>('.encabezado .btn-primary').click(); await fixture.whenStable(); }
+  async function abrirPanel(): Promise<void> {
+    if (!$<HTMLDialogElement>('.modal-acciones dialog')?.open) {
+      $<HTMLButtonElement>('tbody button[title="Gestionar actividad"]').click(); await fixture.whenStable();
+    }
+  }
+  async function accion(titulo: string): Promise<void> {
+    await abrirPanel(); $<HTMLButtonElement>('.panel-acciones button[title="' + titulo + '"]').click(); await fixture.whenStable();
+  }
   async function completar(): Promise<void> {
     for (const [selector, valor] of Object.entries({
       '#actividad-area': '2', '#actividad-tipo': '3', '#actividad-nombre': ' Nueva jornada ',
@@ -38,9 +48,9 @@ describe('Pantalla de Actividades', () => {
   }
 
   beforeEach(async () => {
-    permisos = signal<readonly string[]>(['actividades.ver', 'actividades.crear', 'actividades.editar', 'actividades.eliminar']);
+    permisos = signal<readonly string[]>(['actividades.ver', 'actividades.crear', 'actividades.editar', 'actividades.eliminar', 'participantes.ver', 'ponentes-firmantes.ver', 'ponentes-firmantes.crear', 'ponentes-firmantes.eliminar']);
     servicio = jasmine.createSpyObj<ActividadesService>('ActividadesService', [
-      'listar', 'listarAreas', 'listarTipos', 'obtener', 'crear', 'actualizar', 'eliminar', 'consultarPonentes', 'cambiarEstado',
+      'listar', 'listarAreas', 'listarTipos', 'obtener', 'crear', 'actualizar', 'eliminar', 'consultarPonentes', 'cambiarEstado', 'listarCatalogoPonentes', 'vincularPonente', 'desvincularPonente',
     ]);
     servicio.listar.and.returnValue(of([ACTIVIDAD]));
     servicio.listarAreas.and.returnValue(of([{ id_area: 2, nombre: 'Capacitación' }]));
@@ -49,7 +59,9 @@ describe('Pantalla de Actividades', () => {
     servicio.crear.and.returnValue(of({ success: true, message: 'Actividad registrada.', data: ACTIVIDAD }));
     servicio.actualizar.and.returnValue(of({ success: true, message: 'Actividad actualizada.', data: ACTIVIDAD }));
     servicio.consultarPonentes.and.returnValue(of([]));
+    servicio.listarCatalogoPonentes.and.returnValue(of([{ id_persona_ponente: 8, nombre: 'Ana Perez' }]));
     TestBed.configureTestingModule({ imports: [ListarActividadesComponent], providers: [
+      provideRouter([]),
       { provide: ActividadesService, useValue: servicio },
       { provide: AuthService, useValue: { tienePermiso: (clave: string) => permisos().includes(clave) } },
     ] });
@@ -58,6 +70,33 @@ describe('Pantalla de Actividades', () => {
     await fixture.whenStable();
   });
 
+  it('impide crear directamente incluso con permiso de creaci?n', async () => {
+    expect(fixture.nativeElement.textContent).not.toContain('Nueva actividad');
+    const modelo = fixture.componentInstance as unknown as { abrirFormulario(a: null): void; guardar(): void; formularioAbierto(): boolean };
+    modelo.abrirFormulario(null); modelo.guardar(); await fixture.whenStable();
+    expect(modelo.formularioAbierto()).toBeFalse(); expect(servicio.crear).not.toHaveBeenCalled();
+    await abrirPanel(); expect($('button[title=Editar]')).not.toBeNull();
+  });
+  it('rechaza un área fuera del catálogo también al editar', async () => {
+    await accion('Editar');
+    const modelo = fixture.componentInstance as unknown as { form: FormGroup };
+    modelo.form.controls['id_area'].setValue('999'); await guardar();
+    expect(servicio.actualizar).not.toHaveBeenCalled(); expect($('.formulario [role=alert]').textContent).toContain('autorizados');
+  });
+  it('muestra el origen de solicitud y protege su eliminación, conservando ID y navegación', async () => {
+    fixture.destroy();
+    const vinculada: Actividad = { ...ACTIVIDAD, origen: 'solicitud', id_solicitud_actividad: 12 };
+    servicio.listar.and.returnValue(of([vinculada])); servicio.obtener.and.returnValue(of(vinculada));
+    fixture = TestBed.createComponent(ListarActividadesComponent); fixture.autoDetectChanges(); await fixture.whenStable();
+    expect($('tbody .nombre-actividad').textContent?.trim()).toBe(vinculada.nombre);
+    expect($('tbody button[title=Eliminar]')).toBeNull();
+    await accion('Ver detalle'); await fixture.whenStable();
+    expect($('app-dialogo .detalle').textContent).toContain('Solicitud #12');
+    await abrirPanel();
+    expect($('a[href="/certificaciones/participantes?id_actividad=7"]')).not.toBeNull();
+    expect($('a[href="/certificaciones/sesiones-asistencia?id_actividad=7"]')).not.toBeNull();
+    expect(servicio.crear).not.toHaveBeenCalled();
+  });
   it('resuelve los nombres reales y busca sin distinguir tildes; no crea Header ni Sidebar', async () => {
     expect($('tbody').textContent).toContain('Capacitación');
     expect($('tbody').textContent).toContain('Jornada');
@@ -86,43 +125,14 @@ describe('Pantalla de Actividades', () => {
     expect($('.paginacion').textContent).toContain('Página 1 de 2');
     await escribir('#buscar-actividad', 'FORMACION');
     await escribir('#filtrar-area', '2');
-    await escribir('#filtrar-tipo', '3');
-    await escribir('#filtrar-estado', 'Activa');
     expect($('tbody').textContent).toContain(ACTIVIDAD.nombre);
-    await escribir('#filtrar-estado', 'Cerrada');
-    expect($('.estado-vacio').textContent).toContain('No se encontraron');
     boton('Limpiar filtros').click();
     await fixture.whenStable();
     expect($<HTMLInputElement>('#buscar-actividad').value).toBe('');
-    for (const selector of ['#filtrar-area', '#filtrar-tipo', '#filtrar-estado']) {
+    for (const selector of ['#filtrar-area']) {
       expect($<HTMLSelectElement>(selector).value).toBe('');
     }
     expect($('tbody').textContent).toContain(ACTIVIDAD.nombre);
-  });
-
-  it('quita los filtros tras crear y vuelve a consultar Laravel para mostrar el registro', async () => {
-    await escribir('#buscar-actividad', 'otra actividad');
-    await nueva();
-    await completar();
-    servicio.listar.calls.reset();
-    servicio.listar.and.returnValue(of([ACTIVIDAD]));
-    await guardar();
-    expect(servicio.listar).toHaveBeenCalledTimes(1);
-    expect($<HTMLInputElement>('#buscar-actividad').value).toBe('');
-    expect($('tbody').textContent).toContain(ACTIVIDAD.nombre);
-  });
-
-  it('conserva el formulario y sus datos si Laravel rechaza la creación', async () => {
-    servicio.crear.and.returnValue(throwError(() => ({ status: 403, mensaje: 'No autorizado.', errores: {} })));
-    await nueva();
-    await completar();
-    servicio.listar.calls.reset();
-    await guardar();
-    expect($('form')).not.toBeNull();
-    expect($<HTMLInputElement>('#actividad-nombre').value).toBe(' Nueva jornada ');
-    expect($('.formulario [role=alert]').textContent).toContain('No autorizado.');
-    expect(servicio.listar).not.toHaveBeenCalled();
-    expect($('[role=status]').textContent).not.toContain('Actividad registrada.');
   });
 
   it('muestra el estado vacío únicamente cuando Laravel devuelve una lista vacía', async () => {
@@ -132,20 +142,8 @@ describe('Pantalla de Actividades', () => {
     fixture.autoDetectChanges();
     await fixture.whenStable();
     expect($('.estado-vacio').textContent).toContain('Aún no hay actividades registradas.');
-    expect($('.estado-vacio').textContent).toContain('Comienza creando una nueva actividad.');
+    expect($('.estado-vacio').textContent).toContain('Las actividades nuevas se originan en solicitudes aprobadas por Gerencia.');
     expect($('[role=alert]')).toBeNull();
-  });
-
-  it('impide guardar campos vacíos o un periodo invertido', async () => {
-    await nueva();
-    await guardar();
-    expect(servicio.crear).not.toHaveBeenCalled();
-    expect($('#actividad-nombre-error').textContent).toContain('Completa');
-    await completar();
-    await escribir('#actividad-fin', '2026-09-30');
-    await guardar();
-    expect(servicio.crear).not.toHaveBeenCalled();
-    expect($('#actividad-fin-error').textContent).toContain('no puede ser anterior');
   });
 
   it('pagina el conjunto completo con 10, 20 y 50 y vuelve al inicio al cambiar el tamaño', async () => {
@@ -171,38 +169,34 @@ describe('Pantalla de Actividades', () => {
     expect(boton('Siguiente').disabled).toBeTrue();
   });
 
-  it('confirma cerrar y reactivar, y actualiza el indicador solo con la respuesta del servidor', async () => {
+  it('confirma cerrar, actualiza solo con respuesta del servidor y no ofrece reactivación en el panel', async () => {
     const respuesta = new Subject<ApiResponse<Actividad>>();
     servicio.cambiarEstado.and.returnValue(respuesta);
-    $<HTMLButtonElement>('button[title="Cerrar actividad"]').click();
+    await accion('Cerrar actividad');
     await fixture.whenStable();
     expect(servicio.cambiarEstado).not.toHaveBeenCalled();
     boton('Cancelar').click();
     await fixture.whenStable();
     expect(servicio.cambiarEstado).not.toHaveBeenCalled();
-    $<HTMLButtonElement>('button[title="Cerrar actividad"]').click();
+    await accion('Cerrar actividad');
     await fixture.whenStable();
     boton('Cerrar actividad').click();
     await fixture.whenStable();
     expect(servicio.cambiarEstado).toHaveBeenCalledOnceWith(7, 'Cerrada');
     expect($('.badge-exito').textContent).toBe('Activa');
+    servicio.listar.and.returnValue(of([{ ...ACTIVIDAD, estado: 'Cerrada' }]));
     respuesta.next({ success: true, message: 'Actividad actualizada.', data: { ...ACTIVIDAD, estado: 'Cerrada' } });
     respuesta.complete();
     await fixture.whenStable();
     expect($('tbody .badge-exito')).toBeNull();
     expect($('tbody .badge').textContent).toBe('Cerrada');
-    servicio.cambiarEstado.and.returnValue(of({ success: true, message: 'Actividad actualizada.', data: ACTIVIDAD }));
-    $<HTMLButtonElement>('button[title="Activar actividad"]').click();
-    await fixture.whenStable();
-    boton('Activar actividad').click();
-    await fixture.whenStable();
-    expect(servicio.cambiarEstado).toHaveBeenCalledWith(7, 'Activa');
-    expect($('tbody .badge-exito').textContent).toBe('Activa');
+    await abrirPanel();
+    expect($<HTMLButtonElement>('button[title="Cerrar actividad"]').disabled).toBeTrue();
   });
 
   it('conserva el estado si Laravel rechaza el cambio y oculta la acción sin permiso de edición', async () => {
     servicio.cambiarEstado.and.returnValue(throwError(() => ({ status: 403, mensaje: 'No autorizado.', errores: {} })));
-    $<HTMLButtonElement>('button[title="Cerrar actividad"]').click();
+    await accion('Cerrar actividad');
     await fixture.whenStable();
     boton('Cerrar actividad').click();
     await fixture.whenStable();
@@ -210,30 +204,12 @@ describe('Pantalla de Actividades', () => {
     expect($('[role=status]').textContent).toContain('No autorizado.');
     permisos.set(['actividades.ver']);
     await fixture.whenStable();
-    expect($('button[title="Cerrar actividad"]')).toBeNull();
-  });
-
-  it('envía IDs numéricos y nulos opcionales, y bloquea envíos duplicados', async () => {
-    const respuesta = new Subject<ApiResponse<Actividad>>();
-    servicio.crear.and.returnValue(respuesta);
-    await nueva();
-    await completar();
-    await guardar();
-    await guardar();
-    expect(servicio.crear).toHaveBeenCalledOnceWith({
-      id_area: 2, id_tipo_actividad: 3, nombre: 'Nueva jornada', descripcion: null, sede: null,
-      fecha_inicio: '2026-10-01', fecha_fin: '2026-10-02', estado: 'Activa',
-    });
-    expect($<HTMLInputElement>('#actividad-nombre').disabled).toBeTrue();
-    respuesta.next({ success: true, message: 'Actividad registrada.', data: ACTIVIDAD });
-    respuesta.complete();
-    await fixture.whenStable();
-    expect($('[role=status]').textContent).toContain('Actividad registrada.');
+    await abrirPanel(); expect($<HTMLButtonElement>('button[title="Cerrar actividad"]').disabled).toBeTrue();
   });
 
   it('recupera el detalle al editar y muestra los errores 422 junto al campo', async () => {
     servicio.actualizar.and.returnValue(throwError(() => ({ status: 422, mensaje: 'Datos incorrectos.', errores: { nombre: ['Nombre inválido.'] } })));
-    $<HTMLButtonElement>('button[title=Editar]').click();
+    await accion('Editar');
     await fixture.whenStable();
     expect(servicio.obtener).toHaveBeenCalledOnceWith(7);
     expect($<HTMLInputElement>('#actividad-nombre').value).toBe(ACTIVIDAD.nombre);
@@ -245,229 +221,16 @@ describe('Pantalla de Actividades', () => {
     expect($<HTMLInputElement>('#actividad-nombre').disabled).toBeFalse();
   });
 
-  it('pide confirmación antes de eliminar y conserva el registro si Laravel responde 409', async () => {
-    servicio.eliminar.and.returnValue(throwError(() => ({ status: 409, mensaje: 'Tiene registros relacionados.', errores: {} })));
-    $<HTMLButtonElement>('button[title=Eliminar]').click();
-    await fixture.whenStable();
-    expect(servicio.eliminar).not.toHaveBeenCalled();
-    boton('Cancelar').click();
-    await fixture.whenStable();
-    expect(servicio.eliminar).not.toHaveBeenCalled();
-    $<HTMLButtonElement>('button[title=Eliminar]').click();
-    await fixture.whenStable();
-    boton('Eliminar actividad').click();
-    await fixture.whenStable();
-    expect(servicio.eliminar).toHaveBeenCalledOnceWith(7);
-    expect($('[role=status]').textContent).toContain('Tiene registros relacionados.');
-    expect($('tbody').textContent).toContain(ACTIVIDAD.nombre);
-  });
-
-  it('consulta los ponentes de la actividad desde su detalle', async () => {
-    $<HTMLButtonElement>('button[title="Ver detalle"]').click();
-    await fixture.whenStable();
-    expect(servicio.consultarPonentes).toHaveBeenCalledOnceWith(7);
-    expect($('dialog[open]').textContent).toContain('No hay ponentes asignados');
-    expect($('dialog[open]').textContent).not.toContain('ID área: 2');
-    expect($('dialog[open]').textContent).not.toContain('ID tipo: 3');
+  it('consulta el detalle sin exigir permisos ni catalogos de ponentes', async () => {
+    permisos.set(['actividades.ver']); await fixture.whenStable();
+    await accion('Ver detalle');
+    expect(servicio.consultarPonentes).not.toHaveBeenCalled();
     expect($('dialog[open]').textContent).toContain(ACTIVIDAD.descripcion!);
     boton('Cerrar').click();
   });
 
-  it('muestra todos los campos de ACTIVIDAD y mantiene el ID automático fuera del payload', async () => {
-    expect(fixture.nativeElement.querySelectorAll('thead th').length).toBe(7);
-    await nueva();
-    expect($('#actividad-id')).toBeNull();
-    expect(fixture.nativeElement.querySelectorAll('form [formControlName]').length).toBe(8);
-    await completar();
-    await escribir('#actividad-descripcion', ' Descripción completa ');
-    await escribir('#actividad-sede', ' Sala principal ');
-    await guardar();
-    expect(servicio.crear).toHaveBeenCalledOnceWith({
-      id_area: 2, id_tipo_actividad: 3, nombre: 'Nueva jornada', descripcion: 'Descripción completa',
-      fecha_inicio: '2026-10-01', fecha_fin: '2026-10-02', sede: 'Sala principal', estado: 'Activa',
-    });
-  });
-
-  it('crea como Activa y permite seleccionar Cerrada al editar', async () => {
-    await nueva();
-    expect($<HTMLSelectElement>('#actividad-estado').value).toBe('Activa');
-    expect(Array.from($<HTMLSelectElement>('#actividad-estado').options).map(opcion => opcion.value)).toEqual(['Activa', 'Cerrada']);
-    await completar();
-    await escribir('#actividad-estado', 'PROGRAMADA');
-    await guardar();
-    expect(servicio.crear).not.toHaveBeenCalled();
-    await escribir('#actividad-estado', 'Cerrada');
-    await guardar();
-    expect(servicio.crear).toHaveBeenCalledWith(jasmine.objectContaining({ estado: 'Activa' }));
-    $<HTMLButtonElement>('button[title=Editar]').click();
-    await fixture.whenStable();
-    await escribir('#actividad-estado', 'Cerrada');
-    await guardar();
-    expect(servicio.actualizar).toHaveBeenCalledWith(7, jasmine.objectContaining({ estado: 'Cerrada' }));
-  });
-
-  it('usa los permisos de la sesión para cada acción, sin conceder acceso por nombre de rol', async () => {
-    permisos.set(['actividades.ver']);
-    await fixture.whenStable();
-    expect($('.encabezado .btn-primary')).not.toBeNull();
-    expect($('button[title=Editar]')).toBeNull();
-    expect($('button[title=Eliminar]')).toBeNull();
-    expect($('button[title="Ver detalle"]')).not.toBeNull();
-    expect($('tbody').textContent).toContain(ACTIVIDAD.nombre);
-    await nueva();
-    expect($('form')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain('Guardado pendiente de autorización');
-    await completar();
-    await guardar();
-    expect(servicio.crear).not.toHaveBeenCalled();
-    expect($('.formulario [role=alert]').textContent).toContain('Guardado pendiente de autorización');
-    permisos.set(['actividades.ver', 'actividades.crear']);
-    await fixture.whenStable();
-    expect($('.encabezado .btn-primary')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain('El guardado está pendiente de autorización');
-  });
-
-  it('mantiene el listado visible y bloquea guardar si Laravel deniega los catálogos', async () => {
-    fixture.destroy();
-    const denegado = () => throwError(() => ({ status: 403, mensaje: 'No autorizado.', errores: {} }));
-    servicio.listarAreas.and.returnValue(denegado());
-    servicio.listarTipos.and.returnValue(denegado());
-    fixture = TestBed.createComponent(ListarActividadesComponent);
-    fixture.autoDetectChanges();
-    await fixture.whenStable();
-    expect($('tbody').textContent).toContain(ACTIVIDAD.nombre);
-    expect($('.aviso-datos').textContent).toContain('El servidor denegó');
-    expect($('.aviso-datos').textContent).toContain('permiso de lectura de Actividades');
-    await nueva();
-    expect($<HTMLButtonElement>('button[type=submit]').disabled).toBeFalse();
-    await guardar();
-    expect(servicio.crear).not.toHaveBeenCalled();
-  });
-
-  it('muestra un rechazo de lectura como error y no como una lista vacía', async () => {
-    fixture.destroy();
-    servicio.listar.and.returnValue(throwError(() => ({ status: 403, mensaje: 'No autorizado.', errores: {} })));
-    fixture = TestBed.createComponent(ListarActividadesComponent);
-    fixture.autoDetectChanges();
-    await fixture.whenStable();
-    expect($('.aviso-datos').textContent).toContain('No se pudo cargar el listado de actividades.');
-    expect($('.estado-vacio').textContent).toContain('Datos del listado no disponibles.');
-    expect($('.estado-vacio').textContent).not.toContain('Aún no hay actividades registradas.');
-    expect($('table')).not.toBeNull();
-    expect($('#tamano-pagina')).not.toBeNull();
-    expect($('.encabezado .btn-primary')).not.toBeNull();
-    await nueva();
-    expect($('form')).not.toBeNull();
-    expect($<HTMLButtonElement>('button[type=submit]').disabled).toBeFalse();
-  });
-
-  it('mantiene toda la interfaz sin permisos ni datos y permite abrir, validar y cancelar el alta', async () => {
-    fixture.destroy();
-    permisos.set([]);
-    const fallo = () => throwError(() => ({ status: 403, mensaje: 'No autorizado.', errores: {} }));
-    servicio.listar.and.returnValue(fallo());
-    servicio.listarAreas.and.returnValue(fallo());
-    servicio.listarTipos.and.returnValue(fallo());
-    fixture = TestBed.createComponent(ListarActividadesComponent);
-    fixture.autoDetectChanges();
-    await fixture.whenStable();
-    expect($('.encabezado .btn-primary')).not.toBeNull();
-    expect($('table')).not.toBeNull();
-    expect($('#tamano-pagina')).not.toBeNull();
-    expect($('.estado-vacio').textContent).not.toContain('Aún no hay actividades registradas.');
-    await nueva();
-    expect(fixture.nativeElement.querySelectorAll('form [formControlName]').length).toBe(8);
-    expect($<HTMLSelectElement>('#actividad-area').options.length).toBe(1);
-    expect($<HTMLSelectElement>('#actividad-tipo').options.length).toBe(1);
-    expect($<HTMLSelectElement>('#actividad-estado').value).toBe('Activa');
-    expect($('#buscar-actividad')).not.toBeNull();
-    expect($('table')).not.toBeNull();
-    expect($('.paginacion')).not.toBeNull();
-    await escribir('#actividad-nombre', 'Actividad por completar');
-    await guardar();
-    expect($('#actividad-area-error').textContent).toContain('Completa');
-    expect(servicio.crear).not.toHaveBeenCalled();
-    boton('Cancelar').click();
-    await fixture.whenStable();
-    expect($('form')).toBeNull();
-    expect($<HTMLButtonElement>('.encabezado .btn-primary').disabled).toBeFalse();
-    expect($('table')).not.toBeNull();
-  });
-
-  it('abre el formulario modal sobre el listado, y Cancelar conserva los filtros sin guardar', async () => {
-    expect($('.encabezado').textContent).toContain('Actividades');
-    expect($('form')).toBeNull();
-    expect($('table')).not.toBeNull();
-    await escribir('#buscar-actividad', 'FORMACION');
-    await nueva();
-    expect($('.modal-actividad dialog h2').textContent).toBe('Nueva actividad');
-    expect($('.encabezado')).not.toBeNull();
-    expect($('.filtros')).not.toBeNull();
-    expect($('table')).not.toBeNull();
-    expect($('.paginacion')).not.toBeNull();
-    boton('Cancelar').click();
-    await fixture.whenStable();
-    expect($('form')).toBeNull();
-    expect($('.encabezado .btn-primary')).not.toBeNull();
-    expect($('table')).not.toBeNull();
-    expect($('.paginacion')).not.toBeNull();
-    expect($<HTMLInputElement>('#buscar-actividad').value).toBe('FORMACION');
-    expect(servicio.crear).not.toHaveBeenCalled();
-  });
-  it('abre un dialogo modal sin cambiar URL, bloquea el fondo y restaura foco al cancelar', async () => {
-    const url = location.href;
-    const overflow = document.body.style.overflow;
-    const abrir = $<HTMLButtonElement>('.encabezado .btn-primary');
-    abrir.focus();
-    await nueva();
-    const dialogo = $<HTMLDialogElement>('.modal-actividad dialog');
-    expect(dialogo.open).toBeTrue();
-    expect(dialogo.matches(':modal')).toBeTrue();
-    expect(dialogo.contains(document.activeElement)).toBeTrue();
-    expect(document.activeElement?.id).toBe('actividad-nombre');
-    expect(location.href).toBe(url);
-    expect(document.body.style.overflow).toBe('hidden');
-    expect(fixture.nativeElement.querySelectorAll('table').length).toBe(1);
-    expect(fixture.nativeElement.querySelectorAll('form [formControlName]').length).toBe(8);
-    await escribir('#actividad-nombre', 'Sin guardar');
-    boton('Cancelar').click();
-    await fixture.whenStable();
-    expect(dialogo.open).toBeFalse();
-    expect(document.body.style.overflow).toBe(overflow);
-    expect(document.activeElement).toBe(abrir);
-    await nueva();
-    expect($<HTMLInputElement>('#actividad-nombre').value).toBe('');
-  });
-
-  it('permite cancelar con Escape salvo durante el guardado y cierra al confirmar Laravel', async () => {
-    await nueva();
-    const dialogo = $<HTMLDialogElement>('.modal-actividad dialog');
-    const cancelar = new Event('cancel', { cancelable: true });
-    dialogo.dispatchEvent(cancelar);
-    expect(cancelar.defaultPrevented).toBeTrue();
-    expect(dialogo.open).toBeFalse();
-    await fixture.whenStable();
-    expect($('form')).toBeNull();
-    await nueva();
-    await completar();
-    const respuesta = new Subject<ApiResponse<Actividad>>();
-    servicio.crear.and.returnValue(respuesta);
-    await guardar();
-    const duranteGuardado = new Event('cancel', { cancelable: true });
-    dialogo.dispatchEvent(duranteGuardado);
-    expect(duranteGuardado.defaultPrevented).toBeTrue();
-    expect(dialogo.open).toBeTrue();
-    expect(boton('Cancelar').disabled).toBeTrue();
-    respuesta.next({ success: true, message: 'Actividad registrada.', data: ACTIVIDAD });
-    respuesta.complete();
-    await fixture.whenStable();
-    expect(dialogo.open).toBeFalse();
-    expect($('form')).toBeNull();
-    expect($('table')).not.toBeNull();
-  });
-
   it('edita con el mismo modal, mantiene los IDs y actualiza el listado al guardar', async () => {
-    $<HTMLButtonElement>('button[title=Editar]').click();
+    await accion('Editar');
     await fixture.whenStable();
     expect($<HTMLDialogElement>('.modal-actividad dialog').open).toBeTrue();
     expect($('.modal-actividad h2').textContent).toBe('Editar actividad');
@@ -476,6 +239,92 @@ describe('Pantalla de Actividades', () => {
     expect(servicio.actualizar).toHaveBeenCalledWith(7, jasmine.objectContaining({ id_area: 2, id_tipo_actividad: 3 }));
     expect($<HTMLDialogElement>('.modal-actividad dialog').open).toBeFalse();
     expect(servicio.listar).toHaveBeenCalledTimes(2);
+  });
+
+  it('ofrece un solo botón por fila y seis tarjetas en orden con navegación por ID real', async () => {
+    expect($('#filtrar-tipo')).toBeNull(); expect($('#filtrar-estado')).toBeNull();
+    expect($('#buscar-actividad')).not.toBeNull(); expect($('#filtrar-area')).not.toBeNull();
+    expect($('tbody .nombre-actividad').textContent?.trim()).toBe(ACTIVIDAD.nombre);
+    expect($('tbody .badge').textContent?.trim()).toBe('Activa');
+    expect(fixture.nativeElement.querySelectorAll('tbody button').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('tbody a').length).toBe(0);
+    await abrirPanel();
+    expect($('.modal-acciones h2').textContent).toBe('Acciones de la actividad');
+    const tarjetas = Array.from(fixture.nativeElement.querySelectorAll('.tarjeta-accion') as NodeListOf<HTMLElement>);
+    expect(tarjetas.map(t => t.lastElementChild?.textContent?.trim())).toEqual([
+      'Ver detalle', 'Editar', 'Participantes', 'Ponentes', 'Sesiones y asistencia', 'Cerrar actividad',
+    ]);
+    expect(tarjetas[2].getAttribute('href')).toBe('/certificaciones/participantes?id_actividad=7');
+    expect(tarjetas[4].getAttribute('href')).toBe('/certificaciones/sesiones-asistencia?id_actividad=7');
+    expect($<HTMLDialogElement>('.modal-acciones dialog').open).toBeTrue();
+  });
+
+  it('respeta permisos efectivos sin conceder privilegios por rol y condiciona Solicitar actividad', async () => {
+    expect($('a[href="/solicitudes/nueva"]')).toBeNull();
+    permisos.set(['actividades.ver', 'solicitudes.crear']); await fixture.whenStable();
+    expect($('a[href="/solicitudes/nueva"]')).not.toBeNull();
+    await abrirPanel();
+    expect($<HTMLButtonElement>('button[title=Editar]').disabled).toBeTrue();
+    expect($<HTMLButtonElement>('button[title="Cerrar actividad"]').disabled).toBeTrue();
+    expect($('a[href="/certificaciones/participantes?id_actividad=7"]')).toBeNull();
+    $<HTMLButtonElement>('button[title=Editar]').click(); await fixture.whenStable();
+    expect(servicio.obtener).not.toHaveBeenCalled();
+    permisos.set(['actividades.ver', 'actividades.editar']); await fixture.whenStable();
+    expect($<HTMLButtonElement>('button[title=Editar]').disabled).toBeFalse();
+  });
+
+  it('conserva nombres recibidos y permite editar otros campos si falla el catálogo de áreas', async () => {
+    fixture.destroy();
+    const registro = { ...ACTIVIDAD, area_nombre: 'Área entregada por Laravel', tipo_actividad_nombre: 'Tipo entregado por Laravel' };
+    servicio.listar.and.returnValue(of([registro])); servicio.obtener.and.returnValue(of(registro));
+    servicio.listarAreas.and.returnValue(throwError(() => ({ status: 403, mensaje: 'Catálogo denegado.', errores: {} })));
+    fixture = TestBed.createComponent(ListarActividadesComponent); fixture.autoDetectChanges(); await fixture.whenStable();
+    expect($('tbody').textContent).toContain(registro.area_nombre);
+    expect($('tbody').textContent).toContain(registro.tipo_actividad_nombre);
+    expect($('[role=status]').parentElement?.textContent).toContain('Catálogo denegado.');
+    await accion('Editar');
+    expect($<HTMLSelectElement>('#actividad-area').value).toBe('2');
+    await escribir('#actividad-sede', 'Sede operativa'); await guardar();
+    expect(servicio.actualizar).toHaveBeenCalledWith(7, jasmine.objectContaining({ id_area: 2, sede: 'Sede operativa' }));
+  });
+
+  it('gestiona ponentes desde la actividad y espera confirmación real antes de refrescar', async () => {
+    const respuesta = new Subject<ApiResponse<{ id_actividad_ponente: number; id_actividad: number; id_persona_ponente: number }>>();
+    servicio.vincularPonente.and.returnValue(respuesta);
+    await accion('Gestionar ponentes de esta actividad');
+    expect(servicio.consultarPonentes).toHaveBeenCalledWith(7);
+    expect(servicio.listarCatalogoPonentes).toHaveBeenCalledTimes(1);
+    await escribir('#actividad-ponente', '8');
+    $('.modal-ponentes form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); await fixture.whenStable();
+    expect(servicio.vincularPonente).toHaveBeenCalledOnceWith(7, 8);
+    expect(servicio.consultarPonentes).toHaveBeenCalledTimes(1);
+    respuesta.next({ success: true, message: 'Vinculado por Laravel', data: { id_actividad_ponente: 21, id_actividad: 7, id_persona_ponente: 8 } }); respuesta.complete();
+    await fixture.whenStable();
+    expect(servicio.consultarPonentes).toHaveBeenCalledTimes(2);
+    expect($('.modal-ponentes').textContent).toContain('Vinculado por Laravel');
+    expect(servicio.crear).not.toHaveBeenCalled();
+  });
+
+  it('no inventa asignaciones cuando Laravel rechaza la vinculación', async () => {
+    servicio.vincularPonente.and.returnValue(throwError(() => ({ status: 409, mensaje: 'El ponente ya está asignado.', errores: {} })));
+    await accion('Gestionar ponentes de esta actividad'); await escribir('#actividad-ponente', '8');
+    $('.modal-ponentes form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); await fixture.whenStable();
+    expect($('.modal-ponentes').textContent).toContain('El ponente ya está asignado.');
+    expect(servicio.consultarPonentes).toHaveBeenCalledTimes(1);
+  });
+
+  it('confirma la desvinculación y envía el ID de asignación, conservando el catálogo de RR. HH.', async () => {
+    servicio.consultarPonentes.and.returnValue(of([{ id_actividad_ponente: 21, id_actividad: 7, id_persona_ponente: 8, nombre: 'Ana Pérez', errorNombre: null }]));
+    servicio.desvincularPonente.and.returnValue(of({ success: true, message: 'Desvinculado', data: null }));
+    await accion('Gestionar ponentes de esta actividad');
+    boton('Desvincular').click(); await fixture.whenStable();
+    expect(servicio.desvincularPonente).not.toHaveBeenCalled();
+    const confirmacion = Array.from(fixture.nativeElement.querySelectorAll('app-dialogo-confirmacion dialog[open] button') as NodeListOf<HTMLButtonElement>)
+      .find(b => b.textContent?.trim() === 'Desvincular')!;
+    confirmacion.click(); await fixture.whenStable();
+    expect(servicio.desvincularPonente).toHaveBeenCalledOnceWith(21);
+    expect(servicio.listarCatalogoPonentes).toHaveBeenCalledTimes(1);
+    expect(servicio.consultarPonentes).toHaveBeenCalledTimes(2);
   });
 
 });

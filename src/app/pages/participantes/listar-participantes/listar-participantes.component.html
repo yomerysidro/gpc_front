@@ -1,10 +1,13 @@
 <section aria-label="Gestión de participantes">
     <div class="encabezado">
       <div><app-page-title title="Participantes" /><p class="descripcion">Administra las inscripciones de participantes a las actividades institucionales.</p></div>
-      <button #botonInscribir type="button" class="btn btn-primary" (click)="abrirFormulario(null)" [disabled]="guardandoEstado() || formularioAbierto()">
+      <button #botonInscribir type="button" class="btn btn-primary" (click)="abrirFormulario(null)" [disabled]="guardandoEstado() || formularioAbierto() || !puedeInscribir()">
         <span class="material-symbols-outlined" aria-hidden="true">add</span>Inscribir participante
       </button>
     </div>
+    @if (cargandoContexto()) { <p role="status">Consultando actividad seleccionada...</p> }
+    @if (errorContexto()) { <p class="alert alert-error" role="alert">{{ errorContexto() }}</p> }
+    @if (actividadContexto(); as actividad) { <p class="contexto-actividad">Actividad: <strong>{{ actividad.nombre }}</strong></p> }
     <div role="status">
       @if (aviso(); as mensaje) { <div class="alert" [class.alert-exito]="mensaje.tipo === 'exito'" [class.alert-error]="mensaje.tipo === 'error'">{{ mensaje.texto }}</div> }
     </div>
@@ -23,9 +26,9 @@
       </div>
       <div class="form-field">
         <label for="filtro-actividad">Actividad</label>
-        <select #actividadFiltro id="filtro-actividad" class="input" [value]="filtros().actividad" (change)="filtrar('actividad', actividadFiltro.value)">
+        <select #actividadFiltro id="filtro-actividad" class="input" [disabled]="parametroContexto() !== null" [value]="filtros().actividad" (change)="filtrar('actividad', actividadFiltro.value)">
           <option value="">Todas las actividades</option>
-          @for (actividad of actividades(); track actividad.id_actividad) { <option [value]="actividad.id_actividad">{{ actividad.nombre }}</option> }
+          @for (actividad of actividadesDisponibles(); track actividad.id_actividad) { <option [value]="actividad.id_actividad" [selected]="filtros().actividad === actividad.id_actividad.toString()">{{ actividad.nombre }}</option> }
         </select>
       </div>
       <div class="form-field">
@@ -83,6 +86,7 @@
 
 <app-dialogo #dialogoFormulario class="modal-participante" [titulo]="editando() === null ? 'Inscribir participante' : 'Editar inscripción'" (cerrado)="alCerrarFormulario()">
   @if (formularioAbierto()) {
+    @if (actividadContexto(); as actividad) { <p class="contexto-actividad">Inscribir participante en: <strong>{{ actividad.nombre }}</strong></p> }
     <section class="formulario" [attr.aria-busy]="cargandoEdicion() || enviando()">
       @if (errorFormulario(); as error) { <p class="alert alert-error" role="alert">{{ error }}</p> }
       @if (cargandoEdicion()) {
@@ -91,6 +95,12 @@
       } @else {
         <p class="form-ayuda">Los campos con * son obligatorios.</p>
         @if (cargandoAlgunCatalogo()) { <p class="form-ayuda" role="status">Cargando catálogos…</p> }
+        @if (avisosCatalogos().length) {
+          <div class="alert alert-error" role="alert">
+            @for (aviso of avisosCatalogos(); track aviso[0]) { <p>No se pudo consultar {{ etiquetas[aviso[0]] }}. {{ aviso[1] }}</p> }
+            <button class="btn" type="button" (click)="cargarCatalogos()" [disabled]="cargandoAlgunCatalogo()">Reintentar catálogos</button>
+          </div>
+        }
         @else if (!catalogosDisponibles()) { <p class="form-ayuda">El guardado requiere personas, actividades y tipos disponibles. Puedes completar los demás campos.</p> }
         <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
           <div class="rejilla-formulario">
@@ -108,7 +118,7 @@
               <label for="inscripcion-actividad">Actividad *</label>
               <select id="inscripcion-actividad" class="input" formControlName="id_actividad" aria-required="true" aria-describedby="inscripcion-actividad-error" [attr.aria-invalid]="!!errorCampo('id_actividad')">
                 <option value="" disabled>Selecciona una actividad</option>
-                @for (actividad of actividades(); track actividad.id_actividad) { <option [value]="actividad.id_actividad">{{ actividad.nombre }}</option> }
+                @for (actividad of actividadesDisponibles(); track actividad.id_actividad) { <option [value]="actividad.id_actividad">{{ actividad.nombre }}</option> }
               </select>
               @if (errorCampo('id_actividad'); as error) { <p id="inscripcion-actividad-error" class="error-text">{{ error }}</p> }
             </div>

@@ -3,6 +3,7 @@ import { signal } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { By } from '@angular/platform-browser';
 import { of, Subject, throwError } from 'rxjs';
 import { routes } from '../../../app.routes';
 import { ApiResponse } from '../../../core/interfaces/api/api-response.interface';
@@ -17,6 +18,7 @@ describe('Participantes: interfaz e inscripción', () => {
   let fixture: ComponentFixture<ListarParticipantesComponent>;
   let servicio: jasmine.SpyObj<ParticipantesService>;
   let permitido: boolean;
+  let puedeCrear: boolean;
   const $ = <T extends HTMLElement = HTMLElement>(selector: string): T => fixture.nativeElement.querySelector(selector);
   const boton = (texto: string): HTMLButtonElement => Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
     .find(item => item.textContent?.replace(/chevron_left|chevron_right|add/g, '').trim() === texto)!;
@@ -34,7 +36,9 @@ describe('Participantes: interfaz e inscripción', () => {
   async function montar() { fixture = TestBed.createComponent(ListarParticipantesComponent); fixture.autoDetectChanges(); await fixture.whenStable(); }
   beforeEach(async () => {
     permitido = true;
-    servicio = jasmine.createSpyObj('ParticipantesService', ['listar', 'personas', 'actividades', 'tipos', 'documentos', 'obtener', 'crear', 'actualizar', 'cambiarEstado']);
+    puedeCrear = true;
+    servicio = jasmine.createSpyObj('ParticipantesService', ['listar', 'personas', 'actividades', 'tipos', 'documentos', 'obtener', 'crear', 'actualizar', 'cambiarEstado', 'actividad']);
+    servicio.actividad.and.returnValue(of({ id_actividad: 10, nombre: 'Actividad validada por Laravel' }));
     servicio.listar.and.returnValue(of([INSCRIPCION]));
     servicio.personas.and.returnValue(of([
       { id_persona: 1, nombres: 'María', apellido_paterno: 'Pérez', apellido_materno: null },
@@ -49,7 +53,7 @@ describe('Participantes: interfaz e inscripción', () => {
     TestBed.configureTestingModule({ imports: [ListarParticipantesComponent], providers: [
       provideRouter(routes),
       { provide: ParticipantesService, useValue: servicio },
-      { provide: AuthService, useValue: { tienePermiso: () => permitido, cargarSesion: () => of(true), usuario: signal(null), modulos: signal([]) } },
+      { provide: AuthService, useValue: { tienePermiso: (clave: string) => permitido && (clave !== 'participantes.crear' || puedeCrear), cargarSesion: () => of(true), usuario: signal(null), modulos: signal([]) } },
     ] });
     await montar();
   });
@@ -64,6 +68,15 @@ describe('Participantes: interfaz e inscripción', () => {
     expect(vista.querySelector('main h1')?.textContent).toBe('Participantes');
     expect(vista.querySelectorAll('app-sidebar').length).toBe(1);
     expect(vista.querySelectorAll('app-header').length).toBe(1);
+  });
+  it('recibe la actividad de navegación y la conserva al abrir una inscripción sin guardarla', async () => {
+    fixture.destroy();
+    const harness = await RouterTestingHarness.create('/certificaciones/participantes?id_actividad=10'); harness.detectChanges(); await harness.fixture.whenStable(); harness.detectChanges();
+    const vista = harness.routeNativeElement!;
+    expect(vista.querySelector<HTMLSelectElement>('#filtro-actividad')?.value).toBe('10');
+    expect(vista.querySelector<HTMLDialogElement>('.modal-participante dialog')?.open).toBeTrue();
+    expect(vista.querySelector<HTMLSelectElement>('#inscripcion-actividad')?.value).toBe('10');
+    expect(servicio.crear).not.toHaveBeenCalled();
   });
   it('resuelve nombres y documentos reales y no inventa estados', async () => {
     expect($('tbody').textContent).toContain('María Pérez');
@@ -122,18 +135,15 @@ describe('Participantes: interfaz e inscripción', () => {
     for (const metodo of ['listar', 'personas', 'actividades', 'tipos', 'documentos'] as const) servicio[metodo].and.returnValue(throwError(() => ({ status: 403, mensaje: 'No autorizado.', errores: {} })));
     await montar(); expect($('.encabezado .btn-primary')).not.toBeNull(); expect($('table')).not.toBeNull(); expect($('.paginacion')).not.toBeNull();
     expect($('.estado-vacio').textContent).not.toContain('Aún no hay participantes inscritos.');
-    await abrir(); expect($<HTMLSelectElement>('#inscripcion-persona').options.length).toBe(1);
-    await guardar(); expect(servicio.crear).not.toHaveBeenCalled();
+    await abrir(); expect($('form')).toBeNull(); expect(servicio.crear).not.toHaveBeenCalled();
   });
   it('muestra el vacío solo tras consulta correcta', async () => {
     fixture.destroy(); servicio.listar.and.returnValue(of([])); await montar();
     expect($('.estado-vacio').textContent).toContain('Aún no hay participantes inscritos.');
   });
-  it('permite abrir el formulario sin permiso pero impide enviar una inscripción válida', async () => {
-    permitido = false;
-    await abrir(); await completar(); await guardar();
-    expect($('.formulario [role=alert]').textContent).toContain('no tiene permiso');
-    expect(servicio.crear).not.toHaveBeenCalled(); expect($('form')).not.toBeNull();
+  it('no abre inscripcion sin permiso efectivo', async () => {
+    permitido = false; fixture.detectChanges(); await abrir();
+    expect($('form')).toBeNull(); expect(servicio.crear).not.toHaveBeenCalled();
   });
   it('no bloquea la inscripción si únicamente falla el catálogo opcional de documentos', async () => {
     fixture.destroy(); servicio.documentos.and.returnValue(throwError(() => ({ status: 403, mensaje: 'No autorizado.', errores: {} })));
@@ -257,5 +267,110 @@ describe('Participantes: interfaz e inscripción', () => {
     expect($('.paginacion').textContent).toContain('1\u201310 de 13');
     boton('Limpiar filtros').click(); await fixture.whenStable();
     expect($('.paginacion').textContent).toContain('1\u201310 de 25');
+  });
+
+  async function navegarContexto(parametro = '10'): Promise<RouterTestingHarness> {
+    fixture.destroy();
+    const harness = await RouterTestingHarness.create('/certificaciones/participantes?id_actividad=' + parametro);
+    harness.detectChanges(); await harness.fixture.whenStable(); harness.detectChanges(); return harness;
+  }
+  async function campoContexto(h: RouterTestingHarness, id: string, valor: string): Promise<void> {
+    const campo = h.routeNativeElement!.querySelector<HTMLInputElement | HTMLSelectElement>(id)!;
+    campo.value = valor; campo.dispatchEvent(new Event(campo.tagName === 'SELECT' ? 'change' : 'input'));
+    h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
+  }
+
+  it('valida por GET antes de abrir, bloquea actividad y envía su ID incluso con control deshabilitado', async () => {
+    const respuesta = new Subject<{ id_actividad: number; nombre: string }>();
+    servicio.actividad.and.returnValue(respuesta);
+    const h = await navegarContexto();
+    expect(h.routeNativeElement!.querySelector('form')).toBeNull();
+    expect(servicio.actividad).toHaveBeenCalledOnceWith(10);
+    respuesta.next({ id_actividad: 10, nombre: 'Actividad real del detalle' }); respuesta.complete();
+    h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
+    expect(h.routeNativeElement!.textContent).toContain('Inscribir participante en: Actividad real del detalle');
+    const actividad = h.routeNativeElement!.querySelector<HTMLSelectElement>('#inscripcion-actividad')!;
+    expect(actividad.disabled).toBeTrue(); expect(actividad.value).toBe('10');
+    await campoContexto(h, '#inscripcion-persona', '2'); await campoContexto(h, '#inscripcion-tipo', '3');
+    const modelo = h.fixture.debugElement.query(By.directive(ListarParticipantesComponent)).componentInstance as { form: { value: object; getRawValue(): { id_actividad: string } } };
+    expect('id_actividad' in modelo.form.value).toBeFalse(); expect(modelo.form.getRawValue().id_actividad).toBe('10');
+    h.routeNativeElement!.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
+    expect(servicio.crear).toHaveBeenCalledOnceWith(jasmine.objectContaining({ id_persona: 2, id_actividad: 10, id_tipo_participacion: 3 }));
+    expect(h.routeNativeElement!.querySelector('form')).toBeNull();
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.value).toBe('10');
+    expect(servicio.actividades).toHaveBeenCalledTimes(1); // Solo el montaje general previo de esta prueba.
+  });
+
+  it('cancelar conserva el contexto y navegar desde Sidebar lo limpia y permite seleccionar actividad', async () => {
+    const h = await navegarContexto();
+    const cancelar = Array.from(h.routeNativeElement!.querySelectorAll<HTMLButtonElement>('button')).find(b => b.textContent?.trim() === 'Cancelar')!;
+    cancelar.click(); h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.value).toBe('10');
+    expect(h.routeNativeElement!.querySelector('form')).toBeNull(); expect(servicio.crear).not.toHaveBeenCalled();
+    await h.navigateByUrl('/certificaciones/participantes'); h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.disabled).toBeFalse();
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.value).toBe('');
+    h.routeNativeElement!.querySelector<HTMLButtonElement>('.encabezado .btn-primary')!.click();
+    h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#inscripcion-actividad')?.disabled).toBeFalse();
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#inscripcion-actividad')?.value).toBe('');
+  });
+
+  for (const status of [401, 403, 404]) it(`no abre inscripción contextual si la actividad devuelve HTTP ${status}`, async () => {
+    servicio.actividad.and.returnValue(throwError(() => ({ status, mensaje: 'Actividad no accesible', errores: {} })));
+    const h = await navegarContexto();
+    expect(h.routeNativeElement!.querySelector('form')).toBeNull(); expect(h.routeNativeElement!.querySelector('[role=alert]')).not.toBeNull();
+    expect(servicio.crear).not.toHaveBeenCalled();
+  });
+  for (const id of ['0', '-1', 'abc', '1e2', '9007199254740992']) it(`rechaza el ID contextual inválido ${id}`, async () => {
+    const h = await navegarContexto(id);
+    expect(servicio.actividad).not.toHaveBeenCalled(); expect(h.routeNativeElement!.querySelector('form')).toBeNull();
+    expect(h.routeNativeElement!.textContent).toContain('identificador de actividad no es válido');
+  });
+
+  it('permite consultar contexto sin abrir inscripción si falta participantes.crear', async () => {
+    puedeCrear = false; const h = await navegarContexto();
+    expect(servicio.actividad).toHaveBeenCalledWith(10); expect(h.routeNativeElement!.querySelector('form')).toBeNull();
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.value).toBe('10');
+  });
+
+  it('no presenta un catálogo fallido como vacío ni abre automáticamente un formulario inutilizable', async () => {
+    servicio.personas.and.returnValue(throwError(() => ({ status: 403, mensaje: 'Personas restringidas', errores: {} })));
+    const h = await navegarContexto();
+    expect(h.routeNativeElement!.querySelector('form')).toBeNull();
+    expect(h.routeNativeElement!.textContent).toContain('Personas no disponibles');
+    expect(servicio.crear).not.toHaveBeenCalled();
+  });
+
+  it('cambiar de actividad en la URL elimina la selección anterior sin duplicar consultas por otros parámetros', async () => {
+    servicio.actividad.and.callFake(id => of({ id_actividad: id, nombre: 'Actividad real ' + id }));
+    const h = await navegarContexto();
+    await h.navigateByUrl('/certificaciones/participantes?id_actividad=22'); h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#inscripcion-actividad')?.value).toBe('22');
+    expect(h.routeNativeElement!.textContent).toContain('Inscribir participante en: Actividad real 22');
+    const cancelar = Array.from(h.routeNativeElement!.querySelectorAll<HTMLButtonElement>('button')).find(b => b.textContent?.trim() === 'Cancelar')!;
+    cancelar.click(); h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
+    await h.navigateByUrl('/certificaciones/participantes?id_actividad=22&referencia=tabla'); h.detectChanges();
+    expect(servicio.actividad).toHaveBeenCalledTimes(2);
+    expect(h.routeNativeElement!.querySelector('form')).toBeNull();
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.value).toBe('22');
+  });
+
+  it('errores 409 y 422 conservan el ID contextual protegido y los datos ingresados', async () => {
+    servicio.crear.and.returnValue(throwError(() => ({ status: 409, mensaje: 'Inscripción duplicada en Laravel', errores: {} })));
+    const h = await navegarContexto(); await campoContexto(h, '#inscripcion-persona', '2'); await campoContexto(h, '#inscripcion-tipo', '3');
+    const enviar = async () => {
+      h.routeNativeElement!.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
+    };
+    await enviar();
+    expect(h.routeNativeElement!.textContent).toContain('Inscripción duplicada en Laravel');
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#inscripcion-actividad')?.disabled).toBeTrue();
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#inscripcion-persona')?.value).toBe('2');
+    servicio.crear.and.returnValue(throwError(() => ({ status: 422, mensaje: 'Validación real', errores: { id_tipo_participacion: ['Tipo no permitido por Laravel'] } })));
+    await enviar();
+    expect(h.routeNativeElement!.querySelector('#inscripcion-tipo-error')?.textContent).toContain('Tipo no permitido por Laravel');
+    expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#inscripcion-actividad')?.value).toBe('10');
   });
 });

@@ -1,12 +1,15 @@
 import { inject, Injectable, InjectionToken } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { defer, Observable, throwError } from 'rxjs';
+import { defer, Observable, Subject, tap, throwError } from 'rxjs';
+import { ActivityRequestDecisionRow } from '../../interfaces/solicitudes/activity-requests-api.interface';
 import { aErrorApi } from '../../../shared/utils/error-api';
 import { SolicitudesHttpGateway } from './solicitudes-http.gateway';
 import { AccionSolicitud, BandejaSolicitud, ContextoSolicitud, DatosSolicitud, DecisionSolicitud, DocumentoPendiente, FiltroSolicitudes, PaginaSolicitudes, Solicitud } from '../../interfaces/solicitudes/solicitud.interface';
 
 /** Puerto de integración: modelos de vista, no rutas ni DTO HTTP inventados. */
 export interface SolicitudesGateway {
+  puedeConsultarHistorial?(id: string): boolean;
+  historialSolicitud?(id: string): Observable<readonly ActivityRequestDecisionRow[]>;
   accionesPermitidas?(fila: Solicitud): readonly AccionSolicitud[];
   contexto(): Observable<ContextoSolicitud>;
   listar(bandeja: BandejaSolicitud, filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<Solicitud>>;
@@ -42,6 +45,8 @@ export function mensajeSolicitudes(error: unknown): string {
 }
 @Injectable({ providedIn: 'root' })
 export class SolicitudesService {
+  private readonly cambios = new Subject<Solicitud>();
+  readonly cambios$ = this.cambios.asObservable();
   private readonly gateway = inject(SOLICITUDES_GATEWAY);
   readonly integrado = this.gateway !== null;
   readonly modo = this.integrado ? 'api' : 'pendiente';
@@ -53,7 +58,13 @@ export class SolicitudesService {
   listar(bandeja: BandejaSolicitud, filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<Solicitud>> { return this.ejecutar(api => api.listar(bandeja, filtro)); }
   detalle(id: string, administrativo = false): Observable<Solicitud> { return this.ejecutar(api => api.detalle(id, administrativo)); }
   guardar(datos: DatosSolicitud, existente: { id: string; version: string } | null): Observable<Solicitud> { return this.ejecutar(api => api.guardar(datos, existente)); }
-  decidir(id: string, version: string, accion: AccionSolicitud, motivo: string): Observable<Solicitud> { return this.ejecutar(api => api.decidir(id, version, accion, motivo)); }
+  decidir(id: string, version: string, accion: AccionSolicitud, motivo: string): Observable<Solicitud> {
+    return this.ejecutar(api => api.decidir(id, version, accion, motivo)).pipe(tap(fila => this.cambios.next(fila)));
+  }
+  puedeConsultarHistorial(id: string): boolean { return this.gateway?.puedeConsultarHistorial?.(id) === true; }
+  historialSolicitud(id: string): Observable<readonly ActivityRequestDecisionRow[]> {
+    return this.ejecutar(api => api.historialSolicitud?.(id) ?? throwError(() => new IntegracionSolicitudesPendiente()));
+  }
   historial(filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<DecisionSolicitud>> { return this.ejecutar(api => api.historial(filtro)); }
   documentos(pagina: number): Observable<PaginaSolicitudes<DocumentoPendiente>> { return this.ejecutar(api => api.documentos(pagina)); }
   documento(id: string): Observable<Blob> { return this.ejecutar(api => api.documento(id)); }

@@ -22,6 +22,7 @@ export interface ContextoSolicitud {
   readonly puedeCrear: boolean;
 }
 export interface Solicitud extends DatosSolicitud {
+  readonly actividadId?: number | null;
   readonly puedeVerDetalle?: boolean;
   readonly id: string;
   readonly numero: string;
@@ -38,6 +39,11 @@ export interface Solicitud extends DatosSolicitud {
   /** Permisos de sesión y estado; Laravel verifica además competencia y área. */
   readonly puedeEditar: boolean;
   readonly acciones: readonly AccionSolicitud[];
+}
+/** La identidad del solicitante o de otra decisión no identifica al revisor. */
+export function textoRevisorSolicitud(fila: Solicitud): string {
+  return fila.revisor?.trim() || (['Borrador', 'Enviada'].includes(fila.estado)
+    ? 'Pendiente de asignación de revisor' : 'Identidad del revisor no disponible');
 }
 export interface FiltroSolicitudes {
   readonly responsableId?: string;

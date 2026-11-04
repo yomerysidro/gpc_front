@@ -40,6 +40,16 @@ describe('Configuración única del Sidebar institucional', () => {
     expect(new Set(enlaces).size).toBe(enlaces.length);
     expect(new Set(SIDEBAR_CONFIG.map(grupo => grupo.id)).size).toBe(SIDEBAR_CONFIG.length);
   });
+  it('conserva las opciones de RR. HH., Solicitudes y Gerencia en su orden exacto', () => {
+    expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'recursos-humanos')!.hijos.map(hijo => hijo.id))
+      .toEqual(['personas', 'trabajadores', 'practicas', 'ponentes', 'reconocimientos', 'revisar-solicitudes']);
+    expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'solicitudes')!.hijos.map(hijo => hijo.id))
+      .toEqual(['solicitud-nueva', 'mis-solicitudes']);
+    expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'gerencia')!.hijos.map(hijo => hijo.id))
+      .toEqual(['pendientes-aprobacion', 'documentos-firmar', 'historial-decisiones']);
+    const revisiones = SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos).filter(hijo => hijo.id === 'revisar-solicitudes');
+    expect(revisiones.length).toBe(1); expect(revisiones[0].path).toBe('/solicitudes/revision');
+  });
 
   it('coloca todos los catálogos en Configuración y conserva las pantallas con pestañas', () => {
     const seguridad = SIDEBAR_CONFIG.find(grupo => grupo.id === 'seguridad')!;
@@ -78,12 +88,12 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
 
   it('muestra una sola navegación para el administrador con las capacidades asignadas', () => {
     const grupos = Array.from(vista().querySelectorAll('button.modulo'), boton => boton.textContent?.replace('expand_more', '').trim());
-    expect(grupos.length).toBe(7);
+    expect(grupos.length).toBe(8);
     expect(vista().querySelectorAll('nav').length).toBe(1);
     expect(vista().querySelector('a[href="/inicio"]')).not.toBeNull();
     for (const id of ['seguridad', 'recursos-humanos', 'actividades', 'emision', 'configuracion']) expect(vista().querySelector('#submenu-' + id)).not.toBeNull();
     for (const id of ['solicitudes', 'gerencia']) expect(vista().querySelector('#submenu-' + id)).not.toBeNull();
-    expect(vista().querySelector('#submenu-reportes')).toBeNull();
+    expect(vista().querySelector('#submenu-reportes')?.querySelectorAll('a').length).toBe(4);
     const enlaces = Array.from(vista().querySelectorAll('a'), enlace => enlace.getAttribute('href'));
     expect(new Set(enlaces).size).toBe(enlaces.length);
   });
@@ -97,11 +107,12 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
     expect(vista().querySelector('a[href="/certificaciones/certificados"]')).toBeNull();
   });
 
-  it('un consultor con lectura de Dashboard no obtiene escrituras ni enlaces a funciones pendientes', () => {
+  it('un consultor con lectura de Dashboard y Reportes obtiene sus cuatro consultas', () => {
     permisos.set(['dashboard.ver', 'reportes.ver']); fixture.detectChanges();
-    expect(vista().querySelectorAll('a').length).toBe(1);
+    expect(vista().querySelectorAll('a').length).toBe(5);
     expect(vista().querySelector('a')?.getAttribute('href')).toBe('/inicio');
-    expect(vista().querySelector('button.modulo')).toBeNull();
+    expect(vista().querySelector('#submenu-reportes')?.querySelectorAll('a').length).toBe(4);
+    expect(vista().querySelector('#submenu-seguridad')).toBeNull();
   });
 
   it('no permite acceso por el nombre Administrador ni por entradas recibidas sin permiso', () => {

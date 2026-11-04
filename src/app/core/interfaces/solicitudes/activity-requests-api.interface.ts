@@ -19,6 +19,9 @@ export interface ActivityRequestDraft {
   readonly sede_propuesta?: string | null;
 }
 export interface ActivityRequestRow extends ActivityRequestDraft {
+  readonly area_nombre?: string | null;
+  readonly solicitante_nombre?: string | null;
+  readonly tipo_actividad_nombre?: string | null;
   readonly descripcion: string | null;
   readonly sede_propuesta: string | null;
   readonly id_solicitud_actividad: number;
@@ -30,6 +33,7 @@ export interface ActivityRequestRow extends ActivityRequestDraft {
 export const TIPOS_DECISION_SOLICITUD = ['REVISION_CONFORME', 'OBSERVAR', 'DERIVAR_GERENCIA', 'APROBAR', 'RECHAZAR'] as const;
 export type TipoDecisionSolicitud = typeof TIPOS_DECISION_SOLICITUD[number];
 export interface ActivityRequestDecisionRow {
+  readonly responsable_nombre?: string | null;
   readonly id_solicitud_decision: number;
   readonly id_solicitud_actividad: number;
   readonly id_usuario_responsable: number;
@@ -41,6 +45,8 @@ export interface ActivityRequestDecisionRow {
 }
 export interface ActivityRequestObservation { readonly observacion?: string | null }
 export interface ActivityRequestGlobalDecisionRow extends ActivityRequestDecisionRow {
+  readonly area_nombre?: string | null;
+  readonly solicitante_nombre?: string | null;
   readonly id_usuario_solicitante: number;
   readonly id_area: number;
   readonly solicitud_nombre: string;

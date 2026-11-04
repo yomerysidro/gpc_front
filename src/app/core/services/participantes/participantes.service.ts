@@ -6,9 +6,12 @@ import { ApiResponse, ErrorApi } from '../../interfaces/api/api-response.interfa
 import { ActividadInscripcion, DocumentoInscripcion, Inscripcion, InscripcionPayload, PersonaInscripcion, TipoInscripcion } from '../../interfaces/participantes/participante.interface';
 import { AUTHENTICATED_REQUEST } from '../../security/auth-request.context';
 import { aErrorApi } from '../../../shared/utils/error-api';
+import { ActividadesService } from '../actividades/actividades.service';
 
 @Injectable({ providedIn: 'root' })
 export class ParticipantesService {
+  private readonly actividadesApi = inject(ActividadesService);
+  actividad(id: number): Observable<ActividadInscripcion> { return this.actividadesApi.obtener(id); }
   private readonly http = inject(HttpClient);
   private readonly api = environment.apiBaseUrl;
 

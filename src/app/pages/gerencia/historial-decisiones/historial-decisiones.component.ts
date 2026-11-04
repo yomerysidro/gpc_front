@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, inject, OnInit, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, HostListener, inject, OnInit, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -31,7 +31,20 @@ export class HistorialDecisionesComponent implements OnInit {
   protected readonly dialogo = viewChild.required(DialogoComponent);
   private carga?: Subscription;
   private cargaDetalle?: Subscription;
-  ngOnInit(): void { this.cargar(); }
+  @HostListener('window:focus')
+  protected actualizarAlVolver(): void {
+    if (this.api.integrado && !this.cargando()) {
+      if (this.decision()) this.dialogo().cerrar();
+      this.cerrar(); this.cargar(this.pagina()?.pagina ?? 1);
+    }
+  }
+  ngOnInit(): void {
+    this.api.cambios$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (this.decision()) this.dialogo().cerrar();
+      this.cerrar(); this.cargar(this.pagina()?.pagina ?? 1);
+    });
+    this.cargar();
+  }
   protected puedeConsultarDetalle(): boolean {
     const capacidades = this.auth.capacidadesSolicitudes?.();
     return this.auth.tienePermiso('solicitudes.consultar') || capacidades?.consulta_administrativa_global === true

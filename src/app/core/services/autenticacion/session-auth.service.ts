@@ -95,6 +95,8 @@ export class SessionAuthService extends AuthService {
           derivar: capacidades.derivar === true,
           aprobar: capacidades.aprobar === true,
           rechazar: capacidades.rechazar === true,
+          decidir_ambito_institucional: capacidades.decidir_ambito_institucional === true,
+          decidir_propias: capacidades.decidir_propias === true,
         } : null);
         return true;
       }),

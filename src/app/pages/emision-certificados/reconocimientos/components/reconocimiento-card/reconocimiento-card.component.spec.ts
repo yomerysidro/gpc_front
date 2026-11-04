@@ -53,7 +53,7 @@ describe('ReconocimientoCardComponent sin HTTP', () => {
     expect(texto).not.toContain('NO-MOSTRAR');
     expect(texto).not.toContain('Firmado digitalmente');
     expect(texto).not.toContain('Firmar y emitir');
-    expect(fixture.nativeElement.querySelector('button').disabled).toBeTrue();
+    expect(fixture.nativeElement.querySelector('button')).toBeNull();
     expect(fixture.nativeElement.querySelector('iframe, canvas, a[download]')).toBeNull();
   });
 

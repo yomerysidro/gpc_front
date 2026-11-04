@@ -1,0 +1,13 @@
+.table .acciones-gerencia { flex-wrap: nowrap; gap: .5rem; min-width: max-content; }
+.acciones-gerencia .btn.accion-icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2.75rem; min-width: 2.75rem;
+  padding: 0; flex: 0 0 2.75rem; border: 1px solid currentColor;
+  border-radius: .5rem; background: #fff;
+}
+.accion-detalle { color: #075a9b; }
+.accion-aprobar { color: #236641; }
+.accion-rechazar { color: #a52d2d; }
+.accion-icono:hover:not(:disabled) { background: color-mix(in srgb, currentColor 10%, white); }
+.accion-icono:focus-visible { outline: 3px solid #075a9b; outline-offset: 3px; }
+.accion-icono:disabled { opacity: .45; cursor: not-allowed; }

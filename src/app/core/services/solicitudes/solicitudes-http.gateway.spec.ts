@@ -48,6 +48,18 @@ describe('Adaptación del contrato a las cinco pantallas existentes', () => {
     http.expectOne(req => req.url === base + '/decisions/history').flush({ success: true, data: { current_page: 1, last_page: 1, per_page: 20, total: 5, data: TIPOS_DECISION_SOLICITUD.map((tipo_decision, index) => ({ id_solicitud_decision: index + 1, id_solicitud_actividad: 4, id_usuario_responsable: 8, tipo_decision, estado_anterior: 'Enviada', estado_nuevo: 'Observada', fecha_decision: '2026-11-02 10:00:00', observacion: null, id_usuario_solicitante: 8, id_area: 2, solicitud_nombre: 'Nombre real de respuesta de prueba' })) } });
     expect(total).toBe(5); expect(resultados).toContain('Revisión conforme'); expect(resultados).toContain('Derivada a Gerencia');
   });
+  it('utiliza los nombres del historial sin sustituirlos por IDs', () => {
+    iniciar();
+    gateway.historial(filtro).subscribe(pagina => {
+      expect(pagina.registros[0].area).toBe('Área recibida de Laravel');
+      expect(pagina.registros[0].responsable).toBe('Responsable recibido de Laravel');
+    });
+    http.expectOne(req => req.url === base + '/decisions/history').flush({ success: true, data: {
+      current_page: 1, last_page: 1, per_page: 20, total: 1, data: [{ id_solicitud_decision: 1,
+        id_solicitud_actividad: 4, id_usuario_responsable: 8, id_usuario_solicitante: 9, id_area: 5,
+        solicitud_nombre: 'Solicitud de prueba', area_nombre: 'Área recibida de Laravel', responsable_nombre: 'Responsable recibido de Laravel',
+        tipo_decision: 'REVISION_CONFORME', estado_anterior: 'Enviada', estado_nuevo: 'En revisión', fecha_decision: '2026-11-03', observacion: null }] } });
+  });
   it('permite corregir una Observada propia y reenviar solo tras confirmar el PUT', () => {
     iniciar(); let editable = false;
     gateway.detalle('4').subscribe(registro => editable = registro.puedeEditar);
@@ -96,7 +108,7 @@ describe('Adaptación del contrato a las cinco pantallas existentes', () => {
     expect(pagina?.total).toBe(1); expect(pagina?.registros[0].id).toBe('5');
   });
   it('usa el listado real para pendientes de Gerencia y no integra documentos por firmar', () => {
-    iniciar(); gateway.listar('gerencia', filtro).subscribe(); const req = http.expectOne(r => r.url === base);
+    iniciar(); gateway.listar('gerencia', { ...filtro, estado: 'Pendiente de aprobación' }).subscribe(); const req = http.expectOne(r => r.url === base);
     expect(req.request.params.get('estado')).toBe('Pendiente de aprobación'); req.flush({ success: true, data: { data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 } });
     gateway.documentos(1).subscribe({ error: error => expect(error.message).toContain('no forma parte') }); http.expectNone(() => true);
   });

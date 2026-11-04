@@ -1,0 +1,14 @@
+<section class="reporte">
+  <header><p class="eyebrow">GESTIÓN MUNICIPAL · REPORTES</p><h1>Reportes de asistencia</h1><span class="etiqueta">En desarrollo · requiere backend</span><p class="subtitulo">El reporte por actividad y sesión todavía no cuenta con una consulta acotada.</p></header>
+  <aside class="aviso"><span class="material-symbols-outlined" aria-hidden="true">warning</span><h2>Datos no disponibles para este reporte</h2><p>Los endpoints actuales de actividades, sesiones y asistencias devuelven listas completas sin filtros ni paginación. Para proteger el rendimiento y el alcance de datos, esta pantalla no descarga esas listas ni muestra una tabla vacía como resultado de una consulta real.</p></aside>
+  <form class="panel filtros" (ngSubmit)="consultar()">
+    <h2><span class="material-symbols-outlined" aria-hidden="true">tune</span>Filtros de consulta</h2>
+    <label>Actividad<select disabled aria-describedby="dependencia-asistencia"><option>Requiere selector paginado del backend</option></select></label>
+    <label>Sesión<select disabled aria-describedby="dependencia-asistencia"><option>Requiere sesiones filtradas por actividad</option></select></label>
+    <label>Fecha de sesión desde<input type="date" name="inicio" [(ngModel)]="inicio"></label>
+    <label>Fecha de sesión hasta<input type="date" name="fin" [(ngModel)]="fin"></label>
+    <div class="acciones"><button class="btn btn-primario" type="submit"><span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>Consultar</button><button class="btn btn-neutro" type="button" (click)="limpiar()"><span class="material-symbols-outlined" aria-hidden="true">toggle_off</span>Limpiar filtros</button><button class="btn btn-secundario" type="button" (click)="consultar()"><span class="material-symbols-outlined" aria-hidden="true">tune</span>Actualizar</button><button class="btn btn-secundario" type="button" disabled>CSV no disponible</button></div>
+  </form>
+  @if (mensaje()) { <p class="aviso" role="status">{{ mensaje() }}</p> }
+  <section class="panel" id="dependencia-asistencia"><h2>Qué necesita la consulta</h2><p>Una lista paginada de actividades por nombre, sesiones de la actividad seleccionada y registros de asistencia con nombre del participante, fecha de sesión, entrada, salida y estado real.</p><p>No se calculan ausencias ni porcentajes. Se requiere confirmar qué participaciones se esperan por sesión y cómo se trata su vigencia, las cancelaciones y los estados. La falta de una marca no equivale por sí sola a ausencia.</p><p>Una vez confirmada esa regla: porcentaje de asistencia = personas esperadas con asistencia válida ÷ personas esperadas × 100. Con denominador cero debe mostrarse «No aplicable».</p></section>
+</section>

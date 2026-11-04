@@ -28,11 +28,11 @@ export class SesionesAsistenciaListado {
 
   invalidar(): void { this.cargado = false; }
 
-  cargar(asistencias: boolean): Observable<void> {
+  cargar(asistencias: boolean, actividadContexto: { id_actividad: number; nombre: string } | null = null): Observable<void> {
     if (this.cargado) return of(undefined);
     return forkJoin({
       sesiones: this.api.listarTodos('activity-session'),
-      actividades: this.api.listarTodos('activity'),
+      actividades: actividadContexto ? of([actividadContexto]) : this.api.listarTodos('activity'),
       asistencias: asistencias ? this.api.listarTodos('attendance') : of([]),
       participaciones: asistencias ? this.api.listarTodos('participation') : of([]),
       personas: asistencias ? this.personas.listar() : of([]),

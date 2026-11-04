@@ -1,5 +1,5 @@
 import { inject, Injectable, InjectionToken } from '@angular/core';
-import { EMPTY, expand, map, Observable, of, reduce, switchMap, throwError } from 'rxjs';
+import { catchError, EMPTY, expand, map, Observable, of, reduce, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../autenticacion/auth.service';
 import { ActivityRequestGlobalDecisionRow, ActivityRequestHistoryFilters } from '../../interfaces/solicitudes/activity-requests-api.interface';
 import { ActivityRequestDraft, ActivityRequestFilters, ActivityRequestRow, TipoDecisionSolicitud } from '../../interfaces/solicitudes/activity-requests-api.interface';
@@ -9,6 +9,7 @@ import type { SolicitudesGateway } from './solicitudes.service';
 
 /** Permisos efectivos de /auth/me. Laravel vuelve a validar área y competencia en cada operación. */
 export interface AutorizacionSolicitudes {
+  readonly estadoAutorizacion?: unknown;
   contexto(): Observable<ContextoSolicitud>;
   capacidades(fila: ActivityRequestRow): { readonly propia: boolean; readonly puedeEditar: boolean; readonly acciones: readonly AccionSolicitud[] };
   readonly consultaRevision: boolean;
@@ -22,6 +23,7 @@ export const AUTORIZACION_SOLICITUDES = new InjectionToken<AutorizacionSolicitud
   const permiso = (clave: string) => !!auth.usuario() && auth.tienePermiso(`solicitudes.${clave}`);
   const capacidades = () => auth.usuario() ? auth.capacidadesSolicitudes?.() : null;
   return {
+    get estadoAutorizacion() { return capacidades(); },
     contexto: () => of({ responsable: auth.usuario()?.nombre ?? '', areasDisponibles: [], puedeCrear: permiso('crear') }),
     get consultaRevision() { return capacidades()?.consultar_revision === true; },
     get consultaGerencia() { return capacidades()?.consultar_gerencia === true; },
@@ -30,13 +32,17 @@ export const AUTORIZACION_SOLICITUDES = new InjectionToken<AutorizacionSolicitud
     get consultaPropias() { return permiso('propias'); },
     capacidades: fila => {
       const propia = !!auth.usuario() && fila.id_usuario_solicitante === auth.usuario()!.id;
+      const facultades = capacidades();
+      const puedeDecidirPorPropiedad = !propia || facultades?.decidir_propias === true;
+      // decidir_ambito_institucional no sustituye aprobar/rechazar ni decidir_propias.
+      // Sin esa excepción, Laravel limita las filas al ámbito laboral autorizado.
       const acciones: AccionSolicitud[] = [];
       if (propia && permiso('enviar')) acciones.push('Enviar');
       if (capacidades()?.revisar === true) acciones.push('Iniciar revisión');
       if (capacidades()?.derivar === true) acciones.push('Derivar');
       if (permiso('observar') && (fila.estado === 'Pendiente de aprobación' ? capacidades()?.aprobar : capacidades()?.revisar) === true) acciones.push('Observar');
-      if (!propia && capacidades()?.aprobar === true) acciones.push('Aprobar');
-      if (!propia && capacidades()?.rechazar === true) acciones.push('Rechazar');
+      if (puedeDecidirPorPropiedad && facultades?.aprobar === true) acciones.push('Aprobar');
+      if (puedeDecidirPorPropiedad && facultades?.rechazar === true) acciones.push('Rechazar');
       return { propia, puedeEditar: propia && permiso('editar'), acciones };
     },
   };
@@ -63,6 +69,7 @@ export class SolicitudesHttpGateway implements SolicitudesGateway {
   private readonly acceso = inject(AUTORIZACION_SOLICITUDES);
   readonly disponible = this.api.disponible && this.acceso !== null;
   private readonly registros = new Map<string, ActivityRequestRow>();
+  private readonly decisionesDenegadas = new Map<string, unknown>();
   contexto(): Observable<ContextoSolicitud> { return this.disponible && this.acceso ? this.acceso.contexto() : pendientes(); }
 
   listar(bandeja: BandejaSolicitud, filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<Solicitud>> {
@@ -71,7 +78,7 @@ export class SolicitudesHttpGateway implements SolicitudesGateway {
     if (bandeja === 'revision' && !this.acceso.consultaRevision || bandeja === 'gerencia' && !this.acceso.consultaGerencia) return restringido();
     if (filtro.estado && !ESTADOS_SOLICITUD.includes(filtro.estado as ActivityRequestRow['estado'])) return throwError(() => new Error('Estado de solicitud no admitido por Laravel.'));
     const parametros: ActivityRequestFilters = {
-      estado: bandeja === 'gerencia' ? 'Pendiente de aprobación' : filtro.estado as ActivityRequestRow['estado'] || undefined,
+      estado: filtro.estado as ActivityRequestRow['estado'] || (bandeja === 'revision' ? 'Enviada' : undefined),
       fecha_desde: filtro.desde || undefined, fecha_hasta: filtro.hasta || undefined, per_page: 20, page: filtro.pagina,
     };
     if (!filtro.busqueda.trim()) return this.api.listar(parametros, bandeja === 'propias').pipe(map(pagina => ({
@@ -87,7 +94,13 @@ export class SolicitudesHttpGateway implements SolicitudesGateway {
   detalle(id: string, administrativo = false): Observable<Solicitud> {
     if (!this.disponible) return pendientes();
     if (administrativo && !this.acceso?.consultaDetalle) return restringido();
-    return (administrativo ? this.api.detalleRevision(Number(id)) : this.api.detalle(Number(id))).pipe(map(fila => this.vista(fila)));
+    return (administrativo ? this.api.detalleRevision(Number(id)) : this.api.detalle(Number(id))).pipe(
+      map(fila => this.vista(fila)),
+      catchError((error: unknown) => {
+        if (typeof error === 'object' && error !== null && 'status' in error && error.status === 403) this.decisionesDenegadas.set(id, this.acceso?.estadoAutorizacion);
+        return throwError(() => error);
+      }),
+    );
   }
   guardar(datos: DatosSolicitud, existente: { id: string; version: string } | null): Observable<Solicitud> {
     if (!this.disponible || !this.acceso) return pendientes();
@@ -115,7 +128,26 @@ export class SolicitudesHttpGateway implements SolicitudesGateway {
     const operacion = accion === 'Enviar' ? this.api.enviar(Number(id)) : accion === 'Iniciar revisión' ? this.api.revisar(Number(id), observacion)
       : accion === 'Observar' ? this.api.observar(Number(id), motivo.trim()) : accion === 'Derivar' ? this.api.derivar(Number(id), observacion)
         : accion === 'Aprobar' ? this.api.aprobar(Number(id), observacion) : this.api.rechazar(Number(id), motivo.trim());
-    return operacion.pipe(map(registro => this.vista(registro)));
+    return operacion.pipe(map(registro => {
+      if (registro.id_solicitud_actividad !== Number(id)
+        || accion === 'Aprobar' && (registro.estado !== 'Aprobada' || !Number.isSafeInteger(registro.id_actividad) || registro.id_actividad! < 1)
+        || accion === 'Rechazar' && (registro.estado !== 'Rechazada' || registro.id_actividad !== null)) {
+        throw new Error('El servidor no confirmó el resultado esperado. Actualiza la solicitud antes de reintentar.');
+      }
+      return this.vista(registro);
+    }), catchError((error: unknown) => {
+      if (typeof error === 'object' && error !== null && 'status' in error && error.status === 403) this.decisionesDenegadas.set(id, this.acceso?.estadoAutorizacion);
+      return throwError(() => error);
+    }));
+  }
+  puedeConsultarHistorial(id: string): boolean {
+    const fila = this.registros.get(id);
+    return !!fila && (this.acceso?.consultaHistorial === true || this.acceso?.consultaPropias === true && this.acceso.capacidades(fila).propia);
+  }
+  historialSolicitud(id: string) {
+    if (!this.disponible) return pendientes();
+    if (!this.puedeConsultarHistorial(id)) return restringido();
+    return this.api.historial(Number(id));
   }
   historial(filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<DecisionSolicitud>> {
     if (!this.disponible) return pendientes();
@@ -141,8 +173,8 @@ export class SolicitudesHttpGateway implements SolicitudesGateway {
   }
   private vistaDecision(fila: ActivityRequestGlobalDecisionRow): DecisionSolicitud {
     return { id: String(fila.id_solicitud_decision), solicitudId: String(fila.id_solicitud_actividad), numero: `Solicitud #${fila.id_solicitud_actividad}`,
-      nombreSolicitud: fila.solicitud_nombre, solicitanteId: fila.id_usuario_solicitante, area: `Área #${fila.id_area}`,
-      fecha: fila.fecha_decision, resultado: RESULTADOS[fila.tipo_decision], responsable: `Usuario #${fila.id_usuario_responsable}`,
+      nombreSolicitud: fila.solicitud_nombre, solicitanteId: fila.id_usuario_solicitante, area: fila.area_nombre || `Área #${fila.id_area}`,
+      fecha: fila.fecha_decision, resultado: RESULTADOS[fila.tipo_decision], responsable: fila.responsable_nombre || `Usuario #${fila.id_usuario_responsable}`,
       motivo: fila.observacion ?? '', estadoAnterior: fila.estado_anterior, estadoPosterior: fila.estado_nuevo };
   }
   documentos(_pagina: number): Observable<PaginaSolicitudes<DocumentoPendiente>> { return throwError(() => new Error('La bandeja de documentos por firmar no forma parte del contrato de solicitudes.')); }
@@ -155,12 +187,14 @@ export class SolicitudesHttpGateway implements SolicitudesGateway {
   private vista(fila: ActivityRequestRow): Solicitud {
     this.registros.set(String(fila.id_solicitud_actividad), fila);
     const facultades = this.acceso?.capacidades(fila);
-    return { id: String(fila.id_solicitud_actividad), numero: `Solicitud #${fila.id_solicitud_actividad}`, areaId: String(fila.id_area), area: `Área #${fila.id_area}`,
-      responsable: `Usuario #${fila.id_usuario_solicitante}`, tipoId: String(fila.id_tipo_actividad), tipo: `Tipo #${fila.id_tipo_actividad}`,
+    const denegada = this.decisionesDenegadas.has(String(fila.id_solicitud_actividad))
+      && this.decisionesDenegadas.get(String(fila.id_solicitud_actividad)) === this.acceso?.estadoAutorizacion;
+    return { id: String(fila.id_solicitud_actividad), numero: `Solicitud #${fila.id_solicitud_actividad}`, areaId: String(fila.id_area), area: fila.area_nombre || `Área #${fila.id_area}`,
+      responsable: fila.solicitante_nombre || `Usuario #${fila.id_usuario_solicitante}`, tipoId: String(fila.id_tipo_actividad), tipo: fila.tipo_actividad_nombre || `Tipo #${fila.id_tipo_actividad}`,
       nombre: fila.nombre, descripcion: fila.descripcion ?? '', objetivo: fila.justificacion, inicio: fila.fecha_inicio_propuesta, fin: fila.fecha_fin_propuesta,
-      lugar: fila.sede_propuesta ?? '', observaciones: '', fecha: fila.fecha_solicitud, estado: fila.estado, revisor: null, ultimaObservacion: null, resultadoRevision: null,
+      lugar: fila.sede_propuesta ?? '', observaciones: '', fecha: fila.fecha_solicitud, estado: fila.estado, actividadId: fila.id_actividad, revisor: null, ultimaObservacion: null, resultadoRevision: null,
       version: '', puedeVerDetalle: facultades?.propia === true && this.acceso?.consultaPropias === true || this.acceso?.consultaDetalle === true, puedeEditar: facultades?.propia === true && facultades.puedeEditar && ['Borrador', 'Observada'].includes(fila.estado),
-      acciones: (facultades?.acciones ?? []).filter(accion => ESTADOS_ACCION[accion].includes(fila.estado) && (accion !== 'Enviar' || facultades?.propia)),
+      acciones: (facultades?.acciones ?? []).filter(accion => !denegada && ESTADOS_ACCION[accion].includes(fila.estado) && (accion !== 'Enviar' || facultades?.propia)),
     };
   }
   private paginar<T>(filas: readonly T[], pagina: number): PaginaSolicitudes<T> {

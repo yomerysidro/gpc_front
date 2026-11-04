@@ -26,7 +26,7 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   let gateway: jasmine.SpyObj<SolicitudesGateway>;
   let http: HttpTestingController;
   let harness: RouterTestingHarness;
-  function configurar(integrado = true, consultarCatalogos = integrado): void {
+  function configurar(integrado = true, consultarCatalogos = integrado, rol = 'Administrador'): void {
     gateway = jasmine.createSpyObj<SolicitudesGateway>('gateway', ['contexto', 'listar', 'detalle', 'guardar', 'decidir', 'historial', 'documentos', 'documento']);
     gateway.contexto.and.returnValue(of({ responsable: 'Usuario de prueba', areasDisponibles: [{ id: '9', nombre: 'Área de prueba unitaria' }], puedeCrear: true }));
     gateway.listar.and.returnValue(of(pagina)); gateway.detalle.and.returnValue(of(solicitud));
@@ -38,7 +38,7 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
       { provide: ACTIVITY_REQUESTS_API_ACTIVA, useValue: integrado || consultarCatalogos },
       { provide: SOLICITUDES_GATEWAY, useValue: integrado ? gateway : null },
       { provide: AuthService, useValue: { cargarSesion: () => of(true), tienePermiso: (clave: string) => !['areas.ver', 'actividades.ver'].includes(clave) || consultarCatalogos,
-        capacidadesSolicitudes: signal(TODAS_CAPACIDADES_SOLICITUDES_TEST), usuario: signal({ id: 1, nombre: 'Usuario de prueba', email: 'prueba@example.test', rol: 'Administrador' }), modulos: signal([]) } },
+        capacidadesSolicitudes: signal(TODAS_CAPACIDADES_SOLICITUDES_TEST), usuario: signal({ id: 1, nombre: 'Usuario de prueba', email: 'prueba@example.test', rol }), modulos: signal([]) } },
     ] });
     http = TestBed.inject(HttpTestingController);
   }
@@ -46,7 +46,7 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   const vista = () => harness.routeNativeElement!;
   async function navegar(url: string): Promise<void> { harness = await RouterTestingHarness.create(url); harness.detectChanges(); }
   function boton(texto: string): HTMLButtonElement {
-    const boton = Array.from(vista().querySelectorAll<HTMLButtonElement>('button')).find(boton => boton.textContent?.trim() === texto);
+    const boton = Array.from(vista().querySelectorAll<HTMLButtonElement>('button')).find(boton => (boton.getAttribute('aria-label')?.replace(/ solicitud$/, '') ?? boton.textContent?.trim()) === texto);
     if (!boton) throw new Error('No se encontró el botón ' + texto);
     return boton;
   }
@@ -62,6 +62,14 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     cambiar('#solicitud-descripcion', solicitud.descripcion); cambiar('#solicitud-objetivo', solicitud.objetivo);
   }
 
+  it('muestra el nombre del revisor solo si el modelo autorizado lo proporciona', async () => {
+    configurar(); await navegar('/solicitudes/revision');
+    expect(vista().querySelector('tbody')?.textContent).toContain('Revisor de prueba');
+    await pulsar('Ver detalle');
+    expect(vista().querySelector('app-solicitud-detalle')?.textContent).toContain('Revisor de prueba');
+    expect(vista().textContent).not.toContain('Revisor no informado por la API');
+    expect(vista().textContent).not.toContain('No informado en el contrato de detalle');
+  });
   it('sin adaptador no autoriza operaciones administrativas ni simula respuestas del servidor', () => {
     configurar(false); const api = TestBed.inject(SolicitudesService);
     expect(api.integrado).toBeFalse();
@@ -69,6 +77,17 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     api.listar('revision', { busqueda: '', estado: '', desde: '', hasta: '', pagina: 1 }).subscribe({ error: valor => error = valor });
     expect(error instanceof IntegracionSolicitudesPendiente).toBeTrue(); expect(gateway.listar).not.toHaveBeenCalled(); http.expectNone(() => true);
   });
+  for (const caso of [{ rol: 'Administrador', cantidad: 10 }, { rol: 'Usuario', cantidad: 1 }]) {
+    it('muestra exclusivamente las areas autorizadas por Laravel para ' + caso.rol, async () => {
+      configurar(true, true, caso.rol); await navegar('/solicitudes/nueva');
+      const areas = Array.from({ length: caso.cantidad }, (_, i) => ({ id_area: i + 1, nombre: 'Area autorizada ' + (i + 1) }));
+      for (const req of http.match(environment.apiBaseUrl + '/activity-requests/authorized-areas')) req.flush({ success: true, data: areas });
+      http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1').flush({ success: true, data: [] }); harness.detectChanges();
+      const opciones = Array.from(vista().querySelector<HTMLSelectElement>('#solicitud-area')!.options).filter(o => o.value);
+      expect(opciones.map(o => o.value)).toEqual(areas.map(a => String(a.id_area)));
+      http.expectNone(req => req.url.includes('/areas/list'));
+    });
+  }
   it('carga solo las opciones HTTP y permite revisar sin simular persistencia', async () => {
     configurar(false, true); await navegar('/solicitudes/nueva');
     expect(boton('Guardar borrador').disabled).toBeTrue();
@@ -232,8 +251,8 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     gateway.listar.and.returnValue(of({ ...pagina, total: 30, ultimaPagina: 2 })); await pulsar('Buscar'); await pulsar('Siguiente');
     expect(gateway.listar.calls.mostRecent().args[1].pagina).toBe(2);
   });
-  it('exige motivo en el modal, transmite la versión y recarga solo tras confirmación real', async () => {
-    configurar(); await navegar('/pendientes/pendientes-aprobacion'); await pulsar('Observar');
+  it('RR. HH. exige motivo al observar, transmite la versión y recarga solo tras confirmación real', async () => {
+    configurar(); await navegar('/solicitudes/revision'); await pulsar('Observar');
     expect(vista().querySelector('app-decision-modal dialog')?.hasAttribute('open')).toBeTrue();
     await pulsar('Confirmar Observar'); expect(gateway.decidir).not.toHaveBeenCalled();
     cambiar('#motivo-decision', '  '); await pulsar('Confirmar Observar'); expect(gateway.decidir).not.toHaveBeenCalled();

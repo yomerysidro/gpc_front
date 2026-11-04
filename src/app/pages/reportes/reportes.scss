@@ -1,0 +1,54 @@
+// Estilos exclusivos del módulo; cada página incluye solo lo que utiliza.
+@mixin base {
+  :host { display: block; min-width: 0; padding: clamp(16px, 2vw, 28px); background: #f4f7fb; border-radius: 14px; color: #24344b; container-type: inline-size; }
+  .reporte { display: grid; gap: 24px; max-width: 1440px; margin: auto; min-width: 0; }
+  .eyebrow { color: #075a9b; font-size: .7rem; font-weight: 700; letter-spacing: .12em; }
+  h1 { margin: 8px 0 12px; color: #173854; font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.03em; }
+  h2 { margin: 0 0 10px; font-size: 1.05rem; }
+  p { margin: 6px 0; line-height: 1.65; }
+  .subtitulo, small, caption { color: #54657b; font-size: .875rem; }
+  .panel, .tarjeta { min-width: 0; padding: 22px; background: white; border: 1px solid #e1e8f0; border-radius: 14px; box-shadow: 0 3px 14px #17385406; }
+  .aviso, .error { padding: 16px 18px; border: 1px solid #f1ddb2; border-radius: 12px; background: #fff9ed; color: #795215; font-size: .875rem; }
+  .error { border-color: #f1c9cb; background: #fff1f2; color: #9f2330; }
+  .informacion { border-color: #ccdef5; background: #edf5ff; color: #275584; }
+  .aviso > .material-symbols-outlined, .error > .material-symbols-outlined { float: left; margin-right: 10px; font-size: 20px; }
+  details { margin-top: 12px; font-size: .8rem; line-height: 1.6; }
+  summary { width: fit-content; cursor: pointer; font-weight: 600; color: #075a9b; }
+  .acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .btn { min-width: 0; max-width: 100%; min-height: 44px; border-radius: 9px; font-size: .8125rem; white-space: nowrap; word-break: normal; overflow-wrap: normal; }
+  .btn .material-symbols-outlined { flex: none; font-size: 19px; }
+  .btn-primario { background: #075a9b; border-color: #075a9b; color: white; }
+  .btn-primario:hover:not(:disabled) { background: #064a80; color: white; }
+  .btn-neutro { color: #42536a; border-color: #d3dce7; }
+  .btn-exportar { background: #147148; border-color: #147148; color: white; }
+  .btn-exportar:hover:not(:disabled) { background: #105a39; color: white; }
+  :is(button, input, select, summary):focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+  .etiqueta, .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 30px; background: #fff2d9; color: #795215; font-size: .75rem; font-weight: 600; }
+  @container (max-width: 560px) { .panel, .tarjeta { padding: 16px; } .acciones > .btn { flex: 1 1 auto; } }
+}
+
+@mixin filtros {
+  .filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); align-items: end; gap: 20px 16px; }
+  .filtros > h2, .filtros > .acciones { grid-column: 1 / -1; }
+  .filtros > h2 { display: flex; align-items: center; gap: 8px; margin: 0; color: #173854; }
+  label { display: grid; min-width: 0; gap: 8px; color: #42536a; font-size: .8rem; font-weight: 600; }
+  input, select { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #c6d2e1; border-radius: 8px; background: #fff; color: #24344b; font: inherit; font-size: 1rem; }
+  :is(input, select):disabled { background: #f1f5f9; color: #52647b; cursor: not-allowed; }
+  .filtros > .acciones { padding-top: 16px; border-top: 1px solid #e8eef5; }
+}
+
+@mixin tabla {
+  .badge { background: #edf2f8; color: #475569; white-space: nowrap; }
+  .badge-exito { background: #e8f6ef; color: #17623f; }
+  .estado { padding: 20px; color: #54657b; text-align: center; background: #f8fafc; border: 1px dashed #cfdae7; border-radius: 12px; }
+  .estado .material-symbols-outlined { vertical-align: middle; margin-right: 8px; }
+  .tabla { min-width: 0; max-width: 100%; overflow-x: auto; margin-top: 18px; border: 1px solid #e1e8f0; border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; text-align: left; font-size: .8125rem; }
+  caption { padding: 12px; text-align: left; }
+  th, td { padding: 14px 16px; border-bottom: 1px solid #e8eef5; vertical-align: middle; }
+  th { background: #edf4fc; color: #284e77; font-weight: 600; white-space: nowrap; }
+  td { min-width: 110px; max-width: 360px; overflow-wrap: anywhere; line-height: 1.6; }
+  tbody tr:hover { background: #f5f9ff; }
+  tbody tr:last-child td { border-bottom: 0; }
+  .paginacion { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; margin-top: 20px; padding-top: 18px; border-top: 1px solid #e8eef5; font-size: .8125rem; }
+}

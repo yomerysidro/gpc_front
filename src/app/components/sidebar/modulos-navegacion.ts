@@ -54,11 +54,11 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
     { id: 'practicas', label: 'Practicantes y prácticas', icon: 'school', path: '/gestion/practicas', permiso: 'practicantes.ver', aliases: ['/practicantes', '/gestion/practicantes'], habilitado: true },
     { id: 'ponentes', label: 'Ponentes', icon: 'campaign', path: '/gestion/ponentes', permiso: 'ponentes-firmantes.ver', aliases: ['/ponentes-firmantes'], habilitado: true },
     { id: 'reconocimientos', label: 'Reconocimientos', icon: 'military_tech', path: '/certificaciones/reconocimientos', permiso: 'reconocimientos.ver', aliases: ['/reconocimientos'], habilitado: true },
+    { id: 'revisar-solicitudes', label: 'Revisión de solicitudes', icon: 'check_circle', habilitado: true, path: '/solicitudes/revision', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_revision' },
   ] },
   { id: 'solicitudes', label: 'SOLICITUDES', icon: 'forward_to_inbox', hijos: [
     { id: 'solicitud-nueva', label: 'Nueva solicitud de actividad', icon: 'add', habilitado: true, path: '/solicitudes/nueva', permiso: 'solicitudes.crear' },
     { id: 'mis-solicitudes', label: 'Mis solicitudes', icon: 'event', habilitado: true, path: '/solicitudes/mis-solicitudes', permiso: 'solicitudes.propias', aliases: ['/solicitudes'] },
-    { id: 'revisar-solicitudes', label: 'Revisión de solicitudes', icon: 'check_circle', habilitado: true, path: '/solicitudes/revision', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_revision' },
   ] },
   { id: 'actividades', label: 'GESTIÓN DE ACTIVIDADES', icon: 'event', hijos: [
     { id: 'actividades', label: 'Actividades', icon: 'event', path: '/certificaciones/actividades', permiso: 'actividades.ver', aliases: ['/actividades'], habilitado: true },
@@ -76,10 +76,10 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
     { id: 'historial-decisiones', label: 'Historial de decisiones', icon: 'visibility', habilitado: true, path: '/pendientes/historial-decisiones', permiso: 'solicitudes.historial', capacidadSolicitud: 'consultar_historial' },
   ] },
   { id: 'reportes', label: 'REPORTES', icon: 'bar_chart', hijos: [
-    { id: 'indicadores', label: 'Indicadores generales', icon: 'bar_chart', habilitado: false, pendiente: 'El módulo de menú existe; no hay pantalla ni endpoint de indicadores.' },
-    { id: 'reportes-actividades', label: 'Reportes de actividades', icon: 'event', habilitado: false, pendiente: 'Sin pantalla ni endpoint de reportes de actividades.' },
-    { id: 'reportes-certificados', label: 'Reportes de certificados', icon: 'workspace_premium', habilitado: false, pendiente: 'Sin pantalla ni endpoint de reportes de certificados.' },
-    { id: 'reportes-asistencia', label: 'Reportes de asistencia', icon: 'how_to_reg', habilitado: false, pendiente: 'Sin pantalla ni endpoint de reportes de asistencia.' },
+    { id: 'indicadores', label: 'Indicadores generales', icon: 'bar_chart', habilitado: true, path: '/reportes/indicadores', permiso: 'reportes.ver', pendiente: 'Agregados generales y series mensuales pendientes del backend.' },
+    { id: 'reportes-actividades', label: 'Reportes de actividades', icon: 'event', habilitado: true, path: '/reportes/actividades', permiso: 'reportes.ver' },
+    { id: 'reportes-certificados', label: 'Reportes de certificados', icon: 'workspace_premium', habilitado: true, path: '/reportes/certificados', permiso: 'reportes.ver', pendiente: 'Consulta paginada disponible; relaciones y filtros globales pendientes del backend.' },
+    { id: 'reportes-asistencia', label: 'Reportes de asistencia', icon: 'how_to_reg', habilitado: true, path: '/reportes/asistencia', permiso: 'reportes.ver', pendiente: 'Consulta por actividad y sesión pendiente del backend.' },
   ] },
   { id: 'configuracion', label: 'CONFIGURACIÓN GENERAL', icon: 'tune', hijos: [
     { id: 'gestion-institucional', label: 'Gestión institucional', icon: 'account_balance', path: '/gestion/configuracion', permiso: 'areas.ver', catalogos: CATALOGOS_INSTITUCIONALES, aliases: ['/areas', '/instituciones', '/documentos', '/tipos-documento'], habilitado: true },

@@ -130,6 +130,7 @@ export class EmisionCertificadosService {
   }
 
   crear<K extends RecursoEditable>(recurso: K, payload: PayloadEmision[K]): Observable<EntidadesEmision[K]> {
+    if (recurso === 'activity') return throwError(() => ({ status: 403, mensaje: 'Las actividades nuevas requieren una solicitud aprobada.', errores: {} }));
     if (this.escrituraBloqueada(recurso)) return throwError(() => ({ status: 403, mensaje: BLOQUEO_ESCRITURA_EMISION, errores: {} }));
     return this.http.post<ApiResponse<EntidadesEmision[K]>>(this.ruta(recurso, 'crear'), this.payload(recurso, payload), this.opciones())
       .pipe(map(respuesta => this.datos(respuesta)), catchError(error => this.error(error)));

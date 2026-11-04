@@ -186,7 +186,7 @@
 <app-dialogo #modalRegistro class="modal-registro" [titulo]="tituloModal()" (cerrado)="alCerrarModal()">
   @if (mostrarModal() && editar() !== undefined) {
     @if (editable(); as recursoEditable) {
-      <app-formulario-emision [recurso]="recursoEditable" [id]="editar() ?? null" [enDialogo]="true" [clasificacion]="esClasificacion()"
+      <app-formulario-emision [recurso]="recursoEditable" [id]="editar() ?? null" [enDialogo]="true" [clasificacion]="esClasificacion()" [actividadContexto]="actividadFormulario()"
         (guardado)="alGuardar()" (cancelar)="cerrarFormulario()" />
     }
   }

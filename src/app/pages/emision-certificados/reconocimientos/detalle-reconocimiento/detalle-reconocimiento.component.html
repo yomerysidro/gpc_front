@@ -14,6 +14,7 @@
       <dt>Fecha de reconocimiento</dt><dd>{{ registro.fecha_reconocimiento }}</dd>
     </dl>
     <p class="nota">El beneficiario se obtiene de la persona vinculada al trabajador de Gestión.</p>
+    @if (!auth.tienePermiso('ponentes-firmantes.ver')) { <p class="nota" role="status">Falta el permiso ponentes-firmantes.ver para consultar los datos del trabajador.</p> }
     @if (errorRelacion(); as mensaje) { <p class="alert alert-error" role="alert">No se pudo consultar el trabajador: {{ mensaje }}</p> }
     @if (auth.tienePermiso('reconocimientos.editar')) { <a class="btn" [routerLink]="['/certificaciones/reconocimientos', registro.id_reconocimiento, 'editar']">Editar reconocimiento</a> }
   </article>

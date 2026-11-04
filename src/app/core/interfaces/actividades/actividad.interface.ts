@@ -12,6 +12,10 @@ export interface ActividadPayload {
 
 export interface Actividad extends ActividadPayload {
   readonly id_actividad: number;
+  readonly area_nombre?: string | null;
+  readonly tipo_actividad_nombre?: string | null;
+  readonly origen: 'solicitud' | 'sin_solicitud';
+  readonly id_solicitud_actividad: number | null;
 }
 
 export interface AreaActividad {

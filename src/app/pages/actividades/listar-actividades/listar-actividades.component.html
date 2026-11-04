@@ -1,12 +1,10 @@
 <section aria-label="Gestión de actividades">
-  <div class="encabezado">
+  <div #encabezado class="encabezado" tabindex="-1">
     <div>
       <app-page-title title="Actividades" />
       <p class="descripcion">Administra las actividades institucionales.</p>
     </div>
-      <button #botonNueva type="button" class="btn btn-primary" (click)="abrirFormulario(null)" [disabled]="formularioAbierto() || eliminando() || cambiandoEstado()">
-        <span class="material-symbols-outlined" aria-hidden="true">add</span>Nueva actividad
-      </button>
+      <a *appHasPermission="'solicitudes.crear'" class="btn btn-primary" routerLink="/solicitudes/nueva">Solicitar actividad</a>
   </div>
 
 
@@ -38,27 +36,15 @@
         <label for="filtrar-area">Área</label>
         <select #areaFiltro id="filtrar-area" class="input" [value]="filtros().area" (change)="filtrar('area', areaFiltro.value)">
           <option value="">Todas las áreas</option>
-          @for (area of areas(); track area.id_area) { <option [value]="area.id_area">{{ area.nombre }}</option> }
+          @for (area of areasFiltro(); track area.id_area) { <option [value]="area.id_area">{{ area.nombre }}</option> }
         </select>
       </div>
-      <div class="form-field">
-        <label for="filtrar-tipo">Tipo de actividad</label>
-        <select #tipoFiltro id="filtrar-tipo" class="input" [value]="filtros().tipo" (change)="filtrar('tipo', tipoFiltro.value)">
-          <option value="">Todos los tipos</option>
-          @for (tipo of tipos(); track tipo.id_tipo_actividad) { <option [value]="tipo.id_tipo_actividad">{{ tipo.nombre }}</option> }
-        </select>
-      </div>
-      <div class="form-field">
-        <label for="filtrar-estado">Estado</label>
-        <select #estadoFiltro id="filtrar-estado" class="input" [value]="filtros().estado" (change)="filtrar('estado', estadoFiltro.value)">
-          <option value="">Todos los estados</option>
-          @for (estado of estados; track estado) { <option [value]="estado">{{ estado }}</option> }
-        </select>
-      </div>
+
+
       <button type="button" class="btn limpiar" (click)="limpiarFiltros()">Limpiar filtros</button>
     </div>
 
-    <div [attr.aria-busy]="cargando() || eliminando()">
+    <div [attr.aria-busy]="cargando()">
       @if (cargando()) {
         <p role="status">Cargando actividades…</p>
       } @else if (errorCarga()) {
@@ -76,23 +62,15 @@
               @for (actividad of visibles(); track actividad.id_actividad) {
                 <tr [class.registro-inactivo]="actividad.estado === 'Cerrada'">
                   <th scope="row" class="nombre-actividad">{{ actividad.nombre }}</th>
-                  <td>{{ nombreArea(actividad.id_area) }}</td>
-                  <td>{{ nombreTipo(actividad.id_tipo_actividad) }}</td>
+                  <td>{{ nombreArea(actividad.id_area, actividad.area_nombre) }}</td>
+                  <td>{{ nombreTipo(actividad.id_tipo_actividad, actividad.tipo_actividad_nombre) }}</td>
                   <td class="fecha">{{ fecha(actividad.fecha_inicio) }}</td><td class="fecha">{{ fecha(actividad.fecha_fin) }}</td>
                   <td><span class="badge" [class.badge-exito]="actividad.estado === 'Activa'">{{ actividad.estado }}</span></td>
                   <td><div class="acciones-fila">
-                    <button *appHasPermission="'actividades.ver'" type="button" class="btn btn-icono btn-sin-borde" (click)="verDetalle(actividad)" title="Ver detalle"
-                      [attr.aria-label]="'Ver detalle de ' + actividad.nombre"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button>
-                    <button *appHasPermission="'actividades.editar'" type="button" class="btn btn-icono btn-sin-borde" (click)="abrirFormulario(actividad)" [disabled]="eliminando() || cambiandoEstado()" title="Editar"
-                      [attr.aria-label]="'Editar ' + actividad.nombre"><span class="material-symbols-outlined" aria-hidden="true">edit</span></button>
-                    <button *appHasPermission="'actividades.editar'" type="button" class="btn btn-icono btn-sin-borde"
-                      (click)="pedirCambioEstado(actividad)" [disabled]="eliminando() || cambiandoEstado()"
-                      [title]="actividad.estado === 'Activa' ? 'Cerrar actividad' : 'Activar actividad'"
-                      [attr.aria-label]="(actividad.estado === 'Activa' ? 'Cerrar actividad: ' : 'Activar actividad: ') + actividad.nombre">
-                      <span class="material-symbols-outlined" aria-hidden="true">{{ actividad.estado === 'Activa' ? 'event_busy' : 'event_available' }}</span>
+                    <button type="button" class="btn btn-icono btn-sin-borde gestionar-actividad" title="Gestionar actividad"
+                      [attr.aria-label]="'Gestionar actividad: ' + actividad.nombre" (click)="gestionar(actividad)" [disabled]="cambiandoEstado() || enviando()">
+                      <span class="material-symbols-outlined" aria-hidden="true">settings</span>
                     </button>
-                    <button *appHasPermission="'actividades.eliminar'" type="button" class="btn btn-icono btn-sin-borde" (click)="eliminar(actividad)" [disabled]="eliminando() || cambiandoEstado()" title="Eliminar"
-                      [attr.aria-label]="'Eliminar ' + actividad.nombre"><span class="material-symbols-outlined" aria-hidden="true">delete</span></button>
                   </div></td>
                 </tr>
               } @empty {
@@ -101,7 +79,7 @@
                   @else if (errorCarga()) { Datos del listado no disponibles. }
                   @else if (!actividades().length) {
                     <p>Aún no hay actividades registradas.</p>
-                    <p>Comienza creando una nueva actividad.</p>
+                    <p>Las actividades nuevas se originan en solicitudes aprobadas por Gerencia.</p>
                   } @else { No se encontraron actividades con esos filtros. }
                 </td></tr>
               }
@@ -126,12 +104,85 @@
             <button type="button" class="btn" [disabled]="paginaActual() >= totalPaginas()" (click)="pagina.set(paginaActual() + 1)">Siguiente<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button>
           </div>
         </nav>
-      @if (eliminando()) { <p role="status">Eliminando actividad…</p> }
       @if (cambiandoEstado()) { <p role="status">Actualizando estado…</p> }
     </div>
 </section>
 
-<app-dialogo #dialogoFormulario class="modal-actividad" [titulo]="editando() === null ? 'Nueva actividad' : 'Editar actividad'" (cerrado)="alCerrarFormulario()">
+<app-dialogo #dialogoAcciones class="modal-acciones" titulo="Acciones de la actividad">
+  @if (seleccionada(); as actividad) {
+    <p class="contexto-actividad">{{ actividad.nombre }} <span class="badge">{{ actividad.estado }}</span></p>
+    <div class="panel-acciones">
+      <button type="button" class="tarjeta-accion" title="Ver detalle" [disabled]="!permitido('actividades.ver')" (click)="ejecutar('detalle', actividad)">
+        <span class="material-symbols-outlined" aria-hidden="true">visibility</span><span>Ver detalle</span>
+      </button>
+      <button type="button" class="tarjeta-accion" title="Editar" [disabled]="!permitido('actividades.editar')" (click)="ejecutar('editar', actividad)">
+        <span class="material-symbols-outlined" aria-hidden="true">edit</span><span>Editar</span>
+      </button>
+      @if (permitido('participantes.ver')) {
+        <a class="tarjeta-accion" routerLink="/certificaciones/participantes" [queryParams]="{ id_actividad: actividad.id_actividad }" (click)="dialogoAcciones.cerrar()" title="Registrar y consultar participantes">
+          <span class="material-symbols-outlined" aria-hidden="true">groups</span><span>Participantes</span>
+        </a>
+      } @else {
+        <button class="tarjeta-accion" type="button" disabled title="Requiere participantes.ver"><span class="material-symbols-outlined" aria-hidden="true">groups</span><span>Participantes</span></button>
+      }
+      <button type="button" class="tarjeta-accion" title="Gestionar ponentes de esta actividad" [disabled]="!permitido('ponentes-firmantes.ver')" (click)="ejecutar('ponentes', actividad)">
+        <span class="material-symbols-outlined" aria-hidden="true">co_present</span><span>Ponentes</span>
+      </button>
+      @if (permitido('actividades.ver')) {
+        <a class="tarjeta-accion" routerLink="/certificaciones/sesiones-asistencia" [queryParams]="{ id_actividad: actividad.id_actividad }" (click)="dialogoAcciones.cerrar()">
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><span>Sesiones y asistencia</span>
+        </a>
+      } @else {
+        <button class="tarjeta-accion" type="button" disabled title="Requiere actividades.ver"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><span>Sesiones y asistencia</span></button>
+      }
+      <button type="button" class="tarjeta-accion tarjeta-cerrar" title="Cerrar actividad" [disabled]="actividad.estado !== 'Activa' || !permitido('actividades.editar') || cambiandoEstado()" (click)="ejecutar('cerrar', actividad)">
+        <span class="material-symbols-outlined" aria-hidden="true">lock</span><span>Cerrar actividad</span>
+      </button>
+    </div>
+    <p class="form-ayuda">Las acciones disponibles dependen de los permisos de tu sesión. Laravel valida cada operación.</p>
+    <div class="dialogo-acciones"><button class="btn" type="button" (click)="dialogoAcciones.cerrar()">Volver al listado</button></div>
+  }
+</app-dialogo>
+
+<app-dialogo #dialogoPonentes class="modal-ponentes" titulo="Ponentes de la actividad" (cerrado)="cerrarDetalle()" (keydown.escape)="bloquearEscapePonentes($event)">
+  @if (actividadPonentes(); as actividad) {
+    <p>{{ actividad.nombre }} · Actividad #{{ actividad.id_actividad }}</p>
+    <p class="form-ayuda">Vincular un ponente no emite certificados. La certificación depende de la participación y los requisitos acreditados.</p>
+    @if (avisoPonentes()) { <p role="status">{{ avisoPonentes() }}</p> }
+    @if (cargandoPonentes()) { <p role="status">Consultando asignaciones…</p> }
+    @else if (errorPonentes()) {
+      <p class="error-text" role="alert">{{ errorPonentes() }}</p><button class="btn" type="button" (click)="cargarPonentes()">Reintentar asignaciones</button>
+    } @else {
+      <ul class="ponentes">
+        @for (ponente of ponentes(); track ponente.id_actividad_ponente) {
+          <li><strong>{{ ponente.nombre || 'Ponente #' + ponente.id_persona_ponente }}</strong>
+            @if (ponente.errorNombre) { <p class="error-text">{{ ponente.errorNombre }}</p> }
+            <button *appHasPermission="'ponentes-firmantes.eliminar'" class="btn" type="button" [disabled]="guardandoPonente()" (click)="desvincularPonente(ponente)">Desvincular</button>
+          </li>
+        } @empty { <li>No hay ponentes asignados a esta actividad.</li> }
+      </ul>
+    }
+    <a *appHasPermission="'ponentes-firmantes.ver'" class="btn" routerLink="/gestion/ponentes" (click)="dialogoPonentes.cerrar()">Catálogo de Ponentes de RR. HH.</a>
+    @if (cargandoCatalogoPonentes()) { <p role="status">Consultando catálogo de RR. HH.…</p> }
+    @if (errorCatalogoPonentes()) {
+      <p class="error-text" role="alert">{{ errorCatalogoPonentes() }}</p><button class="btn" type="button" (click)="cargarCatalogoPonentes()">Reintentar catálogo</button>
+    }
+    <form *appHasPermission="'ponentes-firmantes.crear'" [formGroup]="formPonente" (ngSubmit)="vincularPonente()">
+      <div class="form-field"><label for="actividad-ponente">Ponente de Recursos Humanos</label>
+        <select id="actividad-ponente" class="input" formControlName="id_persona_ponente" [attr.aria-invalid]="formPonente.controls.id_persona_ponente.touched && formPonente.invalid">
+          <option value="">Selecciona un ponente</option>
+          @for (ponente of opcionesPonentes(); track ponente.id_persona_ponente) { <option [value]="ponente.id_persona_ponente">{{ ponente.nombre }}</option> }
+        </select>
+        @if (formPonente.controls.id_persona_ponente.touched && formPonente.invalid) { <p class="error-text">Selecciona un ponente del catálogo.</p> }
+      </div>
+      <button class="btn btn-primary" type="submit" [disabled]="guardandoPonente() || cargandoCatalogoPonentes() || cargandoPonentes() || !!errorCatalogoPonentes() || !!errorPonentes() || !opcionesPonentes().length">{{ guardandoPonente() ? 'Procesando…' : 'Vincular ponente' }}</button>
+    </form>
+    <div class="dialogo-acciones"><button class="btn" type="button" [disabled]="guardandoPonente()" (click)="dialogoPonentes.cerrar()">Cerrar</button></div>
+  }
+</app-dialogo>
+<app-dialogo-confirmacion #confirmarPonente titulo="Desvincular ponente" texto="Se retirará la asociación con esta actividad. El catálogo de RR. HH. se conservará." confirmar="Desvincular" />
+
+<app-dialogo #dialogoFormulario class="modal-actividad" titulo="Editar actividad" (cerrado)="alCerrarFormulario()">
   @if (formularioAbierto()) {
     <section class="formulario" [attr.aria-busy]="cargandoEdicion() || enviando()">
       @if (cargandoEdicion()) {
@@ -142,10 +193,10 @@
         @if (cargandoAreas() || cargandoTipos()) {
           <p role="status">Cargando áreas y tipos de actividad…</p>
         } @else if (!errorAreas() && !errorTipos() && (!areas().length || !tipos().length)) {
-          <div class="alert alert-advertencia" role="alert">Para guardar una actividad se necesitan áreas y tipos registrados. Solicita su registro al responsable de los catálogos.</div>
+          <div class="alert alert-advertencia" role="alert">No hay áreas autorizadas o tipos disponibles para cambiar esos campos.</div>
         }
         @if (errorAreas() || errorTipos()) {
-          <p class="form-ayuda" role="status">Puedes completar los demás campos. El guardado requiere áreas y tipos de actividad disponibles.</p>
+          <p class="form-ayuda" role="status">Se conservan los identificadores del detalle. Puedes editar otros campos; los cambios de área o tipo requieren opciones disponibles y autorización de Laravel.</p>
           <button type="button" class="btn" (click)="cargarCatalogos()" [disabled]="cargandoAreas() || cargandoTipos()">Reintentar catálogos</button>
         }
         <p class="form-ayuda">Los campos con * son obligatorios.</p>
@@ -162,7 +213,7 @@
               <select id="actividad-area" class="input" formControlName="id_area" aria-required="true"
                 aria-describedby="actividad-area-error" [attr.aria-invalid]="!!errorCampo('id_area')">
                 <option value="" disabled>Selecciona un área</option>
-                @for (area of areas(); track area.id_area) { <option [value]="area.id_area">{{ area.nombre }}</option> }
+                @for (area of areasFiltro(); track area.id_area) { <option [value]="area.id_area">{{ area.nombre }}</option> }
               </select>
               @if (errorCampo('id_area'); as error) { <p id="actividad-area-error" class="error-text">{{ error }}</p> }
             </div>
@@ -171,7 +222,7 @@
               <select id="actividad-tipo" class="input" formControlName="id_tipo_actividad" aria-required="true"
                 aria-describedby="actividad-tipo-error" [attr.aria-invalid]="!!errorCampo('id_tipo_actividad')">
                 <option value="" disabled>Selecciona un tipo</option>
-                @for (tipo of tipos(); track tipo.id_tipo_actividad) { <option [value]="tipo.id_tipo_actividad">{{ tipo.nombre }}</option> }
+                @for (tipo of tiposEdicion(); track tipo.id_tipo_actividad) { <option [value]="tipo.id_tipo_actividad">{{ tipo.nombre }}</option> }
               </select>
               @if (errorCampo('id_tipo_actividad'); as error) { <p id="actividad-tipo-error" class="error-text">{{ error }}</p> }
             </div>
@@ -201,18 +252,17 @@
             </div>
             <div class="form-field">
               <label for="actividad-estado">Estado *</label>
-              <select [attr.disabled]="editando() === null ? true : null" id="actividad-estado" class="input" formControlName="estado" aria-required="true"
+              <select id="actividad-estado" class="input" formControlName="estado" aria-required="true"
                 aria-describedby="actividad-estado-error" [attr.aria-invalid]="!!errorCampo('estado')">
                 @for (estado of estados; track estado) { <option [value]="estado">{{ estado }}</option> }
               </select>
-              @if (editando() === null) { <p class="form-ayuda">Las actividades nuevas se registran como Activa.</p> }
               @if (errorCampo('estado'); as error) { <p id="actividad-estado-error" class="error-text">{{ error }}</p> }
             </div>
           </div>
           <div class="acciones-formulario">
             <button type="button" class="btn" (click)="cerrarFormulario()" [disabled]="enviando()">Cancelar</button>
-            <button type="submit" class="btn btn-primary" [disabled]="enviando()" [attr.aria-busy]="enviando()">
-              {{ enviando() ? 'Guardando…' : editando() === null ? 'Crear actividad' : 'Guardar cambios' }}
+            <button type="submit" class="btn btn-primary" [disabled]="enviando() || !catalogosDisponibles()" [attr.aria-busy]="enviando()">
+              {{ enviando() ? 'Guardando…' : 'Guardar cambios' }}
             </button>
           </div>
         </form>
@@ -228,42 +278,26 @@
     <dl class="detalle">
       <div><dt>ID de actividad</dt><dd>{{ actividad.id_actividad }}</dd></div>
       <div><dt>Nombre</dt><dd>{{ actividad.nombre }}</dd></div>
-      <div><dt>Área</dt><dd>{{ nombreArea(actividad.id_area) }}</dd></div>
-      <div><dt>Tipo de actividad</dt><dd>{{ nombreTipo(actividad.id_tipo_actividad) }}</dd></div>
+      <div><dt>Área</dt><dd>{{ nombreArea(actividad.id_area, actividad.area_nombre) }}</dd></div>
+      <div><dt>Tipo de actividad</dt><dd>{{ nombreTipo(actividad.id_tipo_actividad, actividad.tipo_actividad_nombre) }}</dd></div>
       <div><dt>Descripción</dt><dd class="texto-largo">{{ actividad.descripcion || 'Sin descripción' }}</dd></div>
       <div><dt>Inicio</dt><dd>{{ fecha(actividad.fecha_inicio) }}</dd></div>
       <div><dt>Fin</dt><dd>{{ fecha(actividad.fecha_fin) }}</dd></div>
       <div><dt>Sede</dt><dd>{{ actividad.sede || 'Sin sede registrada' }}</dd></div>
       <div><dt>Estado</dt><dd><span class="badge" [class.badge-exito]="actividad.estado === 'Activa'">{{ actividad.estado }}</span></dd></div>
+      <div><dt>Origen</dt><dd>{{ origenActividad(actividad) }}</dd></div>
+      @if (actividad.id_solicitud_actividad; as solicitudId) {
+        <div><dt>Solicitud relacionada</dt><dd>Solicitud #{{ solicitudId }}
+          @if (rutaSolicitud(); as ruta) { <a [routerLink]="ruta" [queryParams]="{ solicitud: solicitudId }">Consultar solicitud</a> }
+        </dd></div>
+      }
     </dl>
-    <h3>Ponentes asignados</h3>
-    @if (cargandoPonentes()) {
-      <p role="status">Cargando ponentes…</p>
-    } @else if (errorPonentes()) {
-      <div class="alert alert-error" role="alert">{{ errorPonentes() }}</div>
-      <button type="button" class="btn" (click)="cargarPonentes()">Reintentar ponentes</button>
-    } @else if (!ponentes().length) {
-      <p>No hay ponentes asignados a esta actividad.</p>
-    } @else {
-      <ul class="ponentes">
-        @for (ponente of ponentes(); track ponente.id_actividad_ponente) {
-          <li>
-            <strong>{{ ponente.nombre || 'Ponente #' + ponente.id_persona_ponente }}</strong>
-            <span class="form-ayuda">Asignación #{{ ponente.id_actividad_ponente }} · Ponente #{{ ponente.id_persona_ponente }}</span>
-            @if (ponente.errorNombre) { <span class="error-text">No se pudo consultar el nombre. {{ ponente.errorNombre }}</span> }
-          </li>
-        }
-      </ul>
-    }
+    <div class="dialogo-acciones"><button class="btn" type="button" (click)="gestionar(actividad)">Gestionar actividad</button></div>
   }
   <div class="dialogo-acciones"><button type="button" class="btn" (click)="dialogoDetalle.cerrar()">Cerrar</button></div>
 </app-dialogo>
 
-<app-dialogo-confirmacion [titulo]="'Eliminar actividad: ' + (porEliminar()?.nombre ?? '')"
-  texto="Esta acción eliminará la actividad. El servidor impedirá eliminarla si tiene registros relacionados. ¿Deseas continuar?"
-  confirmar="Eliminar actividad" />
-
 <app-dialogo-confirmacion #confirmacionEstado
-  [titulo]="(porCambiarEstado()?.estado === 'Activa' ? 'Cerrar actividad: ' : 'Activar actividad: ') + (porCambiarEstado()?.nombre ?? '')"
-  [texto]="porCambiarEstado()?.estado === 'Activa' ? '¿Estás seguro de que deseas cerrar esta actividad?' : '¿Estás seguro de que deseas activar esta actividad?'"
-  [confirmar]="porCambiarEstado()?.estado === 'Activa' ? 'Cerrar actividad' : 'Activar actividad'" />
+  [titulo]="'Cerrar actividad: ' + (porCambiarEstado()?.nombre ?? '')"
+  texto="Se cerrará la actividad seleccionada. Confirma para enviar la operación al servidor."
+  confirmar="Cerrar actividad" />

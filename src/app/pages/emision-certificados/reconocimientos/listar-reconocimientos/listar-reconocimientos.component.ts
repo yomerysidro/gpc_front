@@ -1,8 +1,8 @@
 import { afterNextRender, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { catchError, concatMap, defer, forkJoin, from, map, mergeMap, Observable, of, shareReplay, Subscription, switchMap, tap, toArray } from 'rxjs';
+import { Router, RouterLink } from '@angular/router';
+import { catchError, concatMap, defer, forkJoin, from, map, mergeMap, Observable, of, shareReplay, Subscription, switchMap, tap, throwError, toArray } from 'rxjs';
 import { ErrorApi } from '../../../../core/interfaces/api/api-response.interface';
 import { AreaReconocimiento, CertificadoDocumento, PaginaEmision, PersonaReconocimiento, Reconocimiento, TrabajadorEmision } from '../../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { AuthService } from '../../../../core/services/autenticacion/auth.service';
@@ -42,17 +42,54 @@ export class ListarReconocimientosComponent {
   protected readonly trabajadoresPorId = computed(() => new Map(this.trabajadores().map(fila => [fila.id_persona_trabajador, fila])));
   protected readonly filtro = inject(NonNullableFormBuilder).group({ titulo: '', trabajador: '', estado: '', fecha: '', buscarTrabajador: '' });
 
-  constructor() { afterNextRender(() => this.cargar()); }
+  protected readonly estados = signal<readonly string[]>([]);
+  protected readonly mensaje = signal<string | null>(inject(Router).getCurrentNavigation()?.extras.state?.['mensaje'] ?? null);
+  protected readonly eliminando = signal(false);
+  protected readonly pendienteEliminar = signal<Reconocimiento | null>(null);
+
+  constructor() { afterNextRender(() => { this.cargarEstados(); this.cargar(); }); }
+
+  private cargarEstados(): void {
+    if (!this.auth.tienePermiso('reconocimientos.ver')) return;
+    this.api.listarTodos('reconocimientos').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: filas => this.estados.set([...new Set(filas.map(fila => fila.estado).filter(Boolean))].sort()),
+      error: (error: ErrorApi) => this.mensaje.set('No se pudieron consultar los estados: ' + error.mensaje),
+    });
+  }
+
+  protected solicitarEliminar(registro: Reconocimiento): void {
+    if (this.auth.tienePermiso('reconocimientos.eliminar') && !this.eliminando()) this.pendienteEliminar.set(registro);
+  }
+
+  protected eliminar(): void {
+    const registro = this.pendienteEliminar();
+    if (!registro || this.eliminando() || !this.auth.tienePermiso('reconocimientos.eliminar')) return;
+    this.eliminando.set(true); this.mensaje.set(null);
+    this.api.eliminar('reconocimientos', registro.id_reconocimiento).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.eliminando.set(false); this.pendienteEliminar.set(null); this.mensaje.set('Reconocimiento eliminado correctamente.');
+        const pagina = this.pagina();
+        this.cargar(pagina?.data.length === 1 ? Math.max(1, pagina.current_page - 1) : pagina?.current_page ?? 1);
+        this.cargarEstados();
+      },
+      error: (error: ErrorApi) => { this.eliminando.set(false); this.mensaje.set(error.mensaje); },
+    });
+  }
 
   protected opcionesTrabajador(): readonly TrabajadorEmision[] {
     const texto = this.filtro.controls.buscarTrabajador.value.trim().toLocaleLowerCase();
     const seleccionado = this.filtro.controls.trabajador.value;
-    return this.trabajadores().filter(fila => String(fila.id_persona_trabajador) === seleccionado || `${fila.id_persona_trabajador} ${fila.cargo}`.toLocaleLowerCase().includes(texto));
+    return this.trabajadores().filter(fila => String(fila.id_persona_trabajador) === seleccionado || this.trabajador(fila.id_persona_trabajador).toLocaleLowerCase().includes(texto));
   }
 
   protected trabajador(id: number): string {
     const fila = this.trabajadoresPorId().get(id);
-    return fila ? `Trabajador #${id} · ${fila.cargo}` : `Trabajador #${id}`;
+    if (!fila) return `Trabajador #${id}`;
+    const persona = this.personas()[fila.id_persona];
+    const area = this.areas()[fila.id_area];
+    const nombre = persona?.estado === 'disponible'
+      ? [persona.datos.nombres, persona.datos.apellido_paterno, persona.datos.apellido_materno].filter(Boolean).join(' ') : 'Nombre no disponible';
+    return `${nombre} — ${fila.cargo || 'Cargo no registrado'} — ${area?.estado === 'disponible' ? area.datos.nombre : 'Área no disponible'} — #${id}`;
   }
 
   protected trabajadorRelacion(registro: Reconocimiento): RelacionReconocimiento<TrabajadorEmision> {
@@ -94,7 +131,7 @@ export class ListarReconocimientosComponent {
     }).pipe(
       tap(pagina => this.pagina.set(pagina)),
       switchMap(pagina => forkJoin({
-        dni: this.auth.tienePermiso('ponentes-firmantes.ver') ? this.api.documentosIdentidad().pipe(tap(dni => this.dni.set(dni)), catchError((error: ErrorApi) => { this.errorDni.set(error.mensaje); return of(null); })) : of(null),
+        dni: pagina.data.length && this.auth.tienePermiso('ponentes-firmantes.ver') && this.auth.tienePermiso('personas.verpersonas') && this.auth.tienePermiso('tipos-documento.ver') ? this.api.documentosIdentidad().pipe(tap(dni => this.dni.set(dni)), catchError((error: ErrorApi) => { this.errorDni.set(error.mensaje); return of(null); })) : of(null),
         gestion: this.cargarGestion(pagina.data),
         certificados: this.auth.tienePermiso('emision.ver') ? from(pagina.data).pipe(
           mergeMap(registro => this.cargarCertificacion(registro.id_reconocimiento).pipe(
@@ -122,16 +159,15 @@ export class ListarReconocimientosComponent {
       }),
       switchMap(resultado => {
         if (resultado.estado !== 'disponible') return of(null);
-        const ids = new Set(registros.map(fila => fila.id_persona_trabajador));
-        const trabajadores = resultado.datos.filter(fila => ids.has(fila.id_persona_trabajador));
+        const trabajadores = resultado.datos;
         const personas = [...new Set(trabajadores.map(fila => fila.id_persona))];
         const areas = [...new Set(trabajadores.map(fila => fila.id_area))];
         return forkJoin({
-          personas: from(personas).pipe(concatMap(id => this.referencia(id, this.personasCache, () => this.api.personaReconocimiento(id),
+          personas: from(personas).pipe(concatMap(id => this.referencia(id, this.personasCache, () => this.auth.tienePermiso('personas.verpersonas') ? this.api.personaReconocimiento(id) : this.denegado('personas.verpersonas'),
             () => this.personaDenegada, rechazo => { this.personaDenegada = rechazo; }).pipe(
             tap(fila => this.personas.update(actual => ({ ...actual, [id]: fila }))),
           )), toArray()),
-          areas: from(areas).pipe(concatMap(id => this.referencia(id, this.areasCache, () => this.api.areaReconocimiento(id),
+          areas: from(areas).pipe(concatMap(id => this.referencia(id, this.areasCache, () => this.auth.tienePermiso('areas.ver') ? this.api.areaReconocimiento(id) : this.denegado('areas.ver'),
             () => this.areaDenegada, rechazo => { this.areaDenegada = rechazo; }).pipe(
             tap(fila => this.areas.update(actual => ({ ...actual, [id]: fila }))),
           )), toArray()),
@@ -170,6 +206,10 @@ export class ListarReconocimientosComponent {
     ));
   }
 
+  private denegado(permiso: string): Observable<never> {
+    return throwError(() => ({ status: 403, mensaje: `Se requiere ${permiso}.`, errores: {} }));
+  }
+
   private resultado<T>(peticion: Observable<T>): Observable<RelacionReconocimiento<T>> {
     return peticion.pipe(map(datos => ({ estado: 'disponible', datos }) as RelacionReconocimiento<T>),
       catchError((error: ErrorApi) => of<RelacionReconocimiento<T>>({
@@ -182,7 +222,7 @@ export class ListarReconocimientosComponent {
     this.carga?.unsubscribe(); this.trabajadoresCache = undefined; this.personasCache.clear(); this.areasCache.clear();
     this.personaDenegada = null; this.areaDenegada = null;
     this.estadoTrabajadores.set({ estado: 'cargando' }); this.trabajadores.set([]);
-    this.cargar(this.pagina()?.current_page ?? 1);
+    this.cargarEstados(); this.cargar(this.pagina()?.current_page ?? 1);
   }
   protected limpiar(): void { this.filtro.reset(); this.cargar(); }
 }

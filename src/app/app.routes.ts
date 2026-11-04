@@ -1,3 +1,4 @@
+import { REPORTES_ROUTES } from './pages/reportes/reportes.routes';
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { cambiosPendientesGuard } from './core/guards/cambios-pendientes.guard';
@@ -84,6 +85,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: 'inicio', component: HomeComponent },
+      { path: 'reportes', children: REPORTES_ROUTES },
+      { path: 'pendientes/indicadores', redirectTo: '/reportes/indicadores', pathMatch: 'full' },
+      { path: 'pendientes/reportes-actividades', redirectTo: '/reportes/actividades', pathMatch: 'full' },
+      { path: 'pendientes/reportes-certificados', redirectTo: '/reportes/certificados', pathMatch: 'full' },
+      { path: 'pendientes/reportes-asistencia', redirectTo: '/reportes/asistencia', pathMatch: 'full' },
       { path: 'solicitudes', pathMatch: 'full', redirectTo: '/solicitudes/mis-solicitudes' },
       ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.filter(entrada => entrada.habilitado && !!VISTAS_SOLICITUDES[entrada.id])
         .map(entrada => ({

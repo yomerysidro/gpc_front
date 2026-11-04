@@ -1,0 +1,37 @@
+<section class="reporte">
+  <header>
+    <p class="eyebrow">GESTIÓN MUNICIPAL · REPORTES</p>
+    <h1>Indicadores generales</h1>
+    <p class="subtitulo">Totales de registros existentes dentro del alcance que tu usuario tiene permiso para consultar.</p>
+  </header>
+  <div class="acciones" aria-label="Acciones de indicadores">
+    <button class="btn btn-primario" (click)="consultar()" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>Consultar</button>
+    <button class="btn btn-secundario" (click)="consultar()" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">tune</span>Actualizar</button>
+    <button class="btn btn-neutro" (click)="limpiar()" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">toggle_off</span>Limpiar filtros</button>
+    @if (auth.tienePermiso('reportes.exportar')) {
+      <button class="btn btn-exportar" (click)="exportar()" [disabled]="!puedeExportar()"><span class="material-symbols-outlined" aria-hidden="true">forward_to_inbox</span>Exportar CSV</button>
+    }
+  </div>
+  <div class="tarjetas" aria-label="Indicadores de registros" [attr.aria-busy]="cargando()">
+    @for (item of indicadores(); track item.clave) {
+      <article class="tarjeta">
+        <span class="icono-indicador material-symbols-outlined" aria-hidden="true">{{ item.icono }}</span>
+        <h2>{{ item.nombre }}</h2>
+        @switch (item.estado) {
+          @case ('cargando') { <div role="status" [attr.aria-label]="'Consultando ' + item.nombre"><div class="skeleton" aria-hidden="true"></div></div> }
+          @case ('exito') { <strong class="valor" aria-live="polite">{{ item.valor }}</strong><p>Registros existentes</p> }
+          @case ('error') { <p class="error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>{{ item.error }}</p> }
+          @case ('sin-permiso') { <span class="sin-dato">Sin permiso de lectura</span><p>Requiere {{ item.permiso }} y reportes.ver.</p> }
+          @default { <span class="sin-dato">Sin consultar</span><p>Usa Consultar para obtener el total.</p> }
+        }
+        <details><summary>Qué cuenta</summary><p>{{ item.regla }}</p></details>
+      </article>
+    }
+  </div>
+  <aside class="aviso informacion">
+    <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>
+    <h2>Total general · sin filtros</h2>
+    <p>Incluye todas las fechas y estados de los registros autorizados. Cada registro principal cuenta una sola vez; los totales no dependen de la paginación.</p>
+    <p>Los filtros de Actividades, Certificados y Asistencia no afectan estas tarjetas. El CSV incluye solo los conteos consultados correctamente, también cuando su valor es 0.</p>
+  </aside>
+</section>

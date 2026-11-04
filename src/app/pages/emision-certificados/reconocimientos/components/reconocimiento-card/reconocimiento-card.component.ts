@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AreaReconocimiento, PersonaReconocimiento, Reconocimiento, TrabajadorEmision } from '../../../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { CertificadoReconocimientoVista, RelacionReconocimiento } from '../../reconocimiento-vista.interface';
@@ -15,6 +15,8 @@ export class ReconocimientoCardComponent {
   readonly persona = input<RelacionReconocimiento<PersonaReconocimiento>>({ estado: 'cargando' });
   readonly area = input<RelacionReconocimiento<AreaReconocimiento>>({ estado: 'cargando' });
   readonly certificacion = input<RelacionReconocimiento<readonly CertificadoReconocimientoVista[]>>({ estado: 'cargando' });
+  readonly puedeEliminar = input(false);
+  readonly eliminar = output<void>();
   readonly puedeEditar = input(false);
   readonly puedeVerDetalle = input(false);
   readonly dni = input<string | null>(null);

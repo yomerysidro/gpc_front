@@ -11,7 +11,7 @@
 <section class="card" aria-label="Bandeja de solicitudes"><h2>Consulta de solicitudes</h2>
   <form class="filtros" [formGroup]="filtros" (ngSubmit)="cargar()">
     <div class="form-field"><label for="filtro-busqueda">Actividad o número de solicitud</label><input class="input" id="filtro-busqueda" formControlName="busqueda" type="search" /></div>
-    <div class="form-field"><label for="filtro-estado">Estado</label><select class="input" id="filtro-estado" formControlName="estado"><option value="">Todos los estados</option>@for (estado of bandeja() === 'gerencia' ? ['Pendiente de aprobación'] : estados; track estado) { <option [value]="estado">{{ estado }}</option> }</select></div>
+    <div class="form-field"><label for="filtro-estado">Estado</label><select class="input" id="filtro-estado" formControlName="estado"><option value="">{{ bandeja() === 'revision' ? 'Enviadas' : 'Todos los estados' }}</option>@for (estado of estados; track estado) { <option [value]="estado">{{ estado }}</option> }</select></div>
     <div class="form-field"><label for="filtro-desde">Desde</label><input class="input" id="filtro-desde" formControlName="desde" type="date" /></div>
     <div class="form-field"><label for="filtro-hasta">Hasta</label><input class="input" id="filtro-hasta" formControlName="hasta" type="date" [min]="filtros.controls.desde.value" /></div>
     <div class="acciones ancho"><button class="btn btn-primary" type="submit" [disabled]="!operativo() || cargando() || ocupado()">Buscar</button><button class="btn" type="button" [disabled]="!operativo() || ocupado()" (click)="limpiar()">Limpiar filtros</button></div>
@@ -26,10 +26,23 @@
         <tbody>@for (fila of datos.registros; track fila.id) {
           <tr><td><strong>{{ fila.numero }}</strong><p>{{ fila.nombre }}</p></td><td>{{ fila.area }}<small>{{ fila.responsable }}</small></td>
             <td>{{ fila.fecha | date:'dd/MM/yyyy' }}<small>Propuesta: {{ fila.inicio | date:'dd/MM/yyyy' }} – {{ fila.fin | date:'dd/MM/yyyy' }}</small></td>
-            <td><app-solicitud-estado-badge [estado]="fila.estado" /><small>{{ fila.revisor || 'Revisor no informado por la API' }}</small><small>{{ fila.resultadoRevision }}</small><small>{{ fila.ultimaObservacion }}</small></td>
-            <td><div class="acciones"><button class="btn" type="button" [disabled]="ocupado() || fila.puedeVerDetalle === false" [attr.title]="fila.puedeVerDetalle === false ? 'La consulta del detalle requiere autorización del servidor para esta solicitud.' : null" (click)="ver(fila)">Ver detalle</button>
+            <td><app-solicitud-estado-badge [estado]="fila.estado" [revision]="bandeja() === 'revision'" />
+              @if (bandeja() !== 'gerencia') { <small>{{ textoRevisor(fila) }}</small> }
+              @else if (fila.revisor) { <small>{{ fila.revisor }}</small> }
+              @if (fila.resultadoRevision) { <small>{{ fila.resultadoRevision }}</small> }
+              @if (fila.ultimaObservacion) { <small>{{ fila.ultimaObservacion }}</small> }
+            </td>
+            <td><div class="acciones" [class.acciones-gerencia]="bandeja() === 'gerencia'">
+              @if (bandeja() === 'gerencia') {
+                <button class="btn accion-icono accion-detalle" type="button" title="Ver detalle" aria-label="Ver detalle" [disabled]="ocupado() || fila.puedeVerDetalle === false" (click)="ver(fila)"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button>
+                @for (accion of acciones(fila); track accion) {
+                  <button class="btn accion-icono" type="button" [class.accion-aprobar]="accion === 'Aprobar'" [class.accion-rechazar]="accion === 'Rechazar'" [attr.title]="accion === 'Aprobar' ? 'Aprobar solicitud' : 'Rechazar solicitud'" [attr.aria-label]="accion === 'Aprobar' ? 'Aprobar solicitud' : 'Rechazar solicitud'" [disabled]="ocupado() || !operativo()" (click)="modal().abrir(accion, fila)"><span class="material-symbols-outlined" aria-hidden="true">{{ accion === 'Aprobar' ? 'check_circle' : 'cancel' }}</span></button>
+                }
+              } @else {
+              <button class="btn" type="button" [disabled]="ocupado() || fila.puedeVerDetalle === false" [attr.title]="fila.puedeVerDetalle === false ? 'La consulta del detalle requiere autorización del servidor para esta solicitud.' : null" (click)="ver(fila)">Ver detalle</button>
               @if (bandeja() === 'propias' && fila.puedeEditar) { <a class="btn" routerLink="/solicitudes/nueva" [queryParams]="{ editar: fila.id }">{{ fila.estado === 'Observada' ? 'Corregir solicitud' : 'Editar borrador' }}</a> }
               @for (accion of acciones(fila); track accion) { <button class="btn" type="button" [class.btn-primary]="accion === 'Aprobar' || accion === 'Derivar'" [disabled]="ocupado() || !operativo()" (click)="modal().abrir(accion, fila)">{{ accion === 'Derivar' ? 'Derivar a Gerencia' : accion }}</button> }
+              }
             </div></td></tr>
         }</tbody></table></div>
     } @else { <div class="vacio" role="status">No se encontraron solicitudes para estos filtros.</div> }
@@ -41,7 +54,7 @@
 <app-dialogo titulo="Detalle de solicitud" (cerrado)="cerrarDetalle()">
   @if (cargandoDetalle()) { <p role="status">Consultando detalle autorizado…</p> }
   @if (errorDetalle()) { <p class="error" role="alert">{{ errorDetalle() }}</p> }
-  @if (detalle(); as fila) { <app-solicitud-detalle [datos]="fila" [registro]="fila" [area]="fila.area" [responsable]="fila.responsable" [tipo]="fila.tipo" /> }
+  @if (detalle(); as fila) { <app-solicitud-detalle [revision]="bandeja() === 'revision'" [datos]="fila" [registro]="fila" [area]="fila.area" [responsable]="fila.responsable" [tipo]="fila.tipo" /> }
   <div class="acciones"><button class="btn" type="button" autofocus (click)="dialogo().cerrar()">Cerrar</button></div>
 </app-dialogo>
 <app-decision-modal [ocupado]="ocupado()" [integrado]="operativo()" (confirmado)="decidir($event)" />

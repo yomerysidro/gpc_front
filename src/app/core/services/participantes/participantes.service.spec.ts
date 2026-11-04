@@ -22,6 +22,14 @@ describe('ParticipantesService y contrato Laravel', () => {
   });
   afterEach(() => http.verify());
 
+  it('consulta una actividad contextual por su ID con autenticación y sin catálogo adicional', () => {
+    servicio.actividad(27).subscribe(actividad => expect(actividad.nombre).toBe('Actividad autorizada'));
+    const req = http.expectOne(api + '/activity/27');
+    expect(req.request.method).toBe('GET'); expect(req.request.withCredentials).toBeTrue();
+    req.flush({ success: true, data: { id_actividad: 27, nombre: 'Actividad autorizada' } });
+    http.expectNone(api + '/activity');
+  });
+
   it('consulta los listados completos y transmite la cookie mediante el interceptor real', () => {
     servicio.listar().subscribe(); servicio.personas().subscribe(); servicio.documentos().subscribe(); servicio.actividades().subscribe(); servicio.tipos().subscribe();
     for (const ruta of ['/participation', '/persons/list', '/person-documents/list', '/activity', '/participation-type']) {

@@ -44,6 +44,10 @@ export class GestionTableComponent implements OnInit {
   readonly clavePrimaria = input.required<string>();
   readonly servicio = input.required<GestionReadSource>();
   readonly embedded = input(false);
+  protected readonly encabezadoNumerado = computed(() => [
+    'id_persona', 'id_persona_documento', 'id_persona_trabajador',
+    'id_persona_practicante', 'id_practica', 'id_practica_supervisor', 'id_persona_ponente',
+  ].includes(this.clavePrimaria()));
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly fechas = new DatePipe('en-US');
@@ -150,7 +154,7 @@ export class GestionTableComponent implements OnInit {
     const datosPersona = persona ?? registro;
     const nombre = [datosPersona['nombres'], datosPersona['apellido_paterno'], datosPersona['apellido_materno']].filter(Boolean).join(' ')
       || String(registro['nombre'] ?? registro['nombre_institucion'] ?? registro['codigo'] ?? registro['carrera'] ?? registro['cargo'] ?? 'Registro');
-    return `${nombre} (ID ${registro[clave]})`;
+    return nombre;
   }
 
   private cargarDescripciones(claves: readonly string[]): void {

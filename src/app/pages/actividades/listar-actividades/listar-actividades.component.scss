@@ -40,6 +40,44 @@
 .nombre-actividad { min-width: 13rem; overflow-wrap: anywhere; }
 tr.registro-inactivo .nombre-actividad { font-weight: 500; }
 .acciones-fila { display: flex; justify-content: flex-end; gap: 2px; }
+.gestionar-actividad {
+  color: #1763b2;
+  cursor: pointer;
+  &:hover { background: #eef5fc; }
+  &:focus-visible { outline: 3px solid #1763b2; outline-offset: 2px; }
+}
+.contexto-actividad { overflow-wrap: anywhere; }
+.panel-acciones {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-block: 1.5rem;
+}
+.tarjeta-accion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  min-height: 7.5rem;
+  padding: 1rem .5rem;
+  border: 1px solid var(--neutro-200);
+  border-radius: var(--radio-lg);
+  background: var(--neutro-0);
+  color: var(--neutro-900);
+  font: inherit;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  .material-symbols-outlined { font-size: 2rem; color: #1763b2; }
+  &:hover:not(:disabled) { border-color: #1763b2; background: #eef5fc; }
+  &:focus-visible { outline: 3px solid #1763b2; outline-offset: 3px; }
+  &:disabled { opacity: .55; cursor: not-allowed; }
+}
+.tarjeta-cerrar .material-symbols-outlined { color: #ba5509; }
+:host ::ng-deep app-dialogo.modal-acciones > dialog.dialogo { width: min(38rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; }
+@media (max-width: 480px) { .panel-acciones { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; } }
+@media (max-width: 300px) { .panel-acciones { grid-template-columns: minmax(0, 1fr); } }
 .tamano-pagina { display: flex; align-items: center; gap: var(--espacio-2); }
 .tamano-pagina .input { width: auto; }
 .formulario { min-width: 0; }

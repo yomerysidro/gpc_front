@@ -1,10 +1,14 @@
 import { Component, computed, inject, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { map, tap } from 'rxjs';
+import { catchError, distinctUntilChanged, map, of, startWith, switchMap, tap } from 'rxjs';
+import { EmisionCertificadosService } from '../../../core/services/emision-certificados/emision-certificados.service';
+import { aErrorApi } from '../../../shared/utils/error-api';
+import { ErrorApi } from '../../../core/interfaces/api/api-response.interface';
 import { RecursoEmision } from '../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { PageTitleComponent } from '../../../shared/components/page-title/page-title.component';
 import { EstadoNavegacionListado, ListadoEmisionComponent } from '../compartidos/listado-emision.component';
+import { FILTROS_SESIONES_VACIOS } from './sesiones-asistencia-listado';
 
 interface PestanaActividad {
   readonly id: string;
@@ -24,23 +28,57 @@ interface ConfiguracionActividades {
   styleUrls: ['../compartidos/emision.scss', '../../../shared/components/gestion-tabs/gestion-tabs.component.scss'],
 })
 export class ActividadesComponent {
+  private readonly api = inject(EmisionCertificadosService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly listado = viewChild(ListadoEmisionComponent);
   protected readonly estados = new Map<RecursoEmision, EstadoNavegacionListado>();
+  private actividadContexto: string | null = null;
+  protected readonly contexto = toSignal(this.route.queryParamMap.pipe(
+    map(params => params.get('id_actividad') ?? params.get('actividad')), distinctUntilChanged(),
+    switchMap(valor => {
+      if (valor === null) return of({ cargando: false, error: null, actividad: null });
+      if (!/^[1-9]\d*$/.test(valor) || !Number.isSafeInteger(Number(valor))) return of({ cargando: false, error: 'El identificador de actividad no es válido.', actividad: null });
+      return this.api.obtener('activity', Number(valor)).pipe(map(fila => {
+        if (Number(fila['id_actividad']) !== Number(valor) || typeof fila['nombre'] !== 'string' || !fila['nombre'].trim()) throw new Error('Laravel no confirmó la actividad solicitada.');
+        return { cargando: false, error: null, actividad: { id_actividad: Number(fila['id_actividad']), nombre: fila['nombre'] } };
+      }), catchError((error: ErrorApi) => of({ cargando: false, error: error?.mensaje || aErrorApi(error).mensaje, actividad: null })),
+        startWith({ cargando: true, error: null, actividad: null }));
+    }),
+  ), { initialValue: { cargando: false, error: null, actividad: null } });
   protected readonly configuracion = toSignal(this.route.data.pipe(map(data => data as ConfiguracionActividades)), { requireSync: true });
   private readonly parametros = toSignal(this.route.queryParamMap.pipe(
     tap(parametros => {
+      const contexto = parametros.get('id_actividad') ?? parametros.get('actividad');
+      if (this.actividadContexto !== contexto) {
+        this.actividadContexto = contexto; this.estados.clear(); return;
+      }
       const opciones = this.configuracion().pestanas;
       const destino = opciones?.find(opcion => opcion.id === parametros.get('pestana')) ?? opciones?.[0];
       const actual = this.listado();
       if (destino && actual && destino.recurso !== actual.recurso()) {
-        this.estados.set(actual.recurso(), actual.obtenerEstadoNavegacion());
+        const estado = actual.obtenerEstadoNavegacion();
+        this.estados.set(actual.recurso(), estado);
+        if (contexto === null) {
+          const previo = this.estados.get(destino.recurso);
+          const actividad = estado.filtrosSesiones?.actividad ?? '';
+          this.estados.set(destino.recurso, { campo: previo?.campo ?? '', valor: previo?.valor ?? '', pagina: previo?.pagina ?? 1,
+            filtrosSesiones: { ...(previo?.filtrosSesiones ?? FILTROS_SESIONES_VACIOS), actividad,
+              sesion: previo?.filtrosSesiones?.actividad === actividad ? previo.filtrosSesiones.sesion : '' } });
+        }
       }
     }),
   ), { initialValue: this.route.snapshot.queryParamMap });
   protected readonly pestana = computed(() => this.configuracion().pestanas?.find(opcion => opcion.id === this.parametros().get('pestana'))
     ?? this.configuracion().pestanas?.[0]);
+  private readonly estadoActividad = computed<EstadoNavegacionListado | null>(() => {
+    const id = Number(this.parametros().get('id_actividad') ?? this.parametros().get('actividad'));
+    return Number.isSafeInteger(id) && id > 0 ? { campo: '', valor: '', pagina: 1,
+      filtrosSesiones: { ...FILTROS_SESIONES_VACIOS, actividad: String(id) } } : null;
+  });
+  protected estadoInicial(recurso: RecursoEmision): EstadoNavegacionListado | null {
+    return this.estados.get(recurso) ?? this.estadoActividad();
+  }
 
   protected seleccionar(id: string): void {
     const opciones = this.configuracion().pestanas;

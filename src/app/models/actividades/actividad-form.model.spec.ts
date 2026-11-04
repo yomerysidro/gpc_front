@@ -19,7 +19,7 @@ describe('Reglas del formulario de actividad', () => {
 
   it('combina nombre sin tildes ni mayúsculas con los IDs y el estado exacto', () => {
     const base: Actividad = {
-      id_actividad: 1, id_area: 2, id_tipo_actividad: 3, nombre: 'Capacitación técnica',
+      id_actividad: 1, origen: 'sin_solicitud', id_solicitud_actividad: null, id_area: 2, id_tipo_actividad: 3, nombre: 'Capacitación técnica',
       fecha_inicio: '2026-10-01', fecha_fin: '2026-10-01', descripcion: null, sede: null, estado: 'Activa',
     };
     const actividades = [base, { ...base, id_actividad: 2, id_area: 4 }, { ...base, id_actividad: 3, estado: 'Cerrada' }];

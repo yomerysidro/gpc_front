@@ -35,7 +35,7 @@ describe('Sesiones y asistencia con pestañas y CRUD existentes', () => {
     for (const peticion of http.match(req => [base + '/activity', base + '/participation', base + '/activity-session'].includes(req.url))) {
       if (peticion.cancelled) continue;
       peticion.flush({ success: true, data: peticion.request.url.endsWith('/activity') ? [{ id_actividad: 7, nombre: 'Actividad existente' }]
-        : peticion.request.url.endsWith('/participation') ? [{ id_participacion: 50, id_persona: 9 }] : sesiones });
+        : peticion.request.url.endsWith('/participation') ? [{ id_participacion: 50, id_persona: 9, id_actividad: 7 }] : sesiones });
     }
     for (const peticion of http.match(base + '/persons/detail/9')) {
       peticion.flush({ success: true, data: { id_persona: 9, nombres: 'Ana', apellido_paterno: 'Perez', apellido_materno: null } });
@@ -51,7 +51,13 @@ describe('Sesiones y asistencia con pestañas y CRUD existentes', () => {
   function cargarAsistencias(filas = asistencias): void {
     http.expectOne(base + '/attendance/list').flush({ success: true, data: filas }); catalogos(); harness.detectChanges();
   }
-  async function iniciar(query = ''): Promise<void> { harness = await RouterTestingHarness.create(ruta + query); harness.detectChanges(); }
+  async function iniciar(query = ''): Promise<void> {
+    harness = await RouterTestingHarness.create(ruta + query); harness.detectChanges();
+    const params = new URLSearchParams(query); const id = params.get('id_actividad') ?? params.get('actividad');
+    if (id && /^[1-9]\d*$/.test(id)) {
+      http.expectOne(base + '/activity/' + id).flush({ success: true, data: { id_actividad: Number(id), nombre: 'Actividad existente' } }); harness.detectChanges();
+    }
+  }
   async function seleccionar(id: string): Promise<void> {
     vista().querySelector<HTMLButtonElement>('#actividad-tab-' + id)!.click();
     await harness.fixture.whenStable(); harness.detectChanges();
@@ -67,6 +73,14 @@ describe('Sesiones y asistencia con pestañas y CRUD existentes', () => {
     harness.detectChanges();
   }
 
+  it('recibe el ID de actividad en Sesiones y lo conserva al pasar a Asistencias', async () => {
+    await iniciar('?actividad=7'); cargarSesiones();
+    expect(vista().querySelector<HTMLSelectElement>('#activity-session-buscar-actividad')?.value).toBe('7');
+    await seleccionar('asistencias'); cargarAsistencias();
+    expect(vista().querySelector<HTMLSelectElement>('#attendance-buscar-actividad')?.value).toBe('7');
+    expect(TestBed.inject(Router).url).toContain('actividad=7');
+    http.expectNone(req => req.method === 'POST');
+  });
   it('abre Sesiones por defecto, con una sola instancia y sin consultar asistencias', async () => {
     await iniciar();
     http.expectNone(base + '/attendance/list');
@@ -500,6 +514,57 @@ describe('Sesiones y asistencia con pestañas y CRUD existentes', () => {
       http.expectNone(() => true);
     });
   }
+
+  it('recarga URL contextual, preselecciona sesión y conserva actividad al limpiar y cambiar de pestaña', async () => {
+    await iniciar('?id_actividad=7'); cargarSesiones([sesiones[0], { ...sesiones[1], id_actividad: 9, nombre: 'Sesión de otra actividad' }]);
+    expect(vista().textContent).toContain('Actividad existente');
+    expect(vista().querySelector('tbody')?.textContent).not.toContain('Sesión de otra actividad');
+    expect(vista().querySelector<HTMLSelectElement>('#activity-session-buscar-actividad')?.disabled).toBeTrue();
+    boton('Nuevo registro').click(); harness.detectChanges(); await harness.fixture.whenStable(); harness.detectChanges();
+    expect(vista().querySelector<HTMLSelectElement>('#activity-session-id_actividad')?.value).toBe('7');
+    expect(vista().querySelector<HTMLSelectElement>('#activity-session-id_actividad')?.disabled).toBeTrue();
+    http.expectNone(base + '/activity');
+    completarNuevaSesion();
+    const guardar = http.expectOne(req => req.url === base + '/activity-session' && req.method === 'POST');
+    expect(guardar.request.body.id_actividad).toBe(7);
+    guardar.flush({ success: true, data: { ...sesiones[0], nombre: 'Nueva sesión' } }); harness.detectChanges(); cargarSesiones();
+    boton('Limpiar filtros').click(); harness.detectChanges();
+    expect(vista().querySelector<HTMLSelectElement>('#activity-session-buscar-actividad')?.value).toBe('7');
+    await seleccionar('asistencias'); cargarAsistencias();
+    expect(vista().querySelector<HTMLSelectElement>('#attendance-buscar-actividad')?.value).toBe('7');
+    expect(vista().querySelector<HTMLSelectElement>('#attendance-buscar-actividad')?.disabled).toBeTrue();
+    expect(TestBed.inject(Router).url).toContain('id_actividad=7');
+    http.expectNone(base + '/activity/7'); // No repite la validación al cambiar de pestaña.
+    boton('Nuevo registro').click(); harness.detectChanges(); catalogos(); harness.detectChanges();
+    expect(vista().querySelector<HTMLSelectElement>('#attendance-id_participacion')?.options.length).toBe(2);
+    http.expectNone(req => req.url.includes('/persons/detail/'));
+  });
+
+  it('URL inválida no consulta sesiones ni muestra un formulario de otra actividad', async () => {
+    await iniciar('?id_actividad=abc');
+    expect(vista().querySelector('app-listado-emision')).toBeNull();
+    expect(vista().querySelector('[role=alert]')?.textContent).toContain('identificador');
+    http.expectNone(() => true);
+  });
+
+  it('actividad denegada conserva el error real y no consulta los CRUD dependientes', async () => {
+    harness = await RouterTestingHarness.create(ruta + '?id_actividad=8'); harness.detectChanges();
+    http.expectOne(base + '/activity/8').flush({ message: 'Actividad fuera de ámbito' }, { status: 403, statusText: 'Forbidden' }); harness.detectChanges();
+    expect(vista().querySelector('app-listado-emision')).toBeNull();
+    expect(vista().querySelector('[role=alert]')?.textContent).toContain('Actividad fuera de ámbito');
+    http.expectNone(() => true);
+  });
+
+  it('un fallo del catálogo de Personas en asistencia contextual se muestra como error, sin consultas por fila', async () => {
+    await iniciar('?id_actividad=7&pestana=asistencias'); cargarAsistencias();
+    boton('Nuevo registro').click(); harness.detectChanges();
+    http.expectOne(base + '/participation').flush({ success: true, data: [{ id_participacion: 50, id_actividad: 7, id_persona: 9 }] });
+    http.expectOne(base + '/persons/list').flush({ message: 'Consulta de personas denegada' }, { status: 403, statusText: 'Forbidden' });
+    http.expectOne(base + '/activity-session').flush({ success: true, data: sesiones }); harness.detectChanges();
+    expect(vista().querySelector('app-formulario-emision [role=alert]')?.textContent).toContain('Consulta de personas denegada');
+    http.expectNone(req => req.url.includes('/persons/detail/'));
+    http.expectNone(req => req.method === 'POST');
+  });
   it('Sesiones ofrece solo Activo y Culminado y conserva las sesiones cerradas en Todos los estados', async () => {
     await iniciar();
     cargarSesiones(sesiones.map((sesion, indice) => ({ ...sesion, estado: indice < 12 ? 'Culminado' : indice < 20 ? 'cerrado' : 'activo' })));

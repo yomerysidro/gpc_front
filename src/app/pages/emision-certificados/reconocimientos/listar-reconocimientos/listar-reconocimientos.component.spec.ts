@@ -19,7 +19,7 @@ describe('Reconocimientos y relaciones autorizadas de Gestión', () => {
   const pagina = (data: readonly unknown[], current = 1, last = 1, total = data.length) => ({ success: true, data: { data, current_page: current, last_page: last, total, per_page: 12 } });
 
   beforeEach(() => {
-    permisos = new Set(['reconocimientos.ver', 'reconocimientos.crear', 'reconocimientos.editar', 'ponentes-firmantes.ver', 'emision.ver']);
+    permisos = new Set(['reconocimientos.ver', 'reconocimientos.crear', 'reconocimientos.editar', 'ponentes-firmantes.ver', 'emision.ver', 'personas.verpersonas', 'areas.ver', 'tipos-documento.ver']);
     TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
       { provide: AuthService, useValue: { tienePermiso: (permiso: string) => permisos.has(permiso) } },
     ] });
@@ -34,6 +34,7 @@ describe('Reconocimientos y relaciones autorizadas de Gestión', () => {
   function crear(): void {
     fixture = TestBed.createComponent(ListarReconocimientosComponent);
     fixture.detectChanges();
+    for (const request of http.match(req => req.url.endsWith('/reconocimientos/list') && req.params.get('per_page') === '100')) request.flush(pagina([registro]));
   }
 
   function iniciar(registros = [registro], current = 1, last = 1): void {
@@ -65,7 +66,7 @@ describe('Reconocimientos y relaciones autorizadas de Gestión', () => {
     expect(tarjeta.textContent).toContain('Cargo registrado');
     expect(tarjeta.textContent).toContain('Certificado #9 · Activo');
     expect(tarjeta.textContent).toContain('CODIGO-LARAVEL');
-    expect(tarjeta.querySelector('button').disabled).toBeTrue();
+    expect(tarjeta.querySelector('iframe, a[download]')).toBeNull();
     expect(fixture.nativeElement.querySelector('a[href="/certificaciones/reconocimientos/nuevo"]').textContent).toContain('Registrar reconocimiento');
     http.expectNone(req => req.url.includes('/firmas/') || req.method !== 'GET');
   });
@@ -94,6 +95,48 @@ describe('Reconocimientos y relaciones autorizadas de Gestión', () => {
     expect(fixture.nativeElement.textContent).toContain('No hay reconocimientos con estos filtros');
     expect(fixture.nativeElement.querySelector('app-reconocimiento-card')).toBeNull();
     http.expectNone(req => req.url.includes('/certificados/') || req.url.includes('/persons/') || req.url.includes('/areas/'));
+  });
+  it('limpia todos los filtros y vuelve a solicitar la primera página sin criterios', () => {
+    iniciar(); gestion(); certificados(); fixture.detectChanges();
+    const componente = fixture.componentInstance as any;
+    componente.filtro.patchValue({ titulo: 'Título', estado: 'ACTIVO', fecha: '2026-10-30', trabajador: '4', buscarTrabajador: 'Apellido' });
+    componente.limpiar();
+    const request = http.expectOne(req => req.url.endsWith('/reconocimientos/list'));
+    expect(request.request.params.keys().sort()).toEqual(['page', 'per_page']);
+    expect(request.request.params.get('page')).toBe('1');
+    expect(Object.values(componente.filtro.getRawValue()).every(valor => valor === '')).toBeTrue();
+    request.flush(pagina([]));
+  });
+  it('filtra el selector por apellido y conserva la selección al cambiar la búsqueda', () => {
+    iniciar(); gestion(); certificados(); fixture.detectChanges();
+    const componente = fixture.componentInstance as any;
+    componente.filtro.controls.buscarTrabajador.setValue('Apellido de prueba');
+    expect(componente.opcionesTrabajador().length).toBe(1);
+    componente.filtro.controls.trabajador.setValue('4');
+    componente.filtro.controls.buscarTrabajador.setValue('sin coincidencia');
+    expect(componente.opcionesTrabajador()[0].id_persona_trabajador).toBe(4);
+  });
+  it('confirma la eliminación con permiso, impide duplicados y refresca el listado', () => {
+    permisos.add('reconocimientos.eliminar'); iniciar(); gestion(); certificados(); fixture.detectChanges();
+    const componente = fixture.componentInstance as any;
+    const boton = Array.from(fixture.nativeElement.querySelectorAll('app-reconocimiento-card button')).find((boton: any) => boton.textContent.includes('Eliminar')) as HTMLButtonElement;
+    boton.click(); http.expectNone(req => req.method === 'DELETE');
+    componente.eliminar(); componente.eliminar();
+    http.expectOne(req => req.method === 'DELETE' && req.url === `${base}/reconocimientos/delete/7`).flush({ success: true, data: null });
+    http.expectOne(req => req.url.endsWith('/reconocimientos/list') && req.params.get('per_page') === '100').flush(pagina([]));
+    http.expectOne(req => req.url.endsWith('/reconocimientos/list')).flush(pagina([]));
+    fixture.detectChanges(); expect(fixture.nativeElement.textContent).toContain('Reconocimiento eliminado correctamente');
+  });
+  it('respeta la revocación de permiso y conserva el registro ante un conflicto histórico', () => {
+    permisos.add('reconocimientos.eliminar'); iniciar(); gestion(); certificados(); fixture.detectChanges();
+    const componente = fixture.componentInstance as any;
+    componente.solicitarEliminar(registro); permisos.delete('reconocimientos.eliminar'); componente.eliminar();
+    http.expectNone(req => req.method === 'DELETE');
+    permisos.add('reconocimientos.eliminar'); componente.eliminar();
+    http.expectOne(req => req.method === 'DELETE').flush({ message: 'El registro tiene dependencias históricas.' }, { status: 409, statusText: 'Conflict' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('dependencias históricas');
+    expect(fixture.nativeElement.querySelector('app-reconocimiento-card')).not.toBeNull();
   });
 
   it('no realiza peticiones ni ofrece registro sin permiso de Reconocimientos', () => {
@@ -152,6 +195,7 @@ describe('Reconocimientos y relaciones autorizadas de Gestión', () => {
     expect(fixture.nativeElement.querySelector('app-reconocimiento-card').textContent).toContain('ANULADO');
     const actualizar = [...fixture.nativeElement.querySelectorAll('button')].find((boton: unknown) => (boton as HTMLButtonElement).textContent?.includes('Actualizar relaciones')) as HTMLButtonElement;
     actualizar.click();
+    http.expectOne(req => req.url.endsWith('/reconocimientos/list') && req.params.get('per_page') === '100').flush(pagina([registro]));
     http.expectOne(req => req.url.endsWith('/reconocimientos/list')).flush(pagina([registro])); gestion();
     http.expectOne(req => req.url.endsWith('/certificados/list')).flush({ message: 'No disponible.' }, { status: 503, statusText: 'Unavailable' });
     fixture.detectChanges();

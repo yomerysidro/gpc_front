@@ -28,6 +28,8 @@ export interface CapacidadesSolicitudes {
   readonly derivar: boolean;
   readonly aprobar: boolean;
   readonly rechazar: boolean;
+  readonly decidir_ambito_institucional: boolean;
+  readonly decidir_propias: boolean;
 }
 
 export interface SesionResponse {

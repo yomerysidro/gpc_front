@@ -1,4 +1,8 @@
 <app-page-title [title]="configuracion().titulo" />
+@if (contexto().cargando) { <p role="status">Consultando actividad seleccionada…</p> }
+@else if (contexto().error) { <p class="alert alert-error" role="alert">{{ contexto().error }}</p> }
+@else {
+@if (contexto().actividad; as actividad) { <p>Actividad: <strong>{{ actividad.nombre }}</strong></p> }
 @if (configuracion().pestanas; as opciones) {
   <div class="pestanas" role="tablist" [attr.aria-label]="configuracion().titulo" (keydown)="alTeclear($event)">
     @for (opcion of opciones; track opcion.id) {
@@ -16,7 +20,8 @@
     [hidden]="!!configuracion().pestanas && pestana()?.recurso !== seccion.recurso">
     @if (!configuracion().pestanas || pestana()?.recurso === seccion.recurso) {
       @if (seccion.recurso !== 'activity-session' && seccion.recurso !== 'attendance') { <h2>{{ seccion.titulo }}</h2> }
-      <app-listado-emision [recurso]="seccion.recurso" [tituloEncabezado]="seccion.titulo" [estadoInicial]="estados.get(seccion.recurso) ?? null" />
+      <app-listado-emision [recurso]="seccion.recurso" [tituloEncabezado]="seccion.titulo" [estadoInicial]="estadoInicial(seccion.recurso)" [actividadContexto]="contexto().actividad" />
     }
   </section>
+}
 }

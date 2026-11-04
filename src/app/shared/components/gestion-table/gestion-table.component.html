@@ -29,7 +29,7 @@
         <table class="table">
           <caption class="sr-only">{{ titulo() }}</caption>
           <thead><tr>
-            @for (columna of columnas(); track columna.clave) { <th scope="col">{{ columna.etiqueta }}</th> }
+            @for (columna of columnas(); track columna.clave) { <th scope="col">{{ encabezadoNumerado() && columna.clave === clavePrimaria() && columna.etiqueta === 'ID' ? 'Nº' : columna.etiqueta }}</th> }
             <th scope="col">Acciones</th>
           </tr></thead>
           <tbody>
@@ -93,7 +93,7 @@
               <select class="input" [id]="clavePrimaria() + '-' + campo.clave" [formControlName]="campo.clave">
                 <option [ngValue]="null">Sin seleccionar</option>
                 @if (relacionSinOpcion(campo)) {
-                  <option [ngValue]="relacionActual(campo)">Relación actual (ID {{ relacionActual(campo) }})</option>
+                  <option [ngValue]="relacionActual(campo)">Relación actual</option>
                 }
                 @for (opcion of opcionesRelacion()[campo.clave] || []; track opcion) {
                   <option [ngValue]="opcion[campo.clave]">{{ nombreRelacion(opcion, campo.clave) }}</option>
