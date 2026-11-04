@@ -28,6 +28,10 @@ export class ActividadesService {
     return this.obtenerDatos<Actividad>(`/activity/${id}`);
   }
 
+  listarAsignacionesPonentes(): Observable<readonly ActividadPonente[]> {
+    return this.obtenerDatos<readonly ActividadPonente[]>('/activity-speaker');
+  }
+
   listarAreas(): Observable<readonly AreaActividad[]> {
     // Catálogo de consulta/edición. La variante uso=actividades pertenece al alta deshabilitada.
     // La autorización de solicitudes sigue usando exclusivamente authorized-areas.

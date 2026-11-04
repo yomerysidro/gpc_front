@@ -248,7 +248,7 @@ describe('SessionAuthService', () => {
   it('login devuelve el mensaje del 401 y bloqueadoHasta del 423', async () => {
     let resultado = firstValueFrom(service.login('maria.rrhh@moralesmuni.pe', 'mala'));
     http.expectOne(environment.apiBaseUrl + '/auth/login').flush({ message: 'Usuario desactivado' }, { status: 401, statusText: '' });
-    expect(await resultado).toEqual({ tipo: 'rechazado', mensaje: 'Usuario desactivado' });
+    expect(await resultado).toEqual({ tipo: 'rechazado', mensaje: 'Usuario desactivado. Contacta con el administrador.' });
 
     resultado = firstValueFrom(service.login('maria.rrhh@moralesmuni.pe', 'mala'));
     http.expectOne(environment.apiBaseUrl + '/auth/login').flush(
@@ -266,6 +266,26 @@ describe('SessionAuthService', () => {
     http.expectOne(environment.apiBaseUrl + '/auth/me').flush(sesion);
     expect(await resultado).toEqual({ tipo: 'exito' });
     expect(service.usuario()).toEqual(sesion.user);
+  });
+
+  it('conserva el error del servidor si falla /auth/me después del login y permite reintentar', async () => {
+    const resultado = firstValueFrom(service.login('maria.rrhh@moralesmuni.pe', 'Test1234'));
+    const error = expectAsync(resultado).toBeRejectedWith(jasmine.objectContaining({ status: 500 }));
+    http.expectOne(environment.apiBaseUrl + '/auth/login').flush({ user: sesion.user });
+    http.expectOne(environment.apiBaseUrl + '/auth/me').flush(
+      { message: 'Error interno' }, { status: 500, statusText: 'Internal Server Error' });
+    await error;
+    expect(service.isAuthenticated()).toBeFalse();
+    service.cargarSesion().subscribe();
+    http.expectOne(environment.apiBaseUrl + '/auth/me').flush(sesion);
+    expect(service.isAuthenticated()).toBeTrue();
+  });
+
+  it('presenta un mensaje seguro para credenciales incorrectas', async () => {
+    const resultado = firstValueFrom(service.login('maria.rrhh@moralesmuni.pe', 'mala'));
+    http.expectOne(environment.apiBaseUrl + '/auth/login').flush(
+      { message: 'Credenciales inválidas' }, { status: 401, statusText: 'Unauthorized' });
+    expect(await resultado).toEqual({ tipo: 'rechazado', mensaje: 'Correo electrónico o contraseña incorrectos.' });
   });
 
   it('recargarSesion vuelve a pedir /auth/me aunque ya esté cargada', () => {

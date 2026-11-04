@@ -15,6 +15,9 @@ export const EMISION_CERTIFICADOS_ROUTES: Routes = [
     loadComponent: () => import('./generar-emitir/generar-emitir.component').then(m => m.GenerarEmitirComponent),
   },
   {
+    path: 'actividades/:id', pathMatch: 'full', redirectTo: '/certificaciones/actividades',
+  },
+  {
     path: 'actividades', canActivate: [permissionGuard], data: { permiso: 'actividades.ver', titulo: 'Actividades' },
     loadComponent: () => import('../actividades/listar-actividades/listar-actividades.component').then(m => m.ListarActividadesComponent),
   },

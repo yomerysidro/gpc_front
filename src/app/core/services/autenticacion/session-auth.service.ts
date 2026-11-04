@@ -49,7 +49,7 @@ export class SessionAuthService extends AuthService {
       switchMap(() => {
         this.limpiarEstado();
         this.sesion$ = null;
-        return this.cargarSesion();
+        return this.cargarSesion(true);
       }),
       switchMap(ok => ok
         ? of<ResultadoLogin>({ tipo: 'exito' })
@@ -61,7 +61,9 @@ export class SessionAuthService extends AuthService {
           if (error.status === 401) {
             return of<ResultadoLogin>({
               tipo: 'rechazado',
-              mensaje: cuerpo?.message ?? 'Credenciales inválidas',
+              mensaje: cuerpo?.message === 'Usuario desactivado'
+                ? 'Usuario desactivado. Contacta con el administrador.'
+                : 'Correo electrónico o contraseña incorrectos.',
             });
           }
 
@@ -79,7 +81,7 @@ export class SessionAuthService extends AuthService {
     );
   }
 
-  cargarSesion(): Observable<boolean> {
+  cargarSesion(propagarError = false): Observable<boolean> {
     this.sesion$ ??= this.http.get<SesionResponse>(`${this.api}/auth/me`, this.opciones()).pipe(
       map(sesion => {
         this.usuarioActual.set(sesion.user);
@@ -106,6 +108,12 @@ export class SessionAuthService extends AuthService {
         // Sin 401 (backend caído, 500) no se cachea: el siguiente intento vuelve a consultar.
         if (!(error instanceof HttpErrorResponse && error.status === 401)) {
           this.sesion$ = null;
+        }
+
+        if (propagarError) {
+          return throwError(() => error instanceof HttpErrorResponse && error.status === 401
+            ? new Error('No se pudo validar la sesión después del login')
+            : error);
         }
 
         return of(false);

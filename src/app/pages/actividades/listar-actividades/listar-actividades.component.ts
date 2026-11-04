@@ -15,18 +15,45 @@ import { DialogoConfirmacionComponent } from '../../../shared/components/dialogo
 import { DialogoComponent } from '../../../shared/components/dialogo/dialogo.component';
 import { PageTitleComponent } from '../../../shared/components/page-title/page-title.component';
 import { HasPermissionDirective } from '../../../shared/directives/has-permission.directive';
+import { DetalleActividadComponent } from '../detalle-actividad/detalle-actividad.component';
 
 @Component({
   selector: 'app-listar-actividades',
   standalone: true,
-  imports: [RouterLink, ReactiveFormsModule, PageTitleComponent, DialogoComponent, DialogoConfirmacionComponent, HasPermissionDirective],
+  imports: [RouterLink, ReactiveFormsModule, PageTitleComponent, DialogoComponent, DialogoConfirmacionComponent, HasPermissionDirective, DetalleActividadComponent],
   templateUrl: './listar-actividades.component.html',
   styleUrl: './listar-actividades.component.scss',
 })
 export class ListarActividadesComponent {
+  protected readonly pestana = signal<'listado' | 'detalle'>('listado');
+  protected readonly actividadDetalle = signal<number | null>(null);
+
+  protected seleccionarActividad(actividad: Actividad): void {
+    if (!this.auth.tienePermiso('actividades.ver')) return;
+    this.actividadDetalle.set(actividad.id_actividad);
+    this.pestana.set('detalle');
+  }
+
+  protected volverAlListado(): void {
+    this.pestana.set('listado');
+  }
+
+  protected limpiarSeleccion(): void {
+    this.actividadDetalle.set(null);
+    this.volverAlListado();
+  }
+
+  protected alTeclearPestanas(evento: KeyboardEvent): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(evento.key)) return;
+    evento.preventDefault();
+    const siguiente = !this.actividadDetalle() || evento.key === 'Home' ? 'listado'
+      : evento.key === 'End' ? 'detalle' : this.pestana() === 'listado' ? 'detalle' : 'listado';
+    this.pestana.set(siguiente);
+    this.documento.getElementById('actividades-tab-' + siguiente)?.focus();
+  }
   @HostListener('window:focus')
   protected actualizarAlVolver(): void {
-    if (this.auth.tienePermiso('actividades.ver') && !this.cargando() && !this.enviando() && !this.formularioAbierto()) this.cargar();
+    if (this.pestana() === 'listado' && this.auth.tienePermiso('actividades.ver') && !this.cargando() && !this.enviando() && !this.formularioAbierto()) this.cargar();
   }
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly servicio = inject(ActividadesService);
@@ -128,6 +155,15 @@ export class ListarActividadesComponent {
   }, { validators: periodoActividad });
 
   constructor() {
+    const parametros = this.route?.snapshot.queryParamMap;
+    if (parametros) {
+      this.filtros.set({ nombre: parametros.get('nombre') ?? '', area: parametros.get('area') ?? '',
+        tipo: parametros.get('tipo') ?? '', estado: parametros.get('estado') ?? '' });
+      const pagina = Number(parametros.get('pagina'));
+      const tamano = Number(parametros.get('tamano'));
+      if (Number.isSafeInteger(pagina) && pagina > 0) this.pagina.set(pagina);
+      if ([10, 20, 50].includes(tamano)) this.porPagina.set(tamano);
+    }
     this.destroyRef.onDestroy(() => { this.destruido = true; this.restaurarDesplazamiento(); });
     afterNextRender(() => {
       const dialogo = this.elementoFormulario().nativeElement.querySelector('dialog')!;

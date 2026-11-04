@@ -7,7 +7,16 @@
       <a *appHasPermission="'solicitudes.crear'" class="btn btn-primary" routerLink="/solicitudes/nueva">Solicitar actividad</a>
   </div>
 
+  <div class="pestanas" role="tablist" aria-label="Actividades" (keydown)="alTeclearPestanas($event)">
+    <button id="actividades-tab-listado" type="button" role="tab" aria-controls="actividades-panel-listado"
+      [attr.aria-selected]="pestana() === 'listado'" [attr.tabindex]="pestana() === 'listado' ? 0 : -1"
+      (click)="volverAlListado()">Mis actividades</button>
+    <button id="actividades-tab-detalle" type="button" role="tab" aria-controls="actividades-panel-detalle"
+      [disabled]="actividadDetalle() === null" [attr.aria-selected]="pestana() === 'detalle'"
+      [attr.tabindex]="pestana() === 'detalle' ? 0 : -1" (click)="actividadDetalle() !== null && pestana.set('detalle')">Detalles de la actividad</button>
+  </div>
 
+  <div id="actividades-panel-listado" role="tabpanel" aria-labelledby="actividades-tab-listado" tabindex="0" [hidden]="pestana() !== 'listado'">
   <div role="status">
     @if (aviso(); as mensaje) {
       <div class="alert" [class.alert-exito]="mensaje.tipo === 'exito'" [class.alert-error]="mensaje.tipo === 'error'">
@@ -36,7 +45,7 @@
         <label for="filtrar-area">Área</label>
         <select #areaFiltro id="filtrar-area" class="input" [value]="filtros().area" (change)="filtrar('area', areaFiltro.value)">
           <option value="">Todas las áreas</option>
-          @for (area of areasFiltro(); track area.id_area) { <option [value]="area.id_area">{{ area.nombre }}</option> }
+          @for (area of areasFiltro(); track area.id_area) { <option [value]="area.id_area" [selected]="filtros().area === '' + area.id_area">{{ area.nombre }}</option> }
         </select>
       </div>
 
@@ -67,6 +76,10 @@
                   <td class="fecha">{{ fecha(actividad.fecha_inicio) }}</td><td class="fecha">{{ fecha(actividad.fecha_fin) }}</td>
                   <td><span class="badge" [class.badge-exito]="actividad.estado === 'Activa'">{{ actividad.estado }}</span></td>
                   <td><div class="acciones-fila">
+                    <button type="button" class="btn btn-icono btn-sin-borde gestionar-actividad" title="Ver actividad" aria-label="Ver actividad"
+                      (click)="seleccionarActividad(actividad)">
+                      <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+                    </button>
                     <button type="button" class="btn btn-icono btn-sin-borde gestionar-actividad" title="Gestionar actividad"
                       aria-label="Gestionar actividad" (click)="gestionar(actividad)" [disabled]="cambiandoEstado() || enviando()">
                       <span class="material-symbols-outlined" aria-hidden="true">settings</span>
@@ -106,6 +119,12 @@
         </nav>
       @if (cambiandoEstado()) { <p role="status">Actualizando estado…</p> }
     </div>
+  </div>
+  <div id="actividades-panel-detalle" role="tabpanel" aria-labelledby="actividades-tab-detalle" tabindex="0" [hidden]="pestana() !== 'detalle'">
+    @if (actividadDetalle(); as id) {
+      <app-detalle-actividad [actividadId]="id" (volver)="volverAlListado()" />
+    }
+  </div>
 </section>
 
 <app-dialogo #dialogoAcciones class="modal-acciones" titulo="Acciones de la actividad">

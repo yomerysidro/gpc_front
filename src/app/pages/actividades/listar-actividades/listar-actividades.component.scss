@@ -4,6 +4,11 @@
   background: var(--neutro-0);
 }
 
+.pestanas { max-width: 100%; overflow-x: auto; }
+[role='tab'] { flex-shrink: 0; }
+.pestanas button:disabled { cursor: not-allowed; }
+[role='tabpanel'][hidden] { display: none; }
+
 .encabezado {
   display: flex;
   flex-wrap: wrap;

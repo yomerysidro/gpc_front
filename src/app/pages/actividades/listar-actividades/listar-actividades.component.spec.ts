@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, WritableSignal } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { Component, input, output, signal, WritableSignal } from '@angular/core';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { Router } from '@angular/router';
 import { FormGroup } from '@angular/forms';
 import { of, Subject, throwError } from 'rxjs';
@@ -9,6 +9,14 @@ import { Actividad } from '../../../core/interfaces/actividades/actividad.interf
 import { ActividadesService } from '../../../core/services/actividades/actividades.service';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { ListarActividadesComponent } from './listar-actividades.component';
+import { DetalleActividadComponent } from '../detalle-actividad/detalle-actividad.component';
+
+@Component({ selector: 'app-detalle-actividad', standalone: true,
+  template: '<button type="button" (click)="volver.emit()">Volver a actividades</button>' })
+class DetalleActividadPruebaComponent {
+  readonly actividadId = input<number | null>(null);
+  readonly volver = output<void>();
+}
 
 const ACTIVIDAD: Actividad = {
   origen: 'sin_solicitud', id_solicitud_actividad: null,
@@ -66,6 +74,9 @@ describe('Pantalla de Actividades', () => {
       { provide: ActividadesService, useValue: servicio },
       { provide: AuthService, useValue: { tienePermiso: (clave: string) => permisos().includes(clave) } },
     ] });
+    TestBed.overrideComponent(ListarActividadesComponent, {
+      remove: { imports: [DetalleActividadComponent] }, add: { imports: [DetalleActividadPruebaComponent] },
+    });
     fixture = TestBed.createComponent(ListarActividadesComponent);
     fixture.autoDetectChanges();
     await fixture.whenStable();
@@ -77,6 +88,71 @@ describe('Pantalla de Actividades', () => {
     modelo.abrirFormulario(null); modelo.guardar(); await fixture.whenStable();
     expect(modelo.formularioAbierto()).toBeFalse(); expect(servicio.crear).not.toHaveBeenCalled();
     await abrirPanel(); expect($('button[title=Editar]')).not.toBeNull();
+  });
+
+  it('inicia en Mis actividades y bloquea Detalles sin una selección, también por teclado', async () => {
+    const listado = $<HTMLButtonElement>('#actividades-tab-listado');
+    const detalle = $<HTMLButtonElement>('#actividades-tab-detalle');
+    expect(listado.textContent?.trim()).toBe('Mis actividades');
+    expect(detalle.textContent?.trim()).toBe('Detalles de la actividad');
+    expect(listado.getAttribute('aria-selected')).toBe('true');
+    expect(detalle.disabled).toBeTrue();
+    detalle.click();
+    listado.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await fixture.whenStable();
+    expect(listado.getAttribute('aria-selected')).toBe('true');
+    expect($('app-detalle-actividad')).toBeNull(); expect(servicio.obtener).not.toHaveBeenCalled();
+  });
+
+  it('sitúa Ver actividad antes del engranaje y activa el detalle sin cambiar la ruta', async () => {
+    await escribir('#buscar-actividad', 'Jornada');
+    const acciones = $('.acciones-fila');
+    const enlace = acciones.querySelector<HTMLButtonElement>('button[aria-label="Ver actividad"]')!;
+    expect(acciones.firstElementChild).toBe(enlace);
+    expect(enlace.nextElementSibling?.getAttribute('aria-label')).toBe('Gestionar actividad');
+    const ruta = TestBed.inject(Router).url;
+    enlace.click(); await fixture.whenStable();
+    expect($('#actividades-tab-detalle').getAttribute('aria-selected')).toBe('true');
+    expect(TestBed.inject(Router).url).toBe(ruta);
+    expect($<HTMLElement>('#actividades-panel-listado').hidden).toBeTrue();
+    $('#actividades-tab-listado').click(); await fixture.whenStable();
+    await abrirPanel();
+    expect($<HTMLDialogElement>('.modal-acciones dialog').open).toBeTrue();
+  });
+
+  it('selecciona el ID real de cada fila y limpia la selección al solicitarlo', async () => {
+    servicio.listar.and.returnValue(of([ACTIVIDAD, { ...ACTIVIDAD, id_actividad: 19, nombre: 'Otra jornada' }]));
+    fixture.destroy();
+    fixture = TestBed.createComponent(ListarActividadesComponent); fixture.autoDetectChanges(); await fixture.whenStable();
+    const ojos = Array.from(fixture.nativeElement.querySelectorAll('tbody button[aria-label="Ver actividad"]') as NodeListOf<HTMLButtonElement>);
+    const modelo = fixture.componentInstance as unknown as { actividadDetalle(): number | null; limpiarSeleccion(): void };
+    ojos[0].click(); await fixture.whenStable(); expect(modelo.actividadDetalle()).toBe(7);
+    $('#actividades-tab-listado').click(); await fixture.whenStable();
+    ojos[1].click(); await fixture.whenStable(); expect(modelo.actividadDetalle()).toBe(19);
+    modelo.limpiarSeleccion(); await fixture.whenStable();
+    expect($('#actividades-tab-listado').getAttribute('aria-selected')).toBe('true');
+    expect($<HTMLButtonElement>('#actividades-tab-detalle').disabled).toBeTrue();
+    expect($('app-detalle-actividad')).toBeNull();
+  });
+
+  it('restaura filtros y paginación al regresar desde el detalle', async () => {
+    fixture.destroy();
+    Object.defineProperty(TestBed.inject(ActivatedRoute).snapshot, 'queryParamMap', {
+      value: convertToParamMap({ nombre: 'Jornada', area: '2', pagina: '2', tamano: '20' }),
+    });
+    servicio.listar.and.returnValue(of(Array.from({ length: 25 }, (_, i) => ({ ...ACTIVIDAD, id_actividad: i + 1 }))));
+    fixture = TestBed.createComponent(ListarActividadesComponent); fixture.autoDetectChanges(); await fixture.whenStable();
+    expect($<HTMLInputElement>('#buscar-actividad').value).toBe('Jornada');
+    expect($<HTMLSelectElement>('#filtrar-area').value).toBe('2');
+    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(5);
+    const llamadas = servicio.listar.calls.count();
+    const tabla = $('table');
+    $<HTMLButtonElement>('tbody button[aria-label="Ver actividad"]').click(); await fixture.whenStable();
+    $('app-detalle-actividad button').click(); await fixture.whenStable();
+    expect($('table')).toBe(tabla);
+    expect($<HTMLInputElement>('#buscar-actividad').value).toBe('Jornada');
+    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(5);
+    expect(servicio.listar.calls.count()).toBe(llamadas);
   });
   it('rechaza un área fuera del catálogo también al editar', async () => {
     await accion('Editar');
@@ -242,13 +318,13 @@ describe('Pantalla de Actividades', () => {
     expect(servicio.listar).toHaveBeenCalledTimes(2);
   });
 
-  it('ofrece un solo botón por fila y seis tarjetas en orden con navegación por ID real', async () => {
+  it('ofrece el enlace de detalle y el engranaje por fila y conserva las seis tarjetas de gestión', async () => {
     expect($('#filtrar-tipo')).toBeNull(); expect($('#filtrar-estado')).toBeNull();
     expect($('#buscar-actividad')).not.toBeNull(); expect($('#filtrar-area')).not.toBeNull();
     expect($('tbody .nombre-actividad').textContent?.trim()).toBe(ACTIVIDAD.nombre);
     expect($('tbody .badge').textContent?.trim()).toBe('Activa');
-    expect(fixture.nativeElement.querySelectorAll('tbody button').length).toBe(1);
-    expect(fixture.nativeElement.querySelectorAll('tbody a').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('tbody button').length).toBe(2);
+    expect(fixture.nativeElement.querySelectorAll('tbody button[aria-label="Ver actividad"]').length).toBe(1);
     await abrirPanel();
     expect($('.modal-acciones h2').textContent).toBe('Acciones de la actividad');
     const tarjetas = Array.from(fixture.nativeElement.querySelectorAll('.tarjeta-accion') as NodeListOf<HTMLElement>);
@@ -331,7 +407,7 @@ describe('Pantalla de Actividades', () => {
   it('renderiza settings como glifo real de Material Symbols local, con foco y nombre accesible', async () => {
     const fuentes = await document.fonts.load('300 20px "Material Symbols Outlined"', 'settings');
     expect(fuentes.length).toBeGreaterThan(0);
-    const botonGestion = $<HTMLButtonElement>('tbody .gestionar-actividad');
+    const botonGestion = $<HTMLButtonElement>('tbody button[aria-label="Gestionar actividad"]');
     expect(botonGestion.getAttribute('aria-label')).toBe('Gestionar actividad');
     expect(botonGestion.title).toBe('Gestionar actividad');
     expect(getComputedStyle(botonGestion).color).toBe('rgb(7, 90, 155)');

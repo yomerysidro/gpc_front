@@ -1,0 +1,76 @@
+<section aria-label="Detalle de la actividad seleccionada">
+  <div class="encabezado">
+    <button type="button" class="btn" (click)="volver.emit()">← Volver a actividades</button>
+  </div>
+  @if (cargando()) { <p role="status">Cargando actividad…</p> }
+  @else if (sinSeleccion()) { <p role="status">Selecciona una actividad para ver su detalle</p> }
+  @else if (error()) {
+    <div class="alert alert-error" role="alert">{{ error() }}</div>
+    <button class="btn" type="button" (click)="cargar()">Reintentar</button>
+  }
+  @if (actividad(); as actual) {
+    <div class="tarjetas-detalle">
+    <section class="panel" aria-labelledby="titulo-informacion">
+      <h2 id="titulo-informacion">Información de la actividad</h2>
+      <dl class="informacion">
+        <div class="ancho-completo"><dt>Nombre de la actividad</dt><dd>{{ actual.nombre }}</dd></div>
+        <div><dt>Área municipal</dt><dd>{{ area() }}</dd></div>
+        <div><dt>Tipo de actividad</dt><dd>{{ tipo() }}</dd></div>
+        @if (actual.descripcion) { <div class="ancho-completo"><dt>Descripción</dt><dd>{{ actual.descripcion }}</dd></div> }
+        <div><dt>Fecha de inicio</dt><dd>{{ fecha(actual.fecha_inicio) }}</dd></div>
+        <div><dt>Fecha de fin</dt><dd>{{ fecha(actual.fecha_fin) }}</dd></div>
+        @if (actual.sede) { <div><dt>Sede</dt><dd>{{ actual.sede }}</dd></div> }
+        <div><dt>Estado actual</dt><dd><span class="badge" [class.badge-exito]="actual.estado === 'Activa'">{{ actual.estado }}</span></dd></div>
+      </dl>
+      @if (avisoCatalogos()) { <p class="error-text" role="status">No se pudieron consultar algunos catálogos de áreas o tipos de actividad.</p> }
+    </section>
+    <section class="panel" aria-labelledby="titulo-ponentes" [attr.aria-busy]="cargandoPonentes()">
+      <h2 id="titulo-ponentes">Ponentes asignados</h2>
+      @if (cargandoPonentes()) { <p role="status">Cargando ponentes…</p> }
+      @else if (errorPonentes()) {
+        <p class="error-text" role="alert">{{ errorPonentes() }}</p><button class="btn" type="button" (click)="cargar()">Reintentar</button>
+      } @else if (!ponentes().length) { <p>No hay ponentes asignados a esta actividad.</p> }
+      @else {
+        <ul class="tarjetas-ponentes" aria-label="Ponentes asignados">
+          @for (ponente of ponentes(); track ponente.id) {
+            <li class="tarjeta-ponente">
+              <h3>{{ ponente.nombre }}</h3>
+              <dl><div><dt>Procedencia</dt><dd>{{ ponente.procedencia || 'No disponible' }}</dd></div>
+                <div><dt>Especialidad</dt><dd>{{ ponente.especialidad || 'No disponible' }}</dd></div></dl>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+    <section class="panel participantes" aria-labelledby="titulo-participantes" [attr.aria-busy]="cargandoParticipantes()">
+      <h2 id="titulo-participantes">Participantes inscritos</h2>
+      @if (cargandoParticipantes()) { <p role="status">Cargando participantes…</p> }
+      @else if (errorParticipantes()) {
+        <p class="error-text" role="alert">{{ errorParticipantes() }}</p><button class="btn" type="button" (click)="cargar()">Reintentar</button>
+      } @else if (!participantes().length) { <p>No hay participantes inscritos en esta actividad.</p> }
+      @else {
+        <div class="tabla-caja" tabindex="0" role="region" aria-label="Participantes inscritos">
+          <table class="table"><caption class="sr-only">Participantes de {{ actual.nombre }}</caption>
+            <thead><tr><th scope="col">N.º</th><th scope="col">Nombres</th><th scope="col">Apellidos</th><th scope="col">DNI</th></tr></thead>
+            <tbody>@for (participante of visibles(); track participante.id; let numero = $index) {
+              <tr><td>{{ desde() + numero }}</td><th scope="row">{{ participante.nombres }}</th><td>{{ participante.apellidos }}</td><td>{{ participante.dni || 'No disponible' }}</td></tr>
+            }</tbody>
+          </table>
+        </div>
+        <nav class="paginacion" aria-label="Paginación de participantes inscritos">
+          <p role="status">{{ desde() }}–{{ hasta() }} de {{ participantes().length }} · Página {{ pagina() }} de {{ totalPaginas() }}</p>
+          <div class="tamano-pagina"><label for="tamano-detalle">Por página</label>
+            <select #tamano id="tamano-detalle" class="input" [value]="porPagina()" (change)="cambiarTamanoPagina(tamano.value)">
+              <option value="10">10</option><option value="20">20</option><option value="50">50</option>
+            </select>
+          </div>
+          <div class="paginacion-botones">
+            <button class="btn" type="button" [disabled]="pagina() <= 1" (click)="pagina.set(pagina() - 1)"><span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>Anterior</button>
+            <button class="btn" type="button" [disabled]="pagina() >= totalPaginas()" (click)="pagina.set(pagina() + 1)">Siguiente<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button>
+          </div>
+        </nav>
+      }
+    </section>
+    </div>
+  }
+</section>

@@ -19,7 +19,7 @@
       @if (errorInesperado()) {
         <div class="alert alert-error">
           <span class="material-symbols-outlined" aria-hidden="true">error</span>
-          <span>No se pudo iniciar sesión. Intenta nuevamente en unos minutos.</span>
+          <span>{{ errorInesperado() }}</span>
         </div>
       }
     </div>

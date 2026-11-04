@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -22,7 +23,7 @@ export class LoginComponent {
   protected readonly zonaLima = ZONA_HORARIA_LIMA;
   protected readonly enviando = signal(false);
   protected readonly resultado = signal<Exclude<ResultadoLogin, { tipo: 'exito' }> | null>(null);
-  protected readonly errorInesperado = signal(false);
+  protected readonly errorInesperado = signal<string | null>(null);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     email: ['', [Validators.required, Validators.email]],
@@ -38,7 +39,7 @@ export class LoginComponent {
     const { email, password } = this.form.getRawValue();
     this.enviando.set(true);
     this.resultado.set(null);
-    this.errorInesperado.set(false);
+    this.errorInesperado.set(null);
 
     this.auth.login(email, password).subscribe({
       next: resultado => {
@@ -50,11 +51,39 @@ export class LoginComponent {
           this.resultado.set(resultado);
         }
       },
-      error: () => {
+      error: (error: unknown) => {
         this.enviando.set(false);
-        this.errorInesperado.set(true);
+        this.errorInesperado.set(this.mensajeError(error));
       },
     });
+  }
+
+  private mensajeError(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      switch (error.status) {
+        case 0:
+        case 502:
+        case 503:
+        case 504:
+          return 'No se pudo conectar con el servidor. Verifica que el servicio esté disponible.';
+        case 403:
+          return 'Acceso denegado. Contacta con el administrador.';
+        case 404:
+          return 'El servicio de inicio de sesión no está disponible. Contacta con el administrador.';
+        case 419:
+          return 'La sesión expiró. Recarga la página e intenta nuevamente.';
+        case 422:
+          return 'Revisa el correo electrónico y la contraseña ingresados.';
+        case 429:
+          return 'Demasiados intentos. Espera unos minutos antes de intentar nuevamente.';
+      }
+
+      if (error.status >= 500) {
+        return 'Ocurrió un problema en el servidor. Intenta nuevamente.';
+      }
+    }
+
+    return 'No se pudo validar la sesión. Intenta nuevamente. Si el problema continúa, contacta con el administrador.';
   }
 
   /** Solo rutas internas: evita redirecciones abiertas con returnUrl. */
