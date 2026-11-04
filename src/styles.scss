@@ -139,8 +139,24 @@ a {
   outline-offset: 2px;
 }
 
-/* Material Symbols Outlined (trazo 300). La clase y la fuente vienen del <link> de index.html. */
+/* Subconjunto de la biblioteca existente servido localmente, sin depender de Google Fonts. */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 300;
+  font-display: block;
+  src: url('/fonts/material-symbols-outlined.ttf') format('truetype');
+}
 .material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 300;
+  font-feature-settings: 'liga';
+  font-variant-ligatures: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
   display: inline-block;
   width: 1em;
   height: 1em;

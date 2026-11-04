@@ -297,6 +297,7 @@ describe('Participantes: interfaz e inscripción', () => {
     h.routeNativeElement!.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
     expect(servicio.crear).toHaveBeenCalledOnceWith(jasmine.objectContaining({ id_persona: 2, id_actividad: 10, id_tipo_participacion: 3 }));
+    expect(servicio.documentos).toHaveBeenCalledTimes(1); // Solo el listado general previo: el modo contextual no solicita documentos.
     expect(h.routeNativeElement!.querySelector('form')).toBeNull();
     expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.value).toBe('10');
     expect(servicio.actividades).toHaveBeenCalledTimes(1); // Solo el montaje general previo de esta prueba.
@@ -372,5 +373,19 @@ describe('Participantes: interfaz e inscripción', () => {
     await enviar();
     expect(h.routeNativeElement!.querySelector('#inscripcion-tipo-error')?.textContent).toContain('Tipo no permitido por Laravel');
     expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#inscripcion-actividad')?.value).toBe('10');
+  });
+
+  it('inscripción contextual no consulta Documentos aunque ese endpoint devolvería 403', async () => {
+    servicio.documentos.calls.reset();
+    servicio.documentos.and.returnValue(throwError(() => ({ status: 403, mensaje: 'No autorizado', errores: {} })));
+    const h = await navegarContexto();
+    expect(servicio.documentos).not.toHaveBeenCalled();
+    expect(h.routeNativeElement!.querySelector<HTMLDialogElement>('.modal-participante dialog')?.open).toBeTrue();
+    expect(h.routeNativeElement!.textContent).toContain('Inscribir participante en: Actividad validada por Laravel');
+    expect(h.routeNativeElement!.querySelector('.modal-participante')?.textContent).not.toContain('Documentos');
+    await campoContexto(h, '#inscripcion-persona', '2'); await campoContexto(h, '#inscripcion-tipo', '3');
+    h.routeNativeElement!.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
+    expect(servicio.crear).toHaveBeenCalledWith(jasmine.objectContaining({ id_actividad: 10, id_persona: 2 }));
   });
 });

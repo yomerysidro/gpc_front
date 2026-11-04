@@ -35,7 +35,7 @@ objeto como fuente de verdad: cada destino valida el ID mediante `GET /api/activ
 Participantes conserva un único componente y formulario:
 
 - En modo contextual consulta el detalle, comprueba su ID/nombre y carga los catálogos
-  reales de Personas, Tipos de participación y Documentos. No pide además el catálogo
+  reales de Personas y Tipos de participación. No consulta Documentos ni el catálogo
   general de Actividades. Solo abre automáticamente Inscribir participante si la
   actividad es accesible, existe permiso `participantes.crear` y los catálogos
   obligatorios se han cargado correctamente.
@@ -64,6 +64,56 @@ disponible la selección manual, que se conserva al pasar entre pestañas.
 
 Ponentes mantiene el modal contextual y los contratos confirmados de asociación
 descritos más abajo; no se confunde el catálogo de RR. HH. con una asignación.
+
+## Corrección de icono, asociación y Documentos
+
+El texto `settings` no estaba incluido en el subconjunto de Material Symbols que
+cargaba `index.html`. Por eso se dibujaba como texto y la regla `overflow: hidden`
+del contenedor de un em recortaba la palabra hasta mostrar «S».
+
+Ahora se sirve localmente la misma biblioteca: `public/fonts/material-symbols-outlined.ttf`,
+con `settings` y los glifos usados por las seis tarjetas incluidos. `src/styles.scss`
+declara la fuente y sus ligaduras. No se instala una biblioteca nueva. El botón usa
+`settings` a 20 px, color `#075A9B`, título y nombre accesible «Gestionar actividad»,
+alineación centrada y foco visible. Se verificó el glifo real en Chrome por carga
+de fuente, métricas y capturas inspeccionadas en `artifacts/validacion-actividades`.
+
+El modal Ponentes ya no ofrece navegación a Recursos Humanos. Mantiene actividad
+e ID, catálogo de ponentes existentes y sus asignaciones. El selector deshabilita
+los ya asociados y el envío vuelve a comprobar la duplicación. Laravel conserva
+la validación 409 frente a carreras concurrentes. Después del éxito vuelve a
+consultar asignaciones. Solo se envía `id_actividad` e `id_persona_ponente` al
+endpoint existente; no se crean personas ni participaciones ordinarias.
+
+El formulario de inscripción no requiere documento: `ParticipationController::store`
+valida `id_persona`, `id_actividad`, `id_tipo_participacion`, `fecha_inscripcion` y
+`estado`. El frontend pedía además `/api/person-documents/list` para enriquecer la
+columna y la búsqueda de documentos del listado. Esa petición no tenía una
+comprobación local que generara 403: el servicio enviaba HTTP y el interceptor
+conservaba el rechazo del servidor. En Laravel, el endpoint está protegido por
+`auth.cookie` y `AuthorizeModuleOperation`; `PersonaDocumento` exige `personas.ver`.
+La lectura de `Persona` tiene un alias distinto, `personas.verpersonas`, por lo que
+tener acceso a Personas no confirma por sí solo el permiso del catálogo Documentos.
+No se verificó una sesión desplegada ni se modificaron esos permisos en Laravel.
+
+La navegación contextual ya no solicita Documentos. En el listado general se
+mantiene su lectura opcional solo con `personas.ver`; abrir el formulario no genera
+otra petición ni incluye errores de Documentos entre los catálogos obligatorios.
+Persona y tipo siguen validándose contra catálogos reales, y se mantienen los
+errores de validación de Laravel. Si el catálogo opcional del listado devuelve
+403, se conserva el error allí, sin bloquear la inscripción. No se cambian cookies,
+JWT, guards, interceptores, middleware ni permisos para evitar el rechazo.
+
+Archivos de esta corrección:
+
+- `src/index.html`, `src/styles.scss` y `src/app/shared/utils/iconos-disponibles.ts`.
+- `public/fonts/material-symbols-outlined.ttf`, su licencia y README.
+- `listar-actividades.component.ts`, `.html`, `.scss` y `.spec.ts` en
+  `src/app/pages/actividades/listar-actividades/`.
+- `listar-participantes.component.ts`, `.html` y `.spec.ts` en
+  `src/app/pages/participantes/listar-participantes/`.
+- `DESIGN.md`, este documento y las capturas con su README en
+  `artifacts/validacion-actividades/`.
 
 ## Contratos comprobados por lectura del backend local
 
@@ -153,7 +203,8 @@ Las pruebas automatizadas usan HTTP simulado; no escriben en Laravel ni PostgreS
 ## Validación
 
 - Compilación Angular de desarrollo y producción completadas.
-- Suite completa: **702 pruebas correctas**, en ChromeHeadless.
+- Suite completa: **706 pruebas correctas**, en ChromeHeadless, más una verificación
+  visual temporal con capturas de los componentes reales. El arnés visual se retiró.
 - `tsc -p tsconfig.spec.json --noEmit` sin errores.
 - La compilación de las pruebas comprueba también TypeScript.
 - `git diff --check` sin errores de espacios.

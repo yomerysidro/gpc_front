@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal, WritableSignal } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormGroup } from '@angular/forms';
 import { of, Subject, throwError } from 'rxjs';
 import { ApiResponse } from '../../../core/interfaces/api/api-response.interface';
@@ -325,6 +326,44 @@ describe('Pantalla de Actividades', () => {
     expect(servicio.desvincularPonente).toHaveBeenCalledOnceWith(21);
     expect(servicio.listarCatalogoPonentes).toHaveBeenCalledTimes(1);
     expect(servicio.consultarPonentes).toHaveBeenCalledTimes(2);
+  });
+
+  it('renderiza settings como glifo real de Material Symbols local, con foco y nombre accesible', async () => {
+    const fuentes = await document.fonts.load('300 20px "Material Symbols Outlined"', 'settings');
+    expect(fuentes.length).toBeGreaterThan(0);
+    const botonGestion = $<HTMLButtonElement>('tbody .gestionar-actividad');
+    expect(botonGestion.getAttribute('aria-label')).toBe('Gestionar actividad');
+    expect(botonGestion.title).toBe('Gestionar actividad');
+    expect(getComputedStyle(botonGestion).color).toBe('rgb(7, 90, 155)');
+    const glifo = botonGestion.querySelector<HTMLElement>('.material-symbols-outlined')!;
+    expect(getComputedStyle(glifo).fontFamily).toContain('Material Symbols Outlined');
+    const canvas = document.createElement('canvas').getContext('2d')!;
+    canvas.font = '300 20px "Material Symbols Outlined"';
+    expect(canvas.measureText('settings').width).toBeCloseTo(20, 0);
+    botonGestion.focus(); expect(document.activeElement).toBe(botonGestion);
+    await abrirPanel(); expect($<HTMLDialogElement>('.modal-acciones dialog').open).toBeTrue();
+  });
+
+  it('Ponentes conserva el contexto y no presenta enlaces ni formularios del catálogo maestro', async () => {
+    const ruta = TestBed.inject(Router).url;
+    await accion('Gestionar ponentes de esta actividad');
+    expect(TestBed.inject(Router).url).toBe(ruta);
+    expect($('.modal-ponentes .contexto-actividad').textContent).toContain(ACTIVIDAD.nombre);
+    expect($('.modal-ponentes a')).toBeNull();
+    expect($('.modal-ponentes').textContent).toContain('Asociar ponente');
+    expect($<HTMLSelectElement>('#actividad-ponente').options[1].value).toBe('8');
+    expect(servicio.vincularPonente).not.toHaveBeenCalled();
+  });
+
+  it('deshabilita ponentes asociados y protege contra duplicados incluso si se fuerza el control', async () => {
+    servicio.consultarPonentes.and.returnValue(of([{ id_actividad_ponente: 21, id_actividad: 7, id_persona_ponente: 8, nombre: 'Ana Pérez', errorNombre: null }]));
+    await accion('Gestionar ponentes de esta actividad');
+    expect($<HTMLSelectElement>('#actividad-ponente').options[1].disabled).toBeTrue();
+    const modelo = fixture.componentInstance as unknown as { formPonente: FormGroup };
+    modelo.formPonente.controls['id_persona_ponente'].setValue('8');
+    $('.modal-ponentes form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); await fixture.whenStable();
+    expect(servicio.vincularPonente).not.toHaveBeenCalled();
+    expect($('.modal-ponentes').textContent).toContain('ya está asociado');
   });
 
 });

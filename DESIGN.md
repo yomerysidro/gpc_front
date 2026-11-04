@@ -533,8 +533,8 @@ magick /tmp/escudo.png -background none -gravity center \( -clone 0 -resize 15x1
 - **`.barra-acciones`**: barra `position: sticky` al pie del contenido para pantallas que editan mucho de una vez (la matriz). A la izquierda `.barra-acciones-estado` con `role="status"` ("Hay cambios sin guardar" con ícono `warning`); a la derecha Descartar y Guardar cambios. Con cambios pendientes, salir de la ruta pide confirmación (`cambiosPendientesGuard`) y cerrar la pestaña activa la confirmación del navegador (`beforeunload`).
 
 ### Iconografía
-- **Fuente:** Material Symbols Outlined, trazo 300, tamaño óptico 20, sin relleno, a 20 px (`--icono-md`). Se carga desde Google Fonts con un subconjunto recortado por el parámetro `icon_names` en `src/index.html`.
-- **Lista espejo:** `src/app/shared/utils/iconos-disponibles.ts` (`ICONOS_DISPONIBLES`) repite exactamente esa lista. Las dos listas deben ser idénticas y estar en orden alfabético. Hoy: `add`, `admin_panel_settings`, `bar_chart`, `campaign`, `check_circle`, `chevron_left`, `chevron_right`, `dashboard`, `edit`, `error`, `event`, `expand_more`, `forward_to_inbox`, `group`, `how_to_reg`, `lock_open`, `logout`, `menu`, `military_tech`, `people`, `person_off`, `school`, `toggle_off`, `toggle_on`, `tune`, `visibility`, `visibility_off`, `warning`, `workspace_premium`.
+- **Fuente:** Material Symbols Outlined, trazo 300, tamano optico 20, sin relleno, a 20 px (`--icono-md`). Se sirve localmente desde `public/fonts/material-symbols-outlined.ttf`; `src/styles.scss` declara la fuente y sus ligaduras. Ver `public/fonts/README.md` para regenerar el subconjunto y su licencia.
+- **Lista espejo:** `src/app/shared/utils/iconos-disponibles.ts` (`ICONOS_DISPONIBLES`) refleja los glifos de la fuente local. Al incorporar un icono nuevo, regenerar el subconjunto y actualizar esta lista en orden alfabetico.
 - **Íconos de módulo:** cada módulo trae en el backend el nombre de un ícono de Material. Si se agrega un módulo con un ícono nuevo, hay que sumarlo a **las dos** listas (en orden alfabético). El sidebar descarta los nombres que no están en `ICONOS_DISPONIBLES` y deja solo la etiqueta, para que nunca se dibuje el nombre del ícono como texto.
 - **Dónde:** solo en el menú, acciones, controles y estados. Siempre con texto visible al lado o, en botones de solo ícono, con `aria-label`; el `span` del ícono lleva `aria-hidden="true"`.
 
@@ -560,7 +560,7 @@ magick /tmp/escudo.png -background none -gravity center \( -clone 0 -resize 15x1
 - **Do** usar los tokens (`var(--espacio-4)`, `var(--radio-sm)`, `var(--neutro-400)`) en lugar de valores sueltos.
 - **Do** mantener controles de 44 px, texto de input de 16px y el contorno de foco de 2 px en teal.
 - **Do** aplicar `.table` o `.dato` a toda cifra que se lee como dato.
-- **Do** agregar cada ícono nuevo a `icon_names` en `src/index.html` y a `ICONOS_DISPONIBLES`, en orden alfabético.
+- **Do** incluir cada icono nuevo en el subconjunto local y en `ICONOS_DISPONIBLES`, en orden alfabetico.
 - **Do** servir el escudo desde las versiones WebP recortadas al tamaño de uso (ver *Marca e imágenes*), con su par 2x en `srcset`, y escribir los nombres como texto, nunca como imagen.
 
 ### Don't:

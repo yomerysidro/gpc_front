@@ -55,6 +55,7 @@ export class ListarParticipantesComponent {
   protected readonly cargandoCatalogos = signal<Record<Catalogo, boolean>>({ personas: true, actividades: true, tipos: true, documentos: true });
   protected readonly erroresCatalogos = signal<Partial<Record<Catalogo, string>>>({});
   protected readonly avisosCatalogos = computed(() => Object.entries(this.erroresCatalogos()).filter(([, mensaje]) => !!mensaje));
+  protected readonly avisosFormulario = computed(() => this.avisosCatalogos().filter(([clave]) => clave !== 'documentos'));
   protected readonly etiquetas: Record<string, string> = { personas: 'Personas', actividades: 'Actividades', tipos: 'Tipos de participación', documentos: 'Documentos' };
   protected readonly cargandoAlgunCatalogo = computed(() => Object.values(this.cargandoCatalogos()).some(Boolean));
   protected readonly catalogosDisponibles = computed(() => ['personas', 'actividades', 'tipos'].every(clave =>
@@ -123,12 +124,17 @@ export class ListarParticipantesComponent {
     });
   }
   protected cargarCatalogos(): void {
-    this.cargandoCatalogos.set({ personas: true, actividades: true, tipos: true, documentos: true });
+    this.cargandoCatalogos.set({ personas: true, actividades: true, tipos: true, documentos: false });
     this.cargarCatalogo('personas', this.servicio.personas(), this.personas);
     if (this.parametroContexto() === null) this.cargarCatalogo('actividades', this.servicio.actividades(), this.actividades);
     else this.cargandoCatalogos.update(estado => ({ ...estado, actividades: false }));
     this.cargarCatalogo('tipos', this.servicio.tipos(), this.tipos);
-    this.cargarCatalogo('documentos', this.servicio.documentos(), this.documentos);
+    // Los documentos solo enriquecen la búsqueda del listado general. No forman parte del payload de inscripción.
+    if (this.parametroContexto() === null && this.auth.tienePermiso('personas.ver')) {
+      this.cargarCatalogo('documentos', this.servicio.documentos(), this.documentos);
+    } else {
+      this.documentos.set([]); this.erroresCatalogos.update(errores => ({ ...errores, documentos: undefined }));
+    }
   }
   private cargarCatalogo<T>(clave: Catalogo, consulta: Observable<readonly T[]>, destino: WritableSignal<readonly T[]>): void {
     this.cargasCatalogos.get(clave)?.unsubscribe(); destino.set([]);

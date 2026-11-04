@@ -35,16 +35,21 @@
   td, th { padding-block: var(--espacio-3); }
   .table th:first-child, .table td:first-child { padding-left: var(--espacio-4); }
   .table td:last-child { padding-right: var(--espacio-2); }
+  .table th:last-child { text-align: center; }
 }
 
 .nombre-actividad { min-width: 13rem; overflow-wrap: anywhere; }
 tr.registro-inactivo .nombre-actividad { font-weight: 500; }
-.acciones-fila { display: flex; justify-content: flex-end; gap: 2px; }
+.acciones-fila { display: flex; justify-content: center; gap: 2px; }
 .gestionar-actividad {
-  color: #1763b2;
+  color: #075a9b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  .material-symbols-outlined { font-size: 1.25rem; flex: none; }
   cursor: pointer;
   &:hover { background: #eef5fc; }
-  &:focus-visible { outline: 3px solid #1763b2; outline-offset: 2px; }
+  &:focus-visible { outline: 3px solid #075a9b; outline-offset: 2px; }
 }
 .contexto-actividad { overflow-wrap: anywhere; }
 .panel-acciones {
@@ -83,7 +88,8 @@ tr.registro-inactivo .nombre-actividad { font-weight: 500; }
 .formulario { min-width: 0; }
 
 // Alcance exclusivo del diálogo de Actividades; conserva el diseño compartido de Áreas.
-:host ::ng-deep app-dialogo.modal-actividad > dialog.dialogo {
+:host ::ng-deep app-dialogo.modal-actividad > dialog.dialogo,
+:host ::ng-deep app-dialogo.modal-ponentes > dialog.dialogo {
   width: min(48rem, calc(100vw - 2 * var(--espacio-4)));
   max-height: calc(100dvh - 2 * var(--espacio-4));
   overflow-y: auto;

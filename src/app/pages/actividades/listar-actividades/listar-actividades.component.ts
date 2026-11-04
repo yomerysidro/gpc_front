@@ -269,12 +269,14 @@ export class ListarActividadesComponent {
     this.formPonente.markAllAsTouched();
     const id = Number(this.formPonente.controls.id_persona_ponente.value);
     if (this.formPonente.invalid || !this.opcionesPonentes().some(p => p.id_persona_ponente === id)) return;
+    if (this.ponenteAsociado(id)) { this.avisoPonentes.set('El ponente ya está asociado a esta actividad.'); return; }
     this.guardandoPonente.set(true); this.avisoPonentes.set(null);
     this.servicio.vincularPonente(actividad.id_actividad, id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: respuesta => { this.guardandoPonente.set(false); this.avisoPonentes.set(respuesta.message); this.formPonente.reset(); this.cargarPonentes(); },
       error: (error: ErrorApi) => { this.guardandoPonente.set(false); this.avisoPonentes.set(this.mensajeError(error)); },
     });
   }
+  protected ponenteAsociado(id: number): boolean { return this.ponentes().some(p => p.id_persona_ponente === id); }
 
   protected bloquearEscapePonentes(evento: Event): void {
     if (this.guardandoPonente()) evento.preventDefault();

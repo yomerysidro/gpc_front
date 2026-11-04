@@ -95,9 +95,9 @@
       } @else {
         <p class="form-ayuda">Los campos con * son obligatorios.</p>
         @if (cargandoAlgunCatalogo()) { <p class="form-ayuda" role="status">Cargando catálogos…</p> }
-        @if (avisosCatalogos().length) {
+        @if (avisosFormulario().length) {
           <div class="alert alert-error" role="alert">
-            @for (aviso of avisosCatalogos(); track aviso[0]) { <p>No se pudo consultar {{ etiquetas[aviso[0]] }}. {{ aviso[1] }}</p> }
+            @for (aviso of avisosFormulario(); track aviso[0]) { <p>No se pudo consultar {{ etiquetas[aviso[0]] }}. {{ aviso[1] }}</p> }
             <button class="btn" type="button" (click)="cargarCatalogos()" [disabled]="cargandoAlgunCatalogo()">Reintentar catálogos</button>
           </div>
         }

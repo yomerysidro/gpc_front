@@ -68,7 +68,7 @@
                   <td><span class="badge" [class.badge-exito]="actividad.estado === 'Activa'">{{ actividad.estado }}</span></td>
                   <td><div class="acciones-fila">
                     <button type="button" class="btn btn-icono btn-sin-borde gestionar-actividad" title="Gestionar actividad"
-                      [attr.aria-label]="'Gestionar actividad: ' + actividad.nombre" (click)="gestionar(actividad)" [disabled]="cambiandoEstado() || enviando()">
+                      aria-label="Gestionar actividad" (click)="gestionar(actividad)" [disabled]="cambiandoEstado() || enviando()">
                       <span class="material-symbols-outlined" aria-hidden="true">settings</span>
                     </button>
                   </div></td>
@@ -146,7 +146,7 @@
 
 <app-dialogo #dialogoPonentes class="modal-ponentes" titulo="Ponentes de la actividad" (cerrado)="cerrarDetalle()" (keydown.escape)="bloquearEscapePonentes($event)">
   @if (actividadPonentes(); as actividad) {
-    <p>{{ actividad.nombre }} · Actividad #{{ actividad.id_actividad }}</p>
+    <p class="contexto-actividad">Actividad: <strong>{{ actividad.nombre }}</strong> · #{{ actividad.id_actividad }}</p>
     <p class="form-ayuda">Vincular un ponente no emite certificados. La certificación depende de la participación y los requisitos acreditados.</p>
     @if (avisoPonentes()) { <p role="status">{{ avisoPonentes() }}</p> }
     @if (cargandoPonentes()) { <p role="status">Consultando asignaciones…</p> }
@@ -162,20 +162,20 @@
         } @empty { <li>No hay ponentes asignados a esta actividad.</li> }
       </ul>
     }
-    <a *appHasPermission="'ponentes-firmantes.ver'" class="btn" routerLink="/gestion/ponentes" (click)="dialogoPonentes.cerrar()">Catálogo de Ponentes de RR. HH.</a>
     @if (cargandoCatalogoPonentes()) { <p role="status">Consultando catálogo de RR. HH.…</p> }
     @if (errorCatalogoPonentes()) {
       <p class="error-text" role="alert">{{ errorCatalogoPonentes() }}</p><button class="btn" type="button" (click)="cargarCatalogoPonentes()">Reintentar catálogo</button>
     }
-    <form *appHasPermission="'ponentes-firmantes.crear'" [formGroup]="formPonente" (ngSubmit)="vincularPonente()">
-      <div class="form-field"><label for="actividad-ponente">Ponente de Recursos Humanos</label>
+    <form *appHasPermission="'ponentes-firmantes.crear'" class="formulario" [formGroup]="formPonente" (ngSubmit)="vincularPonente()">
+      <div class="form-field"><label for="actividad-ponente">Ponente registrado *</label>
         <select id="actividad-ponente" class="input" formControlName="id_persona_ponente" [attr.aria-invalid]="formPonente.controls.id_persona_ponente.touched && formPonente.invalid">
           <option value="">Selecciona un ponente</option>
-          @for (ponente of opcionesPonentes(); track ponente.id_persona_ponente) { <option [value]="ponente.id_persona_ponente">{{ ponente.nombre }}</option> }
+          @for (ponente of opcionesPonentes(); track ponente.id_persona_ponente) { <option [value]="ponente.id_persona_ponente" [disabled]="ponenteAsociado(ponente.id_persona_ponente)">{{ ponente.nombre }}{{ ponenteAsociado(ponente.id_persona_ponente) ? ' · Ya asociado' : '' }}</option> }
         </select>
         @if (formPonente.controls.id_persona_ponente.touched && formPonente.invalid) { <p class="error-text">Selecciona un ponente del catálogo.</p> }
       </div>
-      <button class="btn btn-primary" type="submit" [disabled]="guardandoPonente() || cargandoCatalogoPonentes() || cargandoPonentes() || !!errorCatalogoPonentes() || !!errorPonentes() || !opcionesPonentes().length">{{ guardandoPonente() ? 'Procesando…' : 'Vincular ponente' }}</button>
+      @if (!cargandoCatalogoPonentes() && !errorCatalogoPonentes() && !opcionesPonentes().length) { <p role="status">No hay ponentes registrados disponibles en el catálogo autorizado.</p> }
+      <button class="btn btn-primary" type="submit" [disabled]="guardandoPonente() || cargandoCatalogoPonentes() || cargandoPonentes() || !!errorCatalogoPonentes() || !!errorPonentes() || !opcionesPonentes().length">{{ guardandoPonente() ? 'Procesando…' : 'Asociar ponente' }}</button>
     </form>
     <div class="dialogo-acciones"><button class="btn" type="button" [disabled]="guardandoPonente()" (click)="dialogoPonentes.cerrar()">Cerrar</button></div>
   }
