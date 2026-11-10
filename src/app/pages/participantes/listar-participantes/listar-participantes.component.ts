@@ -1,9 +1,9 @@
 import { DOCUMENT } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
-import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, Injector, signal, viewChild, WritableSignal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, inject, Injector, input, output, signal, untracked, viewChild, WritableSignal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { distinctUntilChanged, map, Observable, Subscription } from 'rxjs';
+import { catchError, distinctUntilChanged, map, Observable, of, startWith, Subscription, switchMap } from 'rxjs';
 import { ErrorApi } from '../../../core/interfaces/api/api-response.interface';
 import { ActividadInscripcion, DocumentoInscripcion, FiltrosInscripcion, Inscripcion, InscripcionPayload, PersonaInscripcion, TipoInscripcion } from '../../../core/interfaces/participantes/participante.interface';
 import { ParticipantesService } from '../../../core/services/participantes/participantes.service';
@@ -17,19 +17,39 @@ type Catalogo = 'personas' | 'actividades' | 'tipos' | 'documentos';
 
 @Component({
   selector: 'app-listar-participantes', standalone: true,
-  imports: [ReactiveFormsModule, PageTitleComponent, DialogoComponent, HasPermissionDirective],
+  imports: [RouterLink, ReactiveFormsModule, PageTitleComponent, DialogoComponent, HasPermissionDirective],
   templateUrl: './listar-participantes.component.html', styleUrl: './listar-participantes.component.scss',
 })
 export class ListarParticipantesComponent {
+  readonly contextoIntegrado = input<{ actividad: ActividadInscripcion; sesion: { id: number; nombre: string } } | null>(null);
+  readonly inscripcionGuardada = output<Inscripcion>();
+  readonly formularioCerrado = output<void>();
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly servicio = inject(ParticipantesService);
+  protected readonly sesionContexto = toSignal(this.route ? this.route.queryParamMap.pipe(
+    map(params => ({ actividad: params.get('id_actividad') ?? params.get('actividad'), sesion: params.get('id_sesion') })),
+    distinctUntilChanged((a, b) => a.actividad === b.actividad && a.sesion === b.sesion),
+    switchMap(({ actividad, sesion }) => {
+      if (sesion === null) return of({ cargando: false, error: null, sesion: null });
+      if (!actividad || !/^[1-9]\d*$/.test(sesion) || !Number.isSafeInteger(Number(sesion)) || !/^[1-9]\d*$/.test(actividad)) {
+        return of({ cargando: false, error: 'El contexto de sesión no es válido.', sesion: null });
+      }
+      return this.servicio.sesion(Number(sesion)).pipe(map(fila => {
+        if (Number(fila['id_actividad']) !== Number(actividad) || Number(fila['id_actividad_sesion']) !== Number(sesion)) {
+          throw new Error('La sesión no pertenece a la actividad seleccionada.');
+        }
+        return { cargando: false, error: null, sesion: { id: Number(sesion), nombre: String(fila['nombre'] || 'Nombre no disponible') } };
+      }), catchError(() => of({ cargando: false, error: 'No se pudo verificar la sesión de esta actividad.', sesion: null })),
+        startWith({ cargando: true, error: null, sesion: null }));
+    }),
+  ) : of({ cargando: false, error: null, sesion: null }), { initialValue: { cargando: false, error: null, sesion: null } });
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly documento = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly dialogoFormulario = viewChild.required<DialogoComponent>('dialogoFormulario');
   private readonly elementoFormulario = viewChild.required('dialogoFormulario', { read: ElementRef<HTMLElement> });
-  private readonly botonInscribir = viewChild.required<ElementRef<HTMLButtonElement>>('botonInscribir');
+  private readonly botonInscribir = viewChild<ElementRef<HTMLButtonElement>>('botonInscribir');
   private overflowAnterior: string | null = null;
   private readonly dialogoDetalle = viewChild.required<DialogoComponent>('dialogoDetalle');
   private readonly dialogoEstado = viewChild.required<DialogoComponent>('dialogoEstado');
@@ -39,6 +59,7 @@ export class ListarParticipantesComponent {
   private guardado?: Subscription;
   private readonly cargasCatalogos = new Map<Catalogo, Subscription>();
   private inscripcionPendiente = false;
+  private readonly listo = signal(false);
   protected readonly parametroContexto = signal<string | null>(null);
   protected readonly actividadContexto = signal<ActividadInscripcion | null>(null);
   protected readonly cargandoContexto = signal(false);
@@ -103,14 +124,20 @@ export class ListarParticipantesComponent {
   });
 
   constructor() {
+    effect(() => {
+      const contexto = this.contextoIntegrado();
+      if (this.listo() && contexto) untracked(() => this.establecerContexto(String(contexto.actividad.id_actividad), contexto.actividad));
+    }, { allowSignalWrites: true });
     this.destroyRef.onDestroy(() => this.restaurarDesplazamiento());
     afterNextRender(() => {
       const dialogo = this.elementoFormulario().nativeElement.querySelector('dialog')!;
       const cancelar = (evento: Event) => { evento.preventDefault(); this.cerrarFormulario(); };
       dialogo.addEventListener('cancel', cancelar);
       this.destroyRef.onDestroy(() => dialogo.removeEventListener('cancel', cancelar));
+      this.listo.set(true);
+      if (this.contextoIntegrado()) return;
       if (this.route) this.route.queryParamMap.pipe(map(params => params.get('id_actividad') ?? params.get('actividad')),
-        distinctUntilChanged(), takeUntilDestroyed(this.destroyRef)).subscribe(valor => this.establecerContexto(valor));
+        distinctUntilChanged(), takeUntilDestroyed(this.destroyRef)).subscribe(valor => { if (!this.contextoIntegrado()) this.establecerContexto(valor); });
       else this.establecerContexto(null);
     });
     this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.erroresServidor.set({}));
@@ -148,7 +175,7 @@ export class ListarParticipantesComponent {
       },
     }));
   }
-  private establecerContexto(valor: string | null): void {
+  private establecerContexto(valor: string | null, validada?: ActividadInscripcion): void {
     this.guardado?.unsubscribe(); this.enviando.set(false);
     for (const carga of this.cargasCatalogos.values()) carga.unsubscribe();
     this.cargasCatalogos.clear();
@@ -157,12 +184,17 @@ export class ListarParticipantesComponent {
     this.dialogoFormulario().cerrar(); this.formularioAbierto.set(false); this.restaurarDesplazamiento();
     this.form.enable({ emitEvent: false }); this.form.reset(); this.editando.set(null);
     this.actividadContexto.set(null); this.parametroContexto.set(valor); this.errorContexto.set(null);
-    this.inscripcionPendiente = valor !== null;
+    this.inscripcionPendiente = valor !== null && this.route?.snapshot.queryParamMap.get('inscribir') !== 'no';
     this.filtros.set({ busqueda: '', actividad: '', tipo: '', estado: '' }); this.pagina.set(1);
     this.cargandoContexto.set(valor !== null);
     this.erroresCatalogos.set({}); this.actividades.set([]); this.personas.set([]); this.tipos.set([]); this.documentos.set([]);
     this.cargandoCatalogos.set({ personas: false, actividades: false, tipos: false, documentos: false });
     this.cargar();
+    if (validada && this.contextoIntegrado()) {
+      this.actividadContexto.set(validada); this.cargandoContexto.set(false);
+      this.filtros.update(f => ({ ...f, actividad: String(validada.id_actividad) }));
+      this.inscripcionPendiente = false; this.cargarCatalogos(); this.abrirFormulario(null); return;
+    }
     if (valor !== null) {
       if (!/^[1-9]\d*$/.test(valor) || !Number.isSafeInteger(Number(valor))) {
         this.errorContexto.set('El identificador de actividad no es válido.'); this.cargandoContexto.set(false); return;
@@ -204,11 +236,11 @@ export class ListarParticipantesComponent {
   protected esEstadoOfrecido(valor: string): boolean { return this.estados.some(estado => estado.valor === valor); }
   protected nombrePersona(id: number): string {
     const persona = this.personasPorId().get(id);
-    return persona ? [persona.nombres, persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' ') : `Persona no disponible (#${id})`;
+    return persona ? [persona.nombres, persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' ') : 'Nombre no disponible';
   }
   protected documentoPersona(id: number): string { return this.documentosPorPersona().get(id)?.join(' / ') ?? ''; }
-  protected nombreActividad(id: number): string { return this.actividadesPorId().get(id) ?? `Actividad no disponible (#${id})`; }
-  protected nombreTipo(id: number): string { return this.tiposPorId().get(id) ?? `Tipo no disponible (#${id})`; }
+  protected nombreActividad(id: number): string { return this.actividadesPorId().get(id) ?? 'Nombre no disponible'; }
+  protected nombreTipo(id: number): string { return this.tiposPorId().get(id) ?? 'Nombre no disponible'; }
   protected fecha(valor: string): string { const [anio, mes, dia] = valor.slice(0, 10).split('-'); return `${dia}/${mes}/${anio}`; }
   protected abrirFormulario(item: Inscripcion | null): void {
     if (!item && !this.auth.tienePermiso('participantes.crear')) return;
@@ -250,7 +282,8 @@ export class ListarParticipantesComponent {
     this.form.reset(); this.editando.set(null); this.cargandoEdicion.set(false);
     this.errorFormulario.set(null); this.erroresServidor.set({});
     this.restaurarDesplazamiento();
-    afterNextRender(() => this.botonInscribir().nativeElement.focus(), { injector: this.injector });
+    afterNextRender(() => this.botonInscribir()?.nativeElement.focus(), { injector: this.injector });
+    if (this.contextoIntegrado()) this.formularioCerrado.emit();
   }
   private restaurarDesplazamiento(): void {
     if (this.overflowAnterior === null) return;
@@ -288,6 +321,7 @@ export class ListarParticipantesComponent {
     this.guardado = consulta.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: respuesta => {
         this.form.enable({ emitEvent: false }); this.enviando.set(false); this.cerrarFormulario();
+        if (this.contextoIntegrado()) { this.inscripcionGuardada.emit(respuesta.data); return; }
         this.aviso.set({ tipo: 'exito', texto: respuesta.message }); this.limpiarFiltros(); this.cargar();
       },
       error: (error: ErrorApi) => {

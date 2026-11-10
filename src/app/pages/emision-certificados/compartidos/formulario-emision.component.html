@@ -26,7 +26,7 @@
                 @if (estadoHistorico() !== null) { <option value="" disabled>Seleccionar estado</option> }
                 @for (estado of estadosAsistencias; track estado.valor) { <option [value]="estado.valor">{{ estado.etiqueta }}</option> }
               </select>
-              @if (estadoHistorico(); as actual) { <small class="nota">Estado actual: {{ actual }}. Selecciona Activo o Inactivo para actualizarlo.</small> }
+              @if (estadoHistorico()) { <small class="nota">Estado actual sin clasificación. Selecciona un estado de asistencia para regularizarlo.</small> }
             } @else if (campo.tipo === 'booleano') {
               <input [id]="recurso() + '-' + campo.nombre" type="checkbox" [formControlName]="campo.nombre" />
             } @else if (recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador') {

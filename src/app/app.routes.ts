@@ -90,8 +90,17 @@ export const routes: Routes = [
       { path: 'pendientes/reportes-actividades', redirectTo: '/reportes/actividades', pathMatch: 'full' },
       { path: 'pendientes/reportes-certificados', redirectTo: '/reportes/certificados', pathMatch: 'full' },
       { path: 'pendientes/reportes-asistencia', redirectTo: '/reportes/asistencia', pathMatch: 'full' },
-      { path: 'solicitudes', pathMatch: 'full', redirectTo: '/solicitudes/mis-solicitudes' },
-      ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.filter(entrada => entrada.habilitado && !!VISTAS_SOLICITUDES[entrada.id])
+      {
+        path: 'solicitudes', loadComponent: VISTAS_SOLICITUDES['mis-solicitudes'],
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'mis-solicitudes' },
+          { path: 'mis-solicitudes', children: [], canActivate: [permissionGuard], runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+            data: { titulo: 'Mis solicitudes', permiso: 'solicitudes.propias' } },
+          { path: 'nueva', children: [], canActivate: [permissionGuard], runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+            data: { titulo: 'Nueva solicitud de actividad', permiso: 'solicitudes.crear', permisoEdicion: 'solicitudes.editar' } },
+        ],
+      },
+      ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.filter(entrada => entrada.habilitado && entrada.id !== 'mis-solicitudes' && !!VISTAS_SOLICITUDES[entrada.id])
         .map(entrada => ({
           path: entrada.path!.slice(1), loadComponent: VISTAS_SOLICITUDES[entrada.id],
           canActivate: [permissionGuard], runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,

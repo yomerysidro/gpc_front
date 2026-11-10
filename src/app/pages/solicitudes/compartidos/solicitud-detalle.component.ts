@@ -23,7 +23,7 @@ import { SolicitudEstadoBadgeComponent } from './solicitud-estado-badge.componen
     <div><dt>Tipo de actividad</dt><dd>{{ tipo() }}</dd></div>
     <div><dt>Fecha de inicio</dt><dd>{{ datos().inicio | date:'dd/MM/yyyy' }}</dd></div>
     <div><dt>Fecha de fin</dt><dd>{{ datos().fin | date:'dd/MM/yyyy' }}</dd></div>
-    <div><dt>Lugar</dt><dd>{{ datos().lugar }}</dd></div>
+    @if (mostrarSede()) { <div><dt>Lugar</dt><dd>{{ datos().lugar }}</dd></div> }
     <div class="ancho"><dt>Descripción</dt><dd>{{ datos().descripcion }}</dd></div>
     <div class="ancho"><dt>Objetivo o justificación</dt><dd>{{ datos().objetivo }}</dd></div>
     @if (registro(); as fila) {
@@ -105,6 +105,7 @@ export class SolicitudDetalleComponent implements OnChanges {
   }
   protected readonly textoRevisor = textoRevisorSolicitud;
   readonly revision = input(false);
+  readonly mostrarSede = input(true);
   readonly datos = input.required<DatosSolicitud>();
   readonly area = input.required<string>();
   readonly responsable = input.required<string>();

@@ -1,6 +1,6 @@
-import { Component, computed, inject, viewChild } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, distinctUntilChanged, map, of, startWith, switchMap, tap } from 'rxjs';
 import { EmisionCertificadosService } from '../../../core/services/emision-certificados/emision-certificados.service';
 import { aErrorApi } from '../../../shared/utils/error-api';
@@ -23,7 +23,7 @@ interface ConfiguracionActividades {
 
 /** Conserva los CRUD existentes; solo Sesiones/asistencia configura navegación por pestañas. */
 @Component({
-  selector: 'app-actividades', standalone: true, imports: [PageTitleComponent, ListadoEmisionComponent],
+  selector: 'app-actividades', standalone: true, imports: [RouterLink, PageTitleComponent, ListadoEmisionComponent],
   templateUrl: './actividades.component.html',
   styleUrls: ['../compartidos/emision.scss', '../../../shared/components/gestion-tabs/gestion-tabs.component.scss'],
 })
@@ -34,6 +34,8 @@ export class ActividadesComponent {
   private readonly listado = viewChild(ListadoEmisionComponent);
   protected readonly estados = new Map<RecursoEmision, EstadoNavegacionListado>();
   private actividadContexto: string | null = null;
+  private teniaSeleccion = false;
+  protected readonly revisionNavegacion = signal(0);
   protected readonly contexto = toSignal(this.route.queryParamMap.pipe(
     map(params => params.get('id_actividad') ?? params.get('actividad')), distinctUntilChanged(),
     switchMap(valor => {
@@ -49,10 +51,18 @@ export class ActividadesComponent {
   protected readonly configuracion = toSignal(this.route.data.pipe(map(data => data as ConfiguracionActividades)), { requireSync: true });
   private readonly parametros = toSignal(this.route.queryParamMap.pipe(
     tap(parametros => {
+      const tieneSeleccion = ['id_actividad', 'actividad', 'actividad_filtro', 'id_sesion', 'sesion_filtro'].some(clave => parametros.has(clave));
+      const limpiar = this.teniaSeleccion && !tieneSeleccion && !!this.listado()?.obtenerEstadoNavegacion().filtrosSesiones?.actividad;
+      this.teniaSeleccion = tieneSeleccion;
+      if (limpiar) {
+        this.estados.clear();
+        this.revisionNavegacion.update(revision => revision + 1);
+      }
       const contexto = parametros.get('id_actividad') ?? parametros.get('actividad');
       if (this.actividadContexto !== contexto) {
         this.actividadContexto = contexto; this.estados.clear(); return;
       }
+      if (limpiar) return;
       const opciones = this.configuracion().pestanas;
       const destino = opciones?.find(opcion => opcion.id === parametros.get('pestana')) ?? opciones?.[0];
       const actual = this.listado();
@@ -72,12 +82,22 @@ export class ActividadesComponent {
   protected readonly pestana = computed(() => this.configuracion().pestanas?.find(opcion => opcion.id === this.parametros().get('pestana'))
     ?? this.configuracion().pestanas?.[0]);
   private readonly estadoActividad = computed<EstadoNavegacionListado | null>(() => {
-    const id = Number(this.parametros().get('id_actividad') ?? this.parametros().get('actividad'));
+    const id = Number(this.parametros().get('id_actividad') ?? this.parametros().get('actividad') ?? this.parametros().get('actividad_filtro'));
     return Number.isSafeInteger(id) && id > 0 ? { campo: '', valor: '', pagina: 1,
-      filtrosSesiones: { ...FILTROS_SESIONES_VACIOS, actividad: String(id) } } : null;
+      filtrosSesiones: { ...FILTROS_SESIONES_VACIOS, actividad: String(id), sesion: this.parametros().get('id_sesion') ?? this.parametros().get('sesion_filtro') ?? '' } } : null;
   });
   protected estadoInicial(recurso: RecursoEmision): EstadoNavegacionListado | null {
-    return this.estados.get(recurso) ?? this.estadoActividad();
+    const actual = this.listado();
+    if (actual?.inicializado && actual.recurso() === recurso) {
+      return actual.estadoInicial();
+    }
+    const previo = this.estados.get(recurso);
+    if (previo && previo.filtrosSesiones?.actividad === this.estadoActividad()?.filtrosSesiones?.actividad) return previo;
+    if (recurso === 'attendance' && this.parametros().get('id_sesion')) return this.estadoActividad();
+    const inicial = this.estadoActividad();
+    return recurso === 'activity-session' && inicial?.filtrosSesiones
+      ? { ...inicial, filtrosSesiones: { ...inicial.filtrosSesiones, sesion: '' } }
+      : previo ?? inicial;
   }
 
   protected seleccionar(id: string): void {

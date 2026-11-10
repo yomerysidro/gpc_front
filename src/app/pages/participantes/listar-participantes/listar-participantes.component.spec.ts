@@ -37,7 +37,8 @@ describe('Participantes: interfaz e inscripción', () => {
   beforeEach(async () => {
     permitido = true;
     puedeCrear = true;
-    servicio = jasmine.createSpyObj('ParticipantesService', ['listar', 'personas', 'actividades', 'tipos', 'documentos', 'obtener', 'crear', 'actualizar', 'cambiarEstado', 'actividad']);
+    servicio = jasmine.createSpyObj('ParticipantesService', ['listar', 'personas', 'actividades', 'tipos', 'documentos', 'obtener', 'crear', 'actualizar', 'cambiarEstado', 'actividad', 'sesion']);
+    servicio.sesion.and.returnValue(of({ id_actividad_sesion: 15, id_actividad: 10, nombre: 'Sesión validada' }));
     servicio.actividad.and.returnValue(of({ id_actividad: 10, nombre: 'Actividad validada por Laravel' }));
     servicio.listar.and.returnValue(of([INSCRIPCION]));
     servicio.personas.and.returnValue(of([
@@ -68,6 +69,46 @@ describe('Participantes: interfaz e inscripción', () => {
     expect(vista.querySelector('main h1')?.textContent).toBe('Participantes');
     expect(vista.querySelectorAll('app-sidebar').length).toBe(1);
     expect(vista.querySelectorAll('app-header').length).toBe(1);
+  });
+  it('el modo modal contextual reutiliza la inscripción y rechaza duplicarla aunque cambie la sesión', async () => {
+    fixture.destroy(); fixture = TestBed.createComponent(ListarParticipantesComponent);
+    fixture.componentRef.setInput('contextoIntegrado', { actividad: { id_actividad: 10, nombre: 'Jornada institucional' }, sesion: { id: 99, nombre: 'Otra sesión de la misma actividad' } });
+    fixture.autoDetectChanges(); await fixture.whenStable();
+    fixture.detectChanges(); await fixture.whenStable();
+    expect($<HTMLDialogElement>('.modal-participante dialog').open).toBeTrue();
+    expect($<HTMLSelectElement>('#inscripcion-actividad').value).toBe('10');
+    expect($<HTMLSelectElement>('#inscripcion-actividad').disabled).toBeTrue();
+    expect(fixture.nativeElement.querySelector('table')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Otra sesión de la misma actividad');
+    await escribir('#inscripcion-persona', '1'); await escribir('#inscripcion-tipo', '3'); await escribir('#inscripcion-estado', 'Activo'); await guardar();
+    expect(fixture.nativeElement.textContent).toContain('La persona ya está inscrita en esta actividad.');
+    expect(servicio.crear).not.toHaveBeenCalled();
+    expect(servicio.actividad).not.toHaveBeenCalled();
+  });
+  it('conserva sesión validada y muestra inscripciones de actividad sin duplicarlas', async () => {
+    fixture.destroy();
+    const harness = await RouterTestingHarness.create('/certificaciones/participantes?id_actividad=10&id_sesion=15&inscribir=no');
+    harness.detectChanges(); await harness.fixture.whenStable(); harness.detectChanges();
+    const vista = harness.routeNativeElement!;
+    expect(servicio.sesion).toHaveBeenCalledOnceWith(15);
+    expect(vista.textContent).toContain('Sesión validada');
+    expect(vista.querySelectorAll('tbody tr').length).toBe(1);
+    expect(Array.from(vista.querySelectorAll('a')).map(a => a.getAttribute('href'))).toContain('/certificaciones/sesiones-asistencia?id_actividad=10&id_sesion=15&pestana=asistencias');
+    expect(servicio.crear).not.toHaveBeenCalled();
+    await TestBed.inject(Router).navigateByUrl('/certificaciones/participantes'); await harness.fixture.whenStable(); harness.detectChanges();
+    expect(vista.textContent).not.toContain('Sesión validada');
+    expect(vista.querySelector('a[href*="id_sesion"]')).toBeNull();
+  });
+  it('rechaza una sesión ajena sin ofrecer asistencia con ese ID', async () => {
+    servicio.sesion.and.returnValue(of({ id_actividad_sesion: 15, id_actividad: 99, nombre: 'Sesión ajena' }));
+    fixture.destroy();
+    const harness = await RouterTestingHarness.create('/certificaciones/participantes?id_actividad=10&id_sesion=15&inscribir=no');
+    harness.detectChanges(); await harness.fixture.whenStable(); harness.detectChanges();
+    const vista = harness.routeNativeElement!;
+    expect(vista.textContent).toContain('No se pudo verificar la sesión de esta actividad.');
+    expect(vista.textContent).not.toContain('Sesión ajena');
+    expect(vista.querySelector('a[href*="id_sesion"]')).toBeNull();
+    expect(servicio.crear).not.toHaveBeenCalled();
   });
   it('recibe la actividad de navegación y la conserva al abrir una inscripción sin guardarla', async () => {
     fixture.destroy();
@@ -289,6 +330,11 @@ describe('Participantes: interfaz e inscripción', () => {
     respuesta.next({ id_actividad: 10, nombre: 'Actividad real del detalle' }); respuesta.complete();
     h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
     expect(h.routeNativeElement!.textContent).toContain('Inscribir participante en: Actividad real del detalle');
+    const volver = Array.from(h.routeNativeElement!.querySelectorAll('a')).find(enlace => enlace.textContent?.includes('Volver a actividad'));
+    expect(volver?.getAttribute('href')).toBe('/certificaciones/actividades?id_actividad=10');
+    const controlar = Array.from(h.routeNativeElement!.querySelectorAll('a')).find(enlace => enlace.textContent?.includes('Controlar asistencia'));
+    expect(controlar?.getAttribute('href')).toBe('/certificaciones/sesiones-asistencia?id_actividad=10&pestana=asistencias');
+    expect(servicio.cambiarEstado).not.toHaveBeenCalled();
     const actividad = h.routeNativeElement!.querySelector<HTMLSelectElement>('#inscripcion-actividad')!;
     expect(actividad.disabled).toBeTrue(); expect(actividad.value).toBe('10');
     await campoContexto(h, '#inscripcion-persona', '2'); await campoContexto(h, '#inscripcion-tipo', '3');
@@ -303,13 +349,15 @@ describe('Participantes: interfaz e inscripción', () => {
     expect(servicio.actividades).toHaveBeenCalledTimes(1); // Solo el montaje general previo de esta prueba.
   });
 
-  it('cancelar conserva el contexto y navegar desde Sidebar lo limpia y permite seleccionar actividad', async () => {
+  it('cancelar conserva el contexto y el Sidebar abre el listado general sin actividad impuesta', async () => {
     const h = await navegarContexto();
     const cancelar = Array.from(h.routeNativeElement!.querySelectorAll<HTMLButtonElement>('button')).find(b => b.textContent?.trim() === 'Cancelar')!;
     cancelar.click(); h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
     expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.value).toBe('10');
     expect(h.routeNativeElement!.querySelector('form')).toBeNull(); expect(servicio.crear).not.toHaveBeenCalled();
-    await h.navigateByUrl('/certificaciones/participantes'); h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
+    h.routeNativeElement!.querySelector<HTMLAnchorElement>('app-sidebar a[href="/certificaciones/participantes"]')!.click();
+    await h.fixture.whenStable(); h.detectChanges();
+    expect(TestBed.inject(Router).url).toBe('/certificaciones/participantes');
     expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.disabled).toBeFalse();
     expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.value).toBe('');
     h.routeNativeElement!.querySelector<HTMLButtonElement>('.encabezado .btn-primary')!.click();

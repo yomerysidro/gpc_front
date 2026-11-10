@@ -11,9 +11,12 @@
     <button id="actividades-tab-listado" type="button" role="tab" aria-controls="actividades-panel-listado"
       [attr.aria-selected]="pestana() === 'listado'" [attr.tabindex]="pestana() === 'listado' ? 0 : -1"
       (click)="volverAlListado()">Mis actividades</button>
-    <button id="actividades-tab-detalle" type="button" role="tab" aria-controls="actividades-panel-detalle"
+    <span class="ayuda-pestana" [attr.tabindex]="actividadDetalle() === null ? 0 : null" aria-describedby="ayuda-detalles-actividad">
+    <button id="actividades-tab-detalle" type="button" role="tab" aria-controls="actividades-panel-detalle" aria-describedby="ayuda-detalles-actividad"
       [disabled]="actividadDetalle() === null" [attr.aria-selected]="pestana() === 'detalle'"
       [attr.tabindex]="pestana() === 'detalle' ? 0 : -1" (click)="actividadDetalle() !== null && pestana.set('detalle')">Detalles de la actividad</button>
+      <span id="ayuda-detalles-actividad" class="tooltip-detalles" role="tooltip">Selecciona una actividad para ver sus detalles</span>
+    </span>
   </div>
 
   <div id="actividades-panel-listado" role="tabpanel" aria-labelledby="actividades-tab-listado" tabindex="0" [hidden]="pestana() !== 'listado'">
@@ -54,23 +57,24 @@
     </div>
 
     <div [attr.aria-busy]="cargando()">
-      @if (cargando()) {
-        <p role="status">Cargando actividades…</p>
-      } @else if (errorCarga()) {
+      @if (cargando() || !listadoListo()) {
+        <p role="status">{{ listadoListo() ? 'Actualizando actividades…' : 'Cargando actividades…' }}</p>
+      }
+      @if (errorCarga()) {
         <p class="form-ayuda aviso-datos" role="status">No se pudo cargar el listado de actividades. {{ errorCarga() }}</p>
         <button type="button" class="btn" (click)="cargar()">Reintentar</button>
       }
-        <div class="tabla-caja" tabindex="0" role="region" aria-label="Listado de actividades con desplazamiento horizontal">
+        <div class="tabla-caja" [hidden]="!listadoListo()" tabindex="0" role="region" aria-label="Listado de actividades con desplazamiento horizontal">
           <table class="table">
             <caption class="sr-only">Actividades registradas</caption>
             <thead><tr>
-              <th scope="col">Nombre</th><th scope="col">Área</th><th scope="col">Tipo de actividad</th>
+              <th scope="col">N.º</th><th scope="col">Nombre</th><th scope="col">Área</th><th scope="col">Tipo de actividad</th>
               <th scope="col">Fecha de inicio</th><th scope="col">Fecha de fin</th><th scope="col">Estado</th><th scope="col">Acciones</th>
             </tr></thead>
             <tbody>
-              @for (actividad of visibles(); track actividad.id_actividad) {
+              @for (actividad of listadoListo() ? visibles() : []; track actividad.id_actividad; let indice = $index) {
                 <tr [class.registro-inactivo]="actividad.estado === 'Cerrada'">
-                  <th scope="row" class="nombre-actividad">{{ actividad.nombre }}</th>
+                  <td>{{ (paginaActual() - 1) * porPagina() + indice + 1 }}</td><th scope="row" class="nombre-actividad">{{ actividad.nombre }}</th>
                   <td>{{ nombreArea(actividad.id_area, actividad.area_nombre) }}</td>
                   <td>{{ nombreTipo(actividad.id_tipo_actividad, actividad.tipo_actividad_nombre) }}</td>
                   <td class="fecha">{{ fecha(actividad.fecha_inicio) }}</td><td class="fecha">{{ fecha(actividad.fecha_fin) }}</td>
@@ -87,7 +91,7 @@
                   </div></td>
                 </tr>
               } @empty {
-                <tr><td colspan="7" class="estado-vacio">
+                <tr><td colspan="8" class="estado-vacio">
                   @if (cargando()) { Cargando actividades… }
                   @else if (errorCarga()) { Datos del listado no disponibles. }
                   @else if (!actividades().length) {
@@ -101,8 +105,7 @@
         </div>
         <nav class="paginacion" aria-label="Paginación de actividades">
           <p class="dato" role="status">
-            @if (errorCarga()) { Total no disponible }
-            @else if (cargando()) { Cargando total… }
+            @if (!listadoListo()) { Cargando total… }
             @else { {{ rango().desde }}–{{ rango().hasta }} de {{ rango().total }} }
             <span class="sr-only"> · Página {{ paginaActual() }} de {{ totalPaginas() }}</span>
           </p>
@@ -121,8 +124,12 @@
     </div>
   </div>
   <div id="actividades-panel-detalle" role="tabpanel" aria-labelledby="actividades-tab-detalle" tabindex="0" [hidden]="pestana() !== 'detalle'">
+    @if (aviso(); as mensaje) { <p role="status" class="alert" [class.alert-exito]="mensaje.tipo === 'exito'" [class.alert-error]="mensaje.tipo === 'error'">{{ mensaje.texto }}</p> }
     @if (actividadDetalle(); as id) {
-      <app-detalle-actividad [actividadId]="id" (volver)="volverAlListado()" />
+      <app-detalle-actividad [actividadId]="id" [revision]="revisionDetalle()" [solicitudRuta]="rutaSolicitud()" [operando]="cambiandoEstado() || enviando()"
+        (volver)="volverAlListado()" (gestionarPonentes)="mostrarPonentesContextuales($event)" (editarActividad)="ejecutar('editar', $event)" (cerrarActividad)="ejecutar('cerrar', $event)" />
+    } @else {
+      <p>Selecciona una actividad para ver sus detalles.</p>
     }
   </div>
 </section>
@@ -163,7 +170,7 @@
   }
 </app-dialogo>
 
-<app-dialogo #dialogoPonentes class="modal-ponentes" titulo="Ponentes de la actividad" (cerrado)="cerrarDetalle()" (keydown.escape)="bloquearEscapePonentes($event)">
+<app-dialogo #dialogoPonentes class="modal-ponentes" titulo="Ponentes de la actividad" [mostrarCerrar]="true" [cierreControlado]="true" (cierreSolicitado)="!guardandoPonente() && dialogoPonentes.cerrar()" (cerrado)="cerrarDetalle()" (keydown.escape)="bloquearEscapePonentes($event)">
   @if (actividadPonentes(); as actividad) {
     <p class="contexto-actividad">Actividad: <strong>{{ actividad.nombre }}</strong> · #{{ actividad.id_actividad }}</p>
     <p class="form-ayuda">Vincular un ponente no emite certificados. La certificación depende de la participación y los requisitos acreditados.</p>

@@ -22,6 +22,8 @@ export interface ContextoSolicitud {
   readonly puedeCrear: boolean;
 }
 export interface Solicitud extends DatosSolicitud {
+  /** Identificador numérico original de Laravel; id mantiene la compatibilidad de navegación. */
+  readonly idSolicitudActividad?: number;
   readonly actividadId?: number | null;
   readonly puedeVerDetalle?: boolean;
   readonly id: string;

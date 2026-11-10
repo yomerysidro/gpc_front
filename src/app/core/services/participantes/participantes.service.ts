@@ -7,11 +7,14 @@ import { ActividadInscripcion, DocumentoInscripcion, Inscripcion, InscripcionPay
 import { AUTHENTICATED_REQUEST } from '../../security/auth-request.context';
 import { aErrorApi } from '../../../shared/utils/error-api';
 import { ActividadesService } from '../actividades/actividades.service';
+import { EmisionCertificadosService } from '../emision-certificados/emision-certificados.service';
 
 @Injectable({ providedIn: 'root' })
 export class ParticipantesService {
   private readonly actividadesApi = inject(ActividadesService);
+  private readonly sesionesApi = inject(EmisionCertificadosService);
   actividad(id: number): Observable<ActividadInscripcion> { return this.actividadesApi.obtener(id); }
+  sesion(id: number) { return this.sesionesApi.obtener('activity-session', id); }
   private readonly http = inject(HttpClient);
   private readonly api = environment.apiBaseUrl;
 

@@ -1,7 +1,8 @@
-@if (mostrarModal()) {
+@if (recurso() === 'attendance' && soloLecturaSesion()) { <p role="status">Consulta de asistencia en modo lectura. Una sesión finalizada requiere un procedimiento autorizado de regularización.</p> }
+@if (mostrarModal() && !enDetalle()) {
   <div class="encabezado encabezado-registro">
     <h2>{{ tituloEncabezado() || config().titulo }}</h2>
-    @if (!soloLectura() && permitido('crear')) {
+    @if (recurso() !== 'attendance' && !soloLecturaSesion() && permitido('crear')) {
       <button class="btn btn-primary" type="button" (click)="abrirFormulario(null, $event)" [disabled]="eliminando()">
         <span class="material-symbols-outlined" aria-hidden="true">add</span>Nuevo registro
       </button>
@@ -13,7 +14,7 @@
 @if (errorOperacion(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
 @for (mensaje of erroresRelaciones(); track mensaje) { <p class="alert alert-advertencia" role="alert">{{ mensaje }}</p> }
 @if (editable(); as recursoEditable) {
-  @if (!mostrarModal() && !soloLectura() && permitido('crear')) {
+  @if (!mostrarModal() && !soloLecturaSesion() && permitido('crear')) {
     <div class="acciones">
       @if (nuevoUrl(); as url) {
         <a class="btn btn-primary" [routerLink]="url">Nuevo registro</a>
@@ -43,7 +44,7 @@
     </div>
     <button class="btn btn-neutro" type="button" (click)="limpiarClasificacion()">Limpiar filtros</button>
   </form>
-} @else if (usaModal()) {
+} @else if (usaModal() && !enDetalle()) {
   <form class="filtros filtros-sesiones" role="search" [attr.aria-label]="'Filtrar ' + config().titulo"
     [formGroup]="filtrosSesiones" (ngSubmit)="aplicarFiltros()">
     <div class="form-field">
@@ -52,8 +53,9 @@
         [placeholder]="recurso() === 'attendance' ? 'Nombre del participante' : 'Nombre de la sesión'" (input)="aplicarFiltros()" />
     </div>
     <div class="form-field">
-      <label [for]="recurso() + '-buscar-actividad'">Actividad</label>
-      <select class="input" [id]="recurso() + '-buscar-actividad'" formControlName="actividad" (change)="cambiarActividad()">
+      <label [hidden]="enDetalle()" [for]="recurso() + '-buscar-actividad'">Actividad</label>
+      @if (!enDetalle() && actividadContexto(); as contexto) { <p><strong>{{ contexto.nombre }}</strong></p> }
+      <select class="input" [hidden]="!!actividadContexto()" [id]="recurso() + '-buscar-actividad'" formControlName="actividad" (change)="cambiarActividad()">
         <option value="">Todas las actividades</option>
         @for (actividad of catalogosSesiones.actividades; track actividad['id_actividad']) {
           <option [value]="actividad['id_actividad']">{{ actividad['nombre'] }}</option>
@@ -61,10 +63,10 @@
       </select>
     </div>
     @if (recurso() === 'attendance') {
-      <div class="form-field">
-        <label for="attendance-buscar-sesion">Sesión</label>
+      <div class="form-field" [hidden]="enDetalle()">
+        <label for="attendance-buscar-sesion">Sesión de la actividad</label>
         <select class="input" id="attendance-buscar-sesion" formControlName="sesion" (change)="aplicarFiltros()">
-          <option value="">Todas las sesiones</option>
+          <option value="">Selecciona una sesión</option>
           @for (sesion of catalogosSesiones.sesionesDisponibles(filtrosSesiones.controls.actividad.value); track sesion['id_actividad_sesion']) {
             <option [value]="sesion['id_actividad_sesion']">{{ sesion['nombre'] }}</option>
           }
@@ -85,7 +87,7 @@
     </div>
     <button type="button" class="btn btn-neutro" (click)="limpiarFiltros()">Limpiar filtros</button>
   </form>
-} @else {
+} @else if (!enDetalle()) {
 <form class="filtros" role="search" [attr.aria-label]="'Filtrar ' + config().titulo" [formGroup]="filtro" (ngSubmit)="cargar(1)">
   <div class="form-field">
     <label [for]="recurso() + '-filtro-campo'">Filtrar por</label>
@@ -106,10 +108,55 @@
   @if (cargando()) { <p role="status">Cargando registros…</p> }
   @else if (errorCarga()) {
     <p class="alert alert-error" role="alert">{{ errorCarga() }}</p>
-    <button class="btn" type="button" (click)="cargar(1)">Reintentar</button>
+    <button class="btn" type="button" (click)="enDetalle() && requiereActualizar() ? actualizarAsistencia() : cargar(1)">Reintentar</button>
   } @else {
     @if (pagina(); as paginaActual) {
-    @if (!paginaActual.data.length) { <p class="card">No hay registros para esta consulta.</p> }
+    @if (recurso() === 'attendance' && filtrosSesiones.controls.actividad.value && !catalogosSesiones.sesionesDisponibles(filtrosSesiones.controls.actividad.value).length) {
+      <p role="status">Esta actividad todavía no tiene sesiones registradas. Registra una sesión para comenzar a controlar la asistencia</p>
+      @if (puedeCrearSesion()) { <button class="btn btn-primary" type="button" (click)="registrarSesion($event)">Registrar sesión</button> }
+    }
+    @if (recurso() === 'attendance' && filtrosSesiones.controls.actividad.value && filtrosSesiones.controls.sesion.value) {
+      @if (resumenAsistencia(); as resumen) {
+        <dl class="resumen-asistencia" aria-label="Resumen de la sesión" aria-live="polite">
+          <div><dt>Inscritos</dt><dd>{{ resumen.inscritos }}</dd></div><div><dt>Presentes</dt><dd>{{ resumen.presentes }}</dd></div><div><dt>Ausentes</dt><dd>{{ resumen.ausentes }}</dd></div><div><dt>Pendientes</dt><dd>{{ resumen.pendientes }}</dd></div>
+          @if (resumen.porRevisar) { <div><dt>Por regularizar</dt><dd>{{ resumen.porRevisar }}</dd></div> }
+        </dl>
+      }
+    }
+    @if (!paginaActual.data.length) { <p class="card">{{ recurso() === 'attendance' && (!filtrosSesiones.controls.actividad.value || !filtrosSesiones.controls.sesion.value) ? 'Selecciona una actividad y una sesión para controlar su asistencia.' : 'No hay registros para esta consulta.' }}</p> }
+    @else if (recurso() === 'attendance') {
+      @if (catalogosSesiones.errorPersonas) { <p role="alert">{{ catalogosSesiones.errorPersonas }}</p> }
+      <p class="nota">Presente y Ausente proceden del estado de asistencia guardado, no de la inscripción ni de las horas. En el modal puedes corregir el estado con los iconos; usa Regularizar para revisar las horas.</p>
+      <button class="btn" type="button" [disabled]="guardandoMarca() !== null" (click)="actualizarAsistencia()">Actualizar asistencia</button>
+      @if (enDetalle() && !soloLecturaSesion() && (permitido('crear') || permitido('editar'))) {
+        <div class="acciones guardado-asistencia" role="group" aria-label="Guardar selección de asistencia">
+          <span role="status">{{ pendientesSesion().length }} cambios pendientes de esta sesión</span>
+          @if (!accionesExternas()) {
+          <button class="btn btn-primary" type="button" [disabled]="!puedeGuardarAsistencia()" (click)="guardarSeleccion()">{{ guardandoSeleccion() ? 'Guardando asistencia…' : 'Guardar asistencia' }}</button>
+          @if (pendientesSesion().length) { <button class="btn" type="button" [disabled]="estaGuardando()" (click)="descartarSeleccion()">Descartar cambios</button> }
+          }
+        </div>
+      }
+      <div class="tabla"><table class="table tabla-presencia"><caption class="sr-only">Asistencia de los inscritos por sesión</caption>
+        <thead><tr><th scope="col">N.º</th><th scope="col">Participante</th><th scope="col">Presente</th><th scope="col">Ausente</th><th scope="col">Resultado</th></tr></thead>
+        <tbody>@for (fila of paginaActual.data; track fila['id_participacion']; let indice = $index) {
+          <tr [attr.aria-busy]="guardandoMarca() === fila['id_participacion']"><td>{{ inicioRango(paginaActual) + indice }}</td><th scope="row">{{ fila['participanteNombre'] }}</th>
+            <td><button type="button" class="circulo-asistencia circulo-presente" title="Marcar presente" [attr.aria-label]="'Marcar presente a ' + fila['participanteNombre']" [attr.aria-pressed]="presenciaMostrada(fila) === 'presente'" [class.seleccionado]="presenciaMostrada(fila) === 'presente'" [disabled]="(!enDetalle() && !!fila['id_asistencia']) || !!fila['duplicada'] || guardandoMarca() !== null || requiereActualizar() || soloLecturaSesion() || !permitido(fila['id_asistencia'] ? 'editar' : 'crear')" (click)="marcarPresencia(fila, 'PRESENTE')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></button></td>
+            <td><button type="button" class="circulo-asistencia circulo-ausente" title="Marcar ausente" [attr.aria-label]="'Marcar ausente a ' + fila['participanteNombre']" [attr.aria-pressed]="presenciaMostrada(fila) === 'ausente'" [class.seleccionado]="presenciaMostrada(fila) === 'ausente'" [disabled]="(!enDetalle() && !!fila['id_asistencia']) || !!fila['duplicada'] || guardandoMarca() !== null || requiereActualizar() || soloLecturaSesion() || !permitido(fila['id_asistencia'] ? 'editar' : 'crear')" (click)="marcarPresencia(fila, 'AUSENTE')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button></td>
+            <td><span role="status">{{ guardandoMarca() === fila['id_participacion'] ? 'Guardando…' : resultadoAsistencia(fila) }}</span>
+              @if (fila['hora_entrada'] && !fila['hora_salida']) { <small class="salida-pendiente"> · Salida pendiente</small> }
+              @if (errorMarca(fila); as mensaje) { <p class="error-text" role="alert">{{ mensaje }}</p> }
+              <details class="detalle-asistencia"><summary>Ver horas y regularizar</summary><dl>
+                <dt>Hora de entrada</dt><dd>{{ fila['hora_entrada'] || 'Sin registrar' }}</dd>
+                <dt>Hora de salida</dt><dd>{{ fila['hora_salida'] || 'Sin registrar' }}</dd>
+              </dl><p>Las horas se conservan al guardar presencia o ausencia. Registrar horas requiere el formulario; no se generan automáticamente.</p>
+                <label><input type="checkbox" [attr.aria-label]="'Registrar entrada de ' + fila['participanteNombre']" [checked]="!!fila['hora_entrada']" [disabled]="!!borrador(fila) || !!fila['hora_entrada'] || !!fila['duplicada'] || guardandoMarca() !== null || requiereActualizar() || soloLecturaSesion() || !permitido(fila['id_asistencia'] ? 'editar' : 'crear')" (change)="marcarAsistencia(fila, $event)" />Entrada</label>
+                <label><input type="checkbox" [attr.aria-label]="'Registrar salida de ' + fila['participanteNombre']" [checked]="!!fila['hora_salida']" [disabled]="!!borrador(fila) || !fila['hora_entrada'] || !!fila['hora_salida'] || !!fila['duplicada'] || guardandoMarca() !== null || requiereActualizar() || soloLecturaSesion() || !permitido('editar')" (change)="marcarAsistencia(fila, $event)" />Salida</label>
+                @if (fila['id_asistencia'] && !fila['duplicada'] && permitido('editar') && !soloLecturaSesion()) { <button class="btn" type="button" [disabled]="guardandoMarca() !== null || requiereActualizar()" (click)="marcarAsistencia(fila, $event)">Regularizar</button> }
+              </details>
+            </td></tr>
+        }</tbody></table></div>
+    }
     @else {
       <div class="tabla">
         <table class="table">
@@ -129,12 +176,13 @@
                   </td>
                 }
                 <td><div class="acciones">
+                  @if (recurso() === 'activity-session') { <button class="btn" type="button" (click)="controlarAsistencia(registro)">Controlar asistencia</button> }
                   @if (detalleBase(); as base) {
                     <a class="btn" [routerLink]="[base, identificar(registro)]">Ver detalle</a>
                   } @else {
                     <button class="btn" type="button" (click)="verDetalle(registro)">Ver detalle</button>
                   }
-                  @if (!soloLectura() && editable() && permitido('editar')) {
+                  @if (!soloLecturaSesion() && editable() && permitido('editar')) {
                     @if (editarBase(); as base) {
                       <a class="btn" [routerLink]="[base, identificar(registro), 'editar']">Editar</a>
                     } @else {
@@ -186,8 +234,8 @@
 <app-dialogo #modalRegistro class="modal-registro" [titulo]="tituloModal()" (cerrado)="alCerrarModal()">
   @if (mostrarModal() && editar() !== undefined) {
     @if (editable(); as recursoEditable) {
-      <app-formulario-emision [recurso]="recursoEditable" [id]="editar() ?? null" [enDialogo]="true" [clasificacion]="esClasificacion()" [actividadContexto]="actividadFormulario()"
-        (guardado)="alGuardar()" (cancelar)="cerrarFormulario()" />
+      <app-formulario-emision [recurso]="registrandoSesion() ? 'activity-session' : recursoEditable" [id]="editar() ?? null" [enDialogo]="true" [clasificacion]="esClasificacion()" [actividadContexto]="actividadFormulario()" [asistenciaContexto]="asistenciaContexto()"
+        (guardado)="alGuardar($event)" (cancelar)="cerrarFormulario()" />
     }
   }
 </app-dialogo>

@@ -1,3 +1,4 @@
+@if (!contextoIntegrado()) {
 <section aria-label="Gestión de participantes">
     <div class="encabezado">
       <div><app-page-title title="Participantes" /><p class="descripcion">Administra las inscripciones de participantes a las actividades institucionales.</p></div>
@@ -7,7 +8,16 @@
     </div>
     @if (cargandoContexto()) { <p role="status">Consultando actividad seleccionada...</p> }
     @if (errorContexto()) { <p class="alert alert-error" role="alert">{{ errorContexto() }}</p> }
-    @if (actividadContexto(); as actividad) { <p class="contexto-actividad">Actividad: <strong>{{ actividad.nombre }}</strong></p> }
+    @if (actividadContexto(); as actividad) {
+      <p class="contexto-actividad">Actividad: <strong>{{ actividad.nombre }}</strong></p>
+      @if (sesionContexto().cargando) { <p role="status">Consultando sesión…</p> }
+      @if (sesionContexto().error) { <p role="alert">{{ sesionContexto().error }}</p> }
+      @if (sesionContexto().sesion; as sesion) { <p>Sesión: <strong>{{ sesion.nombre }}</strong>. Se muestran las inscripciones de la actividad; estar inscrito no confirma asistencia.</p> }
+      <a class="btn" routerLink="/certificaciones/actividades" [queryParams]="{ id_actividad: actividad.id_actividad }"><span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>Volver a actividad</a>
+      @if (!sesionContexto().cargando && !sesionContexto().error) {
+        <a *appHasPermission="'participantes.ver'" class="btn btn-primary" routerLink="/certificaciones/sesiones-asistencia" [queryParams]="{ id_actividad: actividad.id_actividad, id_sesion: sesionContexto().sesion?.id, pestana: 'asistencias' }"><span class="material-symbols-outlined" aria-hidden="true">how_to_reg</span>Controlar asistencia</a>
+      }
+    }
     <div role="status">
       @if (aviso(); as mensaje) { <div class="alert" [class.alert-exito]="mensaje.tipo === 'exito'" [class.alert-error]="mensaje.tipo === 'error'">{{ mensaje.texto }}</div> }
     </div>
@@ -84,8 +94,10 @@
     </div>
 </section>
 
-<app-dialogo #dialogoFormulario class="modal-participante" [titulo]="editando() === null ? 'Inscribir participante' : 'Editar inscripción'" (cerrado)="alCerrarFormulario()">
+}
+<app-dialogo #dialogoFormulario class="modal-participante" [titulo]="editando() === null ? 'Inscribir participante' : 'Editar inscripción'" [mostrarCerrar]="!!contextoIntegrado()" [cierreControlado]="!!contextoIntegrado()" (cierreSolicitado)="cerrarFormulario()" (cerrado)="alCerrarFormulario()">
   @if (formularioAbierto()) {
+    @if (contextoIntegrado(); as contexto) { <p>Desde la sesión: <strong>{{ contexto.sesion.nombre }}</strong>. La inscripción corresponde a la actividad y no confirma asistencia.</p> }
     @if (actividadContexto(); as actividad) { <p class="contexto-actividad">Inscribir participante en: <strong>{{ actividad.nombre }}</strong></p> }
     <section class="formulario" [attr.aria-busy]="cargandoEdicion() || enviando()">
       @if (errorFormulario(); as error) { <p class="alert alert-error" role="alert">{{ error }}</p> }

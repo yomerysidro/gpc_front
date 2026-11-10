@@ -23,6 +23,7 @@ export class FormularioEmisionComponent implements OnChanges {
   readonly enDialogo = input(false);
   readonly clasificacion = input(false);
   readonly actividadContexto = input<{ id_actividad: number; nombre: string } | null>(null);
+  readonly asistenciaContexto = input<{ id_participacion: number; id_actividad_sesion: number; nombre: string } | null>(null);
   private readonly personasApi = inject(PersonService);
   protected readonly estadosClasificaciones = ESTADOS_CLASIFICACIONES;
   readonly guardado = output<RegistroEmision>();
@@ -100,6 +101,11 @@ export class FormularioEmisionComponent implements OnChanges {
       });
     }
     this.form.set(new FormGroup(controles));
+    if (this.recurso() === 'attendance' && this.asistenciaContexto()) {
+      for (const campo of ['id_participacion', 'id_actividad_sesion'] as const) {
+        controles[campo].setValue(String(this.asistenciaContexto()![campo])); controles[campo].disable({ emitEvent: false });
+      }
+    }
     if (this.actividadContexto() && controles['id_actividad']) {
       controles['id_actividad'].setValue(String(this.actividadContexto()!.id_actividad));
       controles['id_actividad'].disable({ emitEvent: false });
@@ -122,6 +128,9 @@ export class FormularioEmisionComponent implements OnChanges {
     this.errorCarga.set(null);
     this.carga = this.api.obtener(this.recurso(), this.id()!).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: registro => {
+        if (this.asistenciaContexto() && (Number(registro['id_participacion']) !== this.asistenciaContexto()!.id_participacion || Number(registro['id_actividad_sesion']) !== this.asistenciaContexto()!.id_actividad_sesion)) {
+          this.errorCarga.set('La asistencia no pertenece a la participación y sesión seleccionadas.'); this.cargando.set(false); return;
+        }
         if (this.actividadContexto() && this.recurso() === 'activity-session' && Number(registro['id_actividad']) !== this.actividadContexto()!.id_actividad) {
           this.errorCarga.set('La sesión no pertenece a la actividad seleccionada.'); this.cargando.set(false); return;
         }
@@ -166,6 +175,12 @@ export class FormularioEmisionComponent implements OnChanges {
   }
 
   protected cargarOpciones(campo: CampoEmision): void {
+    const marca = this.asistenciaContexto();
+    if (marca && this.recurso() === 'attendance' && ['id_participacion', 'id_actividad_sesion'].includes(campo.nombre)) {
+      const id = campo.nombre === 'id_participacion' ? marca.id_participacion : marca.id_actividad_sesion;
+      const texto = campo.nombre === 'id_participacion' ? marca.nombre : 'Sesión seleccionada';
+      this.opciones.update(opciones => ({ ...opciones, [campo.nombre]: [{ id, texto }] })); return;
+    }
     const contexto = this.actividadContexto();
     if (contexto && campo.nombre === 'id_actividad') {
       this.opciones.update(opciones => ({ ...opciones, id_actividad: [{ id: contexto.id_actividad, texto: contexto.nombre }] })); return;
@@ -225,7 +240,7 @@ export class FormularioEmisionComponent implements OnChanges {
         const nombres = new Map(personas.map(persona => [persona.id_persona,
           [persona.nombres, persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' ')]));
         return participaciones.filter(fila => !this.actividadContexto() || Number(fila['id_actividad']) === this.actividadContexto()!.id_actividad)
-          .map(fila => ({ id: Number(fila['id_participacion']), texto: [nombres.get(Number(fila['id_persona'])) || ('Participacion #' + fila['id_participacion']),
+          .map(fila => ({ id: Number(fila['id_participacion']), texto: [nombres.get(Number(fila['id_persona'])) || 'Nombre no disponible',
             fila['fecha_inscripcion'] ? String(fila['fecha_inscripcion']).slice(0, 10) : ''].filter(Boolean).join(' - ') }));
       }),
     );

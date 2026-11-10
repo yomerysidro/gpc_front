@@ -18,7 +18,8 @@ describe('Autorización institucional y navegación de Emisión', () => {
   let api: jasmine.SpyObj<EmisionCertificadosService>;
 
   beforeEach(() => {
-    api = jasmine.createSpyObj('EmisionCertificadosService', ['listar', 'relacionRegistros', 'trabajadores', 'listarTodos', 'obtener', 'documentosIdentidad']);
+    api = jasmine.createSpyObj('EmisionCertificadosService', ['pendientesCertificacion', 'listar', 'relacionRegistros', 'trabajadores', 'listarTodos', 'obtener', 'documentosIdentidad']);
+    api.pendientesCertificacion.and.returnValue(of({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }));
     api.listar.and.returnValue(of({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }));
     api.relacionRegistros.and.returnValue(of([]));
     api.trabajadores.and.returnValue(of([]));
@@ -62,7 +63,7 @@ describe('Autorización institucional y navegación de Emisión', () => {
     const harness = await RouterTestingHarness.create('/verificar/CODIGO-PRUEBA');
     expect(TestBed.inject(Router).url).toBe('/verificar/CODIGO-PRUEBA');
     expect(harness.routeNativeElement!.querySelector('app-header, app-sidebar')).toBeNull();
-    expect(harness.routeNativeElement!.textContent).toContain('Integración pendiente');
+    expect(harness.routeNativeElement!.textContent).toContain('código de 30 caracteres');
     expect(harness.routeNativeElement!.querySelector<HTMLInputElement>('input')!.value).toBe('CODIGO-PRUEBA');
     expect(harness.routeNativeElement!.querySelector<HTMLButtonElement>('button')!.disabled).toBeTrue();
     expect(api.listar).not.toHaveBeenCalled();
@@ -97,7 +98,7 @@ describe('Autorización institucional y navegación de Emisión', () => {
     }
     expect(harness.routeNativeElement!.querySelector('app-sidebar a[href="/certificaciones/verificacion"]')).toBeNull();
     await harness.navigateByUrl('/certificaciones/verificacion');
-    expect(harness.routeNativeElement!.querySelector('main h1')?.textContent?.trim()).toBe('Verificación');
+    expect(harness.routeNativeElement!.querySelector('main h1')?.textContent?.trim()).toBe('Consulta de certificados');
     expect(api.listar).not.toHaveBeenCalledWith('certificados', jasmine.anything());
   });
 
@@ -147,14 +148,14 @@ describe('Autorización institucional y navegación de Emisión', () => {
     await navegacion;
     harness.detectChanges();
     expect(TestBed.inject(Router).url).toBe('/certificaciones/generar-emitir');
-    expect(harness.routeNativeElement!.querySelector('app-listar-certificados')).not.toBeNull();
+    expect(harness.routeNativeElement!.querySelector('app-listar-certificados')).toBeNull();
     expect(api.listar).not.toHaveBeenCalled();
   });
 
   it('abre el formulario real y consulta los tipos del backend', async () => {
     await sesion(['emision.ver', 'emision.crear']);
     const harness = await RouterTestingHarness.create('/certificaciones/certificados/nuevo');
-    expect(harness.routeNativeElement!.querySelector('app-formulario-certificado')).not.toBeNull();
+    expect(harness.routeNativeElement!.querySelector('app-formulario-certificado')).toBeNull();
     expect(api.listarTodos).toHaveBeenCalledWith('tipos-certificado');
     expect(harness.routeNativeElement!.textContent).not.toContain('DEMO');
     http.expectNone(() => true);
@@ -175,7 +176,7 @@ describe('Autorización institucional y navegación de Emisión', () => {
       await harness.navigateByUrl(url); harness.detectChanges();
       expect(TestBed.inject(Router).url).toBe('/certificaciones/generar-emitir');
       expect(harness.routeNativeElement!.querySelectorAll('app-generar-emitir').length).toBe(1);
-      expect(harness.routeNativeElement!.querySelectorAll('app-listar-certificados').length).toBe(1);
+      expect(harness.routeNativeElement!.querySelectorAll('app-listar-certificados').length).toBe(0);
       expect(harness.routeNativeElement!.querySelector('app-formulario-certificado')).toBeNull();
     }
   });
@@ -184,9 +185,9 @@ describe('Autorización institucional y navegación de Emisión', () => {
     await sesion(['emision.ver', 'emision.crear']);
     const harness = await RouterTestingHarness.create('/certificaciones/certificados/nuevo');
     expect(TestBed.inject(Router).url).toBe('/certificaciones/generar-emitir?nuevo=1');
-    expect(harness.routeNativeElement!.querySelectorAll('app-formulario-certificado').length).toBe(1);
+    expect(harness.routeNativeElement!.querySelectorAll('app-formulario-certificado').length).toBe(0);
     expect(harness.routeNativeElement!.querySelector('app-listar-certificados')).toBeNull();
-    expect(api.listarTodos.calls.allArgs()).toEqual([['tipos-certificado']]);
+    expect(api.listarTodos).toHaveBeenCalledWith('tipos-certificado');
   });
 
   it('conserva edición mediante la ruta antigua y vuelve a comprobar permisos al cambiar parámetros', async () => {
@@ -196,8 +197,8 @@ describe('Autorización institucional y navegación de Emisión', () => {
     const harness = await RouterTestingHarness.create('/certificaciones/generar-emitir');
     await harness.navigateByUrl('/certificaciones/certificados/9/editar'); harness.detectChanges();
     expect(TestBed.inject(Router).url).toBe('/certificaciones/generar-emitir?editar=9');
-    expect(api.obtener).toHaveBeenCalledWith('certificados', 9);
-    expect(harness.routeNativeElement!.querySelectorAll('app-formulario-certificado').length).toBe(1);
+    expect(api.obtener).not.toHaveBeenCalled();
+    expect(harness.routeNativeElement!.querySelectorAll('app-formulario-certificado').length).toBe(0);
     await harness.navigateByUrl('/certificaciones/generar-emitir?nuevo=1');
     expect(TestBed.inject(Router).url).toBe('/acceso-denegado');
   });

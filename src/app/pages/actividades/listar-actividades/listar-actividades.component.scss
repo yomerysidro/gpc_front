@@ -4,7 +4,7 @@
   background: var(--neutro-0);
 }
 
-.pestanas { max-width: 100%; overflow-x: auto; }
+.pestanas { max-width: 100%; overflow: visible; flex-wrap: wrap; }
 [role='tab'] { flex-shrink: 0; }
 .pestanas button:disabled { cursor: not-allowed; }
 [role='tabpanel'][hidden] { display: none; }
@@ -134,3 +134,4 @@ textarea { resize: vertical; }
   .limpiar { width: 100%; }
   .formulario { padding: var(--espacio-4); }
 }
+:host .tabla-caja[hidden] { display: none; }

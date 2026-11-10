@@ -1,4 +1,4 @@
-import { afterNextRender, Component, computed, DestroyRef, ElementRef, HostListener, inject, Injector, signal, viewChild } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, inject, Injector, signal, viewChild } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -22,11 +22,12 @@ import { DetalleActividadComponent } from '../detalle-actividad/detalle-activida
   standalone: true,
   imports: [RouterLink, ReactiveFormsModule, PageTitleComponent, DialogoComponent, DialogoConfirmacionComponent, HasPermissionDirective, DetalleActividadComponent],
   templateUrl: './listar-actividades.component.html',
-  styleUrl: './listar-actividades.component.scss',
+  styleUrls: ['./listar-actividades.component.scss', './actividades-pestanas.scss'],
 })
 export class ListarActividadesComponent {
   protected readonly pestana = signal<'listado' | 'detalle'>('listado');
   protected readonly actividadDetalle = signal<number | null>(null);
+  protected readonly revisionDetalle = signal(0);
 
   protected seleccionarActividad(actividad: Actividad): void {
     if (!this.auth.tienePermiso('actividades.ver')) return;
@@ -50,10 +51,6 @@ export class ListarActividadesComponent {
       : evento.key === 'End' ? 'detalle' : this.pestana() === 'listado' ? 'detalle' : 'listado';
     this.pestana.set(siguiente);
     this.documento.getElementById('actividades-tab-' + siguiente)?.focus();
-  }
-  @HostListener('window:focus')
-  protected actualizarAlVolver(): void {
-    if (this.pestana() === 'listado' && this.auth.tienePermiso('actividades.ver') && !this.cargando() && !this.enviando() && !this.formularioAbierto()) this.cargar();
   }
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly servicio = inject(ActividadesService);
@@ -84,6 +81,9 @@ export class ListarActividadesComponent {
   private solicitudEdicion?: Subscription;
   private destruido = false;
 
+  protected readonly listadoListo = signal(false);
+  private cargaListado?: Subscription;
+  private catalogosEnCurso = false;
   protected readonly actividades = signal<readonly Actividad[]>([]);
   protected readonly areas = signal<readonly AreaActividad[]>([]);
   protected readonly tipos = signal<readonly TipoActividad[]>([]);
@@ -99,7 +99,7 @@ export class ListarActividadesComponent {
   protected readonly areasFiltro = computed(() => {
     const areas = new Map(this.areas().map(area => [area.id_area, area]));
     for (const actividad of [...this.actividades(), ...[this.actividadEdicion()].filter((a): a is Actividad => a !== null)]) {
-      if (!areas.has(actividad.id_area)) areas.set(actividad.id_area, { id_area: actividad.id_area, nombre: actividad.area_nombre || `Área #${actividad.id_area}` });
+      if (!areas.has(actividad.id_area)) areas.set(actividad.id_area, { id_area: actividad.id_area, nombre: actividad.area_nombre || 'Nombre no disponible' });
     }
     return [...areas.values()];
   });
@@ -107,7 +107,7 @@ export class ListarActividadesComponent {
     const tipos = new Map<number, Pick<TipoActividad, 'id_tipo_actividad' | 'nombre'>>(this.tipos().map(tipo => [tipo.id_tipo_actividad, tipo]));
     const actual = this.actividadEdicion();
     if (actual && !tipos.has(actual.id_tipo_actividad)) tipos.set(actual.id_tipo_actividad, {
-      id_tipo_actividad: actual.id_tipo_actividad, nombre: actual.tipo_actividad_nombre || `Tipo #${actual.id_tipo_actividad}`,
+      id_tipo_actividad: actual.id_tipo_actividad, nombre: actual.tipo_actividad_nombre || 'Nombre no disponible',
     });
     return [...tipos.values()];
   });
@@ -155,6 +155,9 @@ export class ListarActividadesComponent {
   }, { validators: periodoActividad });
 
   constructor() {
+    effect(() => {
+      if (!this.cargando() && !this.cargandoAreas() && !this.cargandoTipos()) this.listadoListo.set(true);
+    }, { allowSignalWrites: true });
     const parametros = this.route?.snapshot.queryParamMap;
     if (parametros) {
       this.filtros.set({ nombre: parametros.get('nombre') ?? '', area: parametros.get('area') ?? '',
@@ -176,6 +179,16 @@ export class ListarActividadesComponent {
       this.cargar();
       this.cargarCatalogos();
       this.route?.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+        const contexto = params.get('id_actividad');
+        if (contexto !== null) {
+          if (/^[1-9]\d*$/.test(contexto) && Number.isSafeInteger(Number(contexto))) {
+            this.actividadDetalle.set(Number(contexto)); this.pestana.set('detalle');
+          } else {
+            this.limpiarSeleccion();
+            this.aviso.set({ tipo: 'error', texto: 'El identificador de actividad no es válido.' });
+          }
+          return;
+        }
         const id = Number(params.get('actividad'));
         if (Number.isSafeInteger(id) && id > 0) this.verDetalle({ id_actividad: id });
       });
@@ -184,10 +197,10 @@ export class ListarActividadesComponent {
   }
 
   protected cargar(): void {
-    if (this.cambiandoEstado()) return;
+    if (this.cambiandoEstado() || (this.cargando() && this.cargaListado && !this.cargaListado.closed)) return;
     this.cargando.set(true);
     this.errorCarga.set(null);
-    this.servicio.listar().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.cargaListado = this.servicio.listar().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: actividades => { this.actividades.set(actividades); this.cargando.set(false); },
       error: (error: ErrorApi) => {
         this.errorCarga.set(error.status === 403
@@ -199,30 +212,31 @@ export class ListarActividadesComponent {
   }
 
   protected cargarCatalogos(): void {
-    this.areas.set([]);
+    if (this.catalogosEnCurso) return;
+    this.catalogosEnCurso = true;
     this.cargandoAreas.set(true);
     this.cargandoTipos.set(true);
     this.errorAreas.set(null);
     this.errorTipos.set(null);
     this.servicio.listarAreas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: areas => {
-        this.areas.set(areas); this.cargandoAreas.set(false);
+        this.areas.set(areas); this.cargandoAreas.set(false); this.catalogosEnCurso = this.cargandoTipos();
         if (this.editando() === null && !this.form.controls.id_area.value && areas.length === 1) this.form.controls.id_area.setValue(String(areas[0].id_area));
       },
       error: (error: ErrorApi) => {
         this.errorAreas.set(error.status === 403
           ? `El servidor denegó la lectura del catálogo de áreas para tu sesión. ${this.mensajeError(error)}`
           : this.mensajeError(error));
-        this.cargandoAreas.set(false);
+        this.cargandoAreas.set(false); this.catalogosEnCurso = this.cargandoTipos();
       },
     });
     this.servicio.listarTipos().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: tipos => { this.tipos.set(tipos); this.cargandoTipos.set(false); },
+      next: tipos => { this.tipos.set(tipos); this.cargandoTipos.set(false); this.catalogosEnCurso = this.cargandoAreas(); },
       error: (error: ErrorApi) => {
         this.errorTipos.set(error.status === 403
           ? 'El servidor denegó la lectura de los tipos de actividad. Esta consulta requiere el permiso de lectura de Actividades.'
           : this.mensajeError(error));
-        this.cargandoTipos.set(false);
+        this.cargandoTipos.set(false); this.catalogosEnCurso = this.cargandoAreas();
       },
     });
   }
@@ -256,6 +270,7 @@ export class ListarActividadesComponent {
       next: respuesta => {
         this.actividades.update(lista => lista.map(item => item.id_actividad === actividad.id_actividad ? respuesta.data : item));
         this.cambiandoEstado.set(false);
+        this.revisionDetalle.update(revision => revision + 1);
         this.aviso.set({ tipo: 'exito', texto: respuesta.message });
         this.cargar();
       },
@@ -266,8 +281,8 @@ export class ListarActividadesComponent {
     });
   }
 
-  protected nombreArea(id: number, nombre?: string | null): string { return nombre?.trim() || this.nombresAreas().get(id) || this.areasFiltro().find(area => area.id_area === id)?.nombre || `Área #${id}`; }
-  protected nombreTipo(id: number, nombre?: string | null): string { return nombre?.trim() || this.nombresTipos().get(id) || `Tipo #${id}`; }
+  protected nombreArea(id: number, nombre?: string | null): string { return nombre?.trim() || this.nombresAreas().get(id) || this.areasFiltro().find(area => area.id_area === id)?.nombre || 'Nombre no disponible'; }
+  protected nombreTipo(id: number, nombre?: string | null): string { return nombre?.trim() || this.nombresTipos().get(id) || 'Nombre no disponible'; }
   protected permitido(permiso: string): boolean { return this.auth.tienePermiso(permiso); }
 
   protected gestionar(actividad: Actividad): void {
@@ -288,6 +303,14 @@ export class ListarActividadesComponent {
       this.avisoPonentes.set(null); this.formPonente.reset();
       this.dialogoPonentes().abrir(); this.cargarPonentes(); this.cargarCatalogoPonentes();
     }
+  }
+
+  protected mostrarPonentesContextuales(actividad: Actividad): void {
+    if (!this.permitido('ponentes-firmantes.ver')) return;
+    if (this.actividadPonentes()?.id_actividad === actividad.id_actividad && !this.errorPonentes() && !this.errorCatalogoPonentes()) {
+      this.dialogoPonentes().abrir(); return;
+    }
+    this.ejecutar('ponentes', actividad);
   }
 
   protected cargarCatalogoPonentes(): void {
@@ -457,6 +480,7 @@ export class ListarActividadesComponent {
         this.enviando.set(false);
         this.cerrarFormulario();
         this.aviso.set({ tipo: 'exito', texto: respuesta.message });
+        this.revisionDetalle.update(revision => revision + 1);
         this.cargar();
       },
       error: (error: ErrorApi) => {

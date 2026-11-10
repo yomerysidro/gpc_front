@@ -38,6 +38,37 @@ describe('Contrato HTTP de Emisión con Laravel', () => {
   });
   afterEach(() => http.verify());
 
+  it('diferencia el conflicto de esquema de los permisos y conserva el detalle técnico', () => {
+    service.beneficiariosCertificacion('sesion', 15, { id_tipo_certificado: 4 }).subscribe({
+      next: () => fail('Debe conservar el conflicto'),
+      error: (e: ErrorApi) => {
+        expect(e.status).toBe(409);
+        expect(e.mensaje).toBe('La preparación de certificados por sesión estará disponible cuando se complete su estructura de datos');
+        expect(e.errores['detalle']).toEqual(['Falta tabla de preparación']);
+      },
+    });
+    http.expectOne(r => r.url.endsWith('/activity-session/15/beneficiarios')).flush({
+      message: 'Falta tabla de preparación', code: 'ESQUEMA_PREPARACION_NO_DISPONIBLE',
+    }, { status: 409, statusText: 'Conflict' });
+  });
+
+  it('envía asistencia en minúsculas con cookie y consulta por sesión y participación reales', () => {
+    service.crear('attendance', { id_participacion: 30, id_actividad_sesion: 15, estado: 'PRESENTE' }).subscribe(registro => {
+      expect(registro['id_asistencia']).toBe(80);
+    });
+    const post = http.expectOne(`${environment.apiBaseUrl}/attendance/create`);
+    expect(post.request.method).toBe('POST');
+    expect(post.request.withCredentials).toBeTrue();
+    expect(post.request.body).toEqual({ id_participacion: 30, id_actividad_sesion: 15, estado: 'PRESENTE' });
+    post.flush({ success: true, data: { ID_ASISTENCIA: 80 } }, { status: 201, statusText: 'Created' });
+    service.listarTodos('attendance', { id_actividad_sesion: 15, id_participacion: 30 }).subscribe(filas => expect(filas[0]['id_asistencia']).toBe(80));
+    const consulta = http.expectOne(req => req.url.endsWith('/attendance/list'));
+    expect(consulta.request.params.get('id_actividad_sesion')).toBe('15');
+    expect(consulta.request.params.get('id_participacion')).toBe('30');
+    expect(consulta.request.withCredentials).toBeTrue();
+    consulta.flush({ success: true, data: [{ ID_ASISTENCIA: 80, ID_PARTICIPACION: 30, ID_ACTIVIDAD_SESION: 15, ESTADO: 'PRESENTE' }] });
+  });
+
   it('recorre todas las paginas del historial con el filtro del certificado intacto', () => {
     let codigos: readonly string[] = [];
     service.listarTodos('certificados-documentos', { id_certificado: 8 }).subscribe(filas => { codigos = filas.map(fila => fila.codigo_verificacion); });

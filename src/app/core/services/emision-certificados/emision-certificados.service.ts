@@ -15,6 +15,7 @@ import { AreaService } from '../area/area.service';
 import { PersonDocumentService } from '../person-document/person-document.service';
 import { DocumentTypeService } from '../document-type/document-type.service';
 import { BLOQUEO_ESCRITURA_EMISION, ESCRITURA_EMISION_AUTORIZADA } from './operaciones-emision';
+import { EvaluacionCertificacion, FinalizacionSesion, OrigenCertificacion, PendienteCertificacion, SesionCertificacion } from '../../interfaces/emision-certificados/certificacion-sesion.interface';
 
 /** Ámbitos reales de config/module_permissions.php; no se deducen del nombre de la URL. */
 export const PERMISOS_EMISION: Record<RecursoEmision, string> = {
@@ -40,6 +41,25 @@ export class EmisionCertificadosService {
   private readonly areas = inject(AreaService);
   private readonly documentosPersona = inject(PersonDocumentService);
   private readonly tiposDocumento = inject(DocumentTypeService);
+
+  estadoSesionCertificacion(id: number): Observable<SesionCertificacion> {
+    return this.consultaCertificacion<SesionCertificacion>(`activity-session/${id}`);
+  }
+  pendientesCertificacion(filtros: FiltrosEmision = {}): Observable<PaginaEmision<PendienteCertificacion>> {
+    return this.consultaCertificacion<PaginaEmision<PendienteCertificacion>>('certificaciones/pendientes', filtros);
+  }
+  beneficiariosCertificacion(origen: OrigenCertificacion, id: number, filtros: FiltrosEmision = {}): Observable<EvaluacionCertificacion> {
+    return this.consultaCertificacion<EvaluacionCertificacion>(origen === 'sesion' ? `activity-session/${id}/beneficiarios` : `activity/${id}/beneficiarios-certificacion`, filtros);
+  }
+  finalizarSesion(id: number, actividad: number): Observable<FinalizacionSesion> {
+    return this.http.post<ApiResponse<FinalizacionSesion>>(`${this.api}/activity-session/${id}/finalizar`,
+      {}, this.opciones()).pipe(map(r => this.datos(r)), catchError(e => this.error(e)));
+  }
+  private consultaCertificacion<T>(ruta: string, filtros: FiltrosEmision = {}): Observable<T> {
+    let params = new HttpParams();
+    for (const [campo, valor] of Object.entries(filtros)) if (valor !== undefined && valor !== null && valor !== '') params = params.set(campo, String(valor));
+    return this.http.get<ApiResponse<T>>(`${this.api}/${ruta}`, { ...this.opciones(), params }).pipe(map(r => this.datos(r)), catchError(e => this.error(e)));
+  }
 
   listar<K extends RecursoEmision>(recurso: K, filtros: FiltrosEmision = {}): Observable<PaginaEmision<EntidadesEmision[K]>> {
     if (this.esListaSimple(recurso)) {
@@ -133,13 +153,13 @@ export class EmisionCertificadosService {
     if (recurso === 'activity') return throwError(() => ({ status: 403, mensaje: 'Las actividades nuevas requieren una solicitud aprobada.', errores: {} }));
     if (this.escrituraBloqueada(recurso)) return throwError(() => ({ status: 403, mensaje: BLOQUEO_ESCRITURA_EMISION, errores: {} }));
     return this.http.post<ApiResponse<EntidadesEmision[K]>>(this.ruta(recurso, 'crear'), this.payload(recurso, payload), this.opciones())
-      .pipe(map(respuesta => this.datos(respuesta)), catchError(error => this.error(error)));
+      .pipe(map(respuesta => this.registro(recurso, this.datos(respuesta))), catchError(error => this.error(error)));
   }
 
   actualizar<K extends RecursoEditable>(recurso: K, id: number, payload: Partial<PayloadEmision[K]>): Observable<EntidadesEmision[K]> {
     if (this.escrituraBloqueada(recurso)) return throwError(() => ({ status: 403, mensaje: BLOQUEO_ESCRITURA_EMISION, errores: {} }));
     return this.http.patch<ApiResponse<EntidadesEmision[K]>>(this.ruta(recurso, 'actualizar', id), this.payload(recurso, payload), this.opciones())
-      .pipe(map(respuesta => this.datos(respuesta)), catchError(error => this.error(error)));
+      .pipe(map(respuesta => this.registro(recurso, this.datos(respuesta))), catchError(error => this.error(error)));
   }
 
   eliminar(recurso: RecursoEliminable, id: number): Observable<void> {
@@ -198,7 +218,7 @@ export class EmisionCertificadosService {
 
   /** AttendanceController valida nombres en mayúsculas; sus lecturas usan minúsculas. */
   private payload(recurso: RecursoEditable, datos: object): object {
-    return recurso === 'attendance' ? Object.fromEntries(Object.entries(datos).map(([campo, valor]) => [campo.toUpperCase(), valor])) : datos;
+    return recurso === 'attendance' ? Object.fromEntries(Object.entries(datos).map(([campo, valor]) => [campo.toLowerCase(), valor])) : datos;
   }
 
   private registro<T extends object>(recurso: RecursoEmision, datos: T): T {
@@ -207,6 +227,14 @@ export class EmisionCertificadosService {
 
   private error(error: unknown): Observable<never> {
     const normalizado = aErrorApi(error);
+    if (error instanceof HttpErrorResponse && error.status === 409 &&
+      [error.error?.code, error.error?.codigo, error.error?.data?.code, error.error?.data?.codigo].includes('ESQUEMA_PREPARACION_NO_DISPONIBLE')) {
+      return throwError(() => ({ ...normalizado, mensaje: 'La preparación de certificados por sesión estará disponible cuando se complete su estructura de datos', errores: { detalle: [normalizado.mensaje] } }));
+    }
+    if (error instanceof HttpErrorResponse && Array.isArray(error.error?.data?.motivos_bloqueo)) {
+      const motivos = error.error.data.motivos_bloqueo.filter((m: unknown) => typeof m === 'string');
+      return throwError(() => ({ ...normalizado, mensaje: [normalizado.mensaje, ...motivos].join(' ') }));
+    }
     // Los Data de Emisión usan {data: {campo: [mensajes]}} para los 422.
     if (error instanceof HttpErrorResponse && error.status === 422) {
       const data: unknown = error.error?.data;
@@ -216,7 +244,7 @@ export class EmisionCertificadosService {
           if (Array.isArray(mensajes) && mensajes.every(mensaje => typeof mensaje === 'string')) errores[campo] = mensajes;
         }
       }
-      const validacion: ErrorApi = { ...normalizado, mensaje: 'Revisa los campos indicados.', errores };
+      const validacion: ErrorApi = { ...normalizado, errores };
       return throwError(() => validacion);
     }
     return throwError(() => normalizado);

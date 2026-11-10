@@ -25,7 +25,7 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     usuario = signal<UsuarioSesion | null>(administrador);
     permisos = signal<readonly string[]>([
       ...[DASHBOARD_SIDEBAR.permiso, ...SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos.map(entrada => entrada.permiso))]
-        .filter((clave): clave is string => clave !== undefined), 'roles.editar', 'solicitudes.revisar',
+        .filter((clave): clave is string => clave !== undefined), 'roles.editar', 'solicitudes.revisar', 'solicitudes.crear',
     ]);
     autenticado = true;
     TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(),
@@ -44,19 +44,19 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     }
   }
 
-  it('muestra dos enlaces de Solicitudes y una única Revisión bajo Recursos Humanos', async () => {
+  it('muestra un enlace de Solicitudes y una única Revisión bajo Recursos Humanos', async () => {
     const harness = await RouterTestingHarness.create('/inicio');
     const vista = harness.routeNativeElement!;
     expect(vista.querySelectorAll('app-sidebar button.modulo').length).toBe(8);
     expect(vista.querySelector('app-sidebar a[href="/inicio"]')).not.toBeNull();
     const solicitudes = vista.querySelector('#submenu-solicitudes')!;
-    expect(solicitudes.querySelectorAll('a').length).toBe(2);
-    expect(solicitudes.textContent).toContain('Nueva solicitud de actividad');
+    expect(solicitudes.querySelectorAll('a').length).toBe(1);
+    expect(solicitudes.textContent).not.toContain('Nueva solicitud de actividad');
     expect(solicitudes.textContent).toContain('Mis solicitudes');
     expect(solicitudes.textContent).not.toContain('Revisión de solicitudes');
     expect(vista.querySelectorAll('app-sidebar a[href="/solicitudes/revision"]').length).toBe(1);
     expect(vista.querySelector('#submenu-recursos-humanos a[href="/solicitudes/revision"]')?.textContent).toContain('Revisión de solicitudes');
-    expect(vista.querySelectorAll('app-sidebar a').length).toBe(26);
+    expect(vista.querySelectorAll('app-sidebar a').length).toBe(25);
     for (const entrada of pendientes.filter(entrada => entrada.interfazDisponible)) {
       const enlace = vista.querySelector(`app-sidebar a[href="${rutaPantallaPendiente(entrada)}"]`)!;
       expect(enlace.querySelector('.texto-enlace')?.textContent?.trim()).toBe(entrada.label);
@@ -89,7 +89,7 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
         expect(pagina.querySelector('form, input, table, button')).toBeNull();
       }
       expect(vista.querySelectorAll('app-sidebar a[aria-current="page"]').length).toBe(1);
-      expect(vista.querySelector('app-sidebar a[aria-current="page"]')?.getAttribute('href')).toBe(url);
+      expect(vista.querySelector('app-sidebar a[aria-current="page"]')?.getAttribute('href')).toBe(url === '/solicitudes/nueva' ? '/solicitudes/mis-solicitudes' : url);
       const grupo = SIDEBAR_CONFIG.find(grupo => grupo.hijos.some(hijo => hijo.id === entrada.id))!;
       expect(vista.querySelector<HTMLDivElement>('#submenu-' + grupo.id)?.hidden).toBeFalse();
       http.expectNone(() => true);
@@ -102,9 +102,12 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     for (const url of ['/solicitudes/mis-solicitudes', '/solicitudes/revision', '/solicitudes/nueva']) {
       await harness.navigateByUrl(url); harness.detectChanges();
       resolverCatalogos();
-      expect(harness.routeNativeElement!.querySelectorAll('app-integracion-solicitudes').length).toBe(1);
+      const panel = harness.routeNativeElement!.querySelector('[role="tabpanel"]:not([hidden])') ?? harness.routeNativeElement!;
+      expect(panel.querySelectorAll('app-integracion-solicitudes').length).toBe(1);
+      expect(harness.routeNativeElement!.querySelectorAll('app-nueva-solicitud').length).toBeLessThanOrEqual(1);
       expect(harness.routeNativeElement!.querySelector('app-vista-temporal')).toBeNull();
-      expect(harness.routeNativeElement!.querySelector('app-sidebar a.active')?.getAttribute('href')).toBe(url);
+      expect(harness.routeNativeElement!.querySelector('app-sidebar a.active')?.getAttribute('href'))
+        .toBe(url === '/solicitudes/nueva' ? '/solicitudes/mis-solicitudes' : url);
     }
     http.expectNone(() => true);
   });

@@ -1,11 +1,9 @@
 import { inject, Injectable } from '@angular/core';
-import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
+import { catchError, combineLatest, EMPTY, filter, forkJoin, map, Observable, of, startWith, switchMap, tap } from 'rxjs';
 import { ActividadesService } from '../../../core/services/actividades/actividades.service';
 import { ParticipantesService } from '../../../core/services/participantes/participantes.service';
 import { PersonSpeakerService } from '../../../core/services/person-speaker/person-speaker.service';
 import { PersonaActividad } from '../../../core/interfaces/actividades/actividad.interface';
-import { PersonDocumentService } from '../../../core/services/person-document/person-document.service';
-import { DocumentTypeService } from '../../../core/services/document-type/document-type.service';
 
 export interface PonenteDetalle {
   id: number;
@@ -18,8 +16,11 @@ export interface ParticipanteDetalle {
   id: number;
   nombres: string;
   apellidos: string;
-  dni: string | null;
+  tipo: string;
+  fecha: string;
+  estado: string;
 }
+export type CatalogoParticipantes = 'personas' | 'tiposParticipacion';
 
 /** Une los listados autorizados de Laravel por sus claves reales, sin consultas por persona. */
 @Injectable({ providedIn: 'root' })
@@ -27,8 +28,6 @@ export class DetalleActividadService {
   private readonly actividades = inject(ActividadesService);
   private readonly participaciones = inject(ParticipantesService);
   private readonly ponentes = inject(PersonSpeakerService);
-  private readonly documentos = inject(PersonDocumentService);
-  private readonly tiposDocumento = inject(DocumentTypeService);
 
   consultarPonentes(id: number, personas: Observable<readonly PersonaActividad[]>): Observable<readonly PonenteDetalle[]> {
     return this.actividades.listarAsignacionesPonentes().pipe(
@@ -47,26 +46,27 @@ export class DetalleActividadService {
     );
   }
 
-  consultarParticipantes(id: number, personas: Observable<readonly PersonaActividad[]>): Observable<readonly ParticipanteDetalle[]> {
+  consultarParticipantes(id: number, personas: Observable<readonly PersonaActividad[]>,
+    informar: (recurso: CatalogoParticipantes, error: unknown | null) => void = () => {},
+    reintentos: Observable<CatalogoParticipantes> = EMPTY): Observable<readonly ParticipanteDetalle[]> {
+    // Cada catálogo falla y se reintenta de forma independiente. El listado principal no se simula.
+    const auxiliar = <T>(recurso: CatalogoParticipantes, consulta: Observable<readonly T[]>) =>
+      reintentos.pipe(filter(valor => valor === recurso), startWith(recurso), switchMap(() => consulta.pipe(
+        tap(() => informar(recurso, null)),
+        catchError(error => { informar(recurso, error); return of<readonly T[]>([]); }),
+      )));
     return this.participaciones.listar().pipe(
       map(filas => filas.filter(fila => fila.id_actividad === id)),
-      switchMap(filas => filas.length ? forkJoin({ personas, documentos: this.documentos.listar(), tipos: this.tiposDocumento.listar() }).pipe(
-        map(({ personas, documentos, tipos }) => {
+      switchMap(filas => filas.length ? combineLatest({ personas: auxiliar('personas', personas),
+        tipos: auxiliar('tiposParticipacion', this.participaciones.tipos()) }).pipe(
+        map(({ personas, tipos }) => {
           const porPersona = new Map(personas.map(persona => [persona.id_persona, persona]));
-          const tiposDni = new Set(tipos.filter(tipo => ['DNI', 'DOCUMENTO NACIONAL DE IDENTIDAD'].includes(tipo.nombre.trim().toUpperCase()))
-            .map(tipo => tipo.id_tipo_documento));
-          const porDni = new Map<number, Set<string>>();
-          for (const documento of documentos) {
-            if (!tiposDni.has(documento.id_tipo_documento) || !documento.numero_documento?.trim()) continue;
-            const numeros = porDni.get(documento.id_persona) ?? new Set<string>();
-            numeros.add(documento.numero_documento.trim()); porDni.set(documento.id_persona, numeros);
-          }
+          const porTipo = new Map(tipos.map(tipo => [tipo.id_tipo_participacion, tipo.nombre]));
           return filas.map(fila => {
             const persona = porPersona.get(fila.id_persona);
-            const numeros = porDni.get(fila.id_persona);
             return { id: fila.id_participacion, nombres: persona?.nombres || 'No disponible',
-              apellidos: persona ? [persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' ') || 'No disponible' : 'No disponible',
-              dni: numeros?.size === 1 ? [...numeros][0] : null };
+              apellidos: persona ? [persona.apellido_paterno, persona.apellido_materno].filter(Boolean).join(' ') : '',
+              tipo: porTipo.get(fila.id_tipo_participacion) || 'No disponible', fecha: fila.fecha_inscripcion, estado: fila.estado };
           });
         }),
       ) : of([])),

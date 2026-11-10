@@ -7,11 +7,11 @@
   @if (documentoId() !== null) { <p><a class="btn" [routerLink]="['/certificaciones/certificados', registro.id_certificado]">Volver al detalle del certificado</a></p> }
   @if (!cargandoDocumentos() && !errorDocumentos()) {
     @if (documentoSeleccionado(); as documentoActual) {
-      <app-visor-certificado [certificado]="registro" [beneficiario]="beneficiario()" [documento]="documentoActual" [tipo]="tipoNombre()" [origen]="origenNombre()"
+      <app-visor-certificado [certificado]="registro" [beneficiario]="beneficiario()" [dni]="dni()" [lugar]="$any(actividadVisual()?.['sede'])" [fechaActividad]="$any(actividadVisual()?.['fecha_inicio'])" [documento]="documentoActual" [tipo]="tipoNombre()" [origen]="origenNombre()"
         [reconocimiento]="reconocimiento()" [firmas]="firmasDocumento(documentoActual.id_certificado_documento)" [firmantes]="firmantes()" [errorFirmas]="errorFirmas()" [cargandoFirmas]="cargandoFirmas()" />
     } @else if (documentoId() !== null) { <p class="alert alert-error" role="alert">El documento solicitado no existe entre los documentos autorizados de este certificado.</p> }
     @else if (!documentos().length) {
-      <app-visor-certificado [certificado]="registro" [beneficiario]="beneficiario()" [tipo]="tipoNombre()" [origen]="origenNombre()" [reconocimiento]="reconocimiento()" />
+      <app-visor-certificado [certificado]="registro" [beneficiario]="beneficiario()" [dni]="dni()" [lugar]="$any(actividadVisual()?.['sede'])" [fechaActividad]="$any(actividadVisual()?.['fecha_inicio'])" [tipo]="tipoNombre()" [origen]="origenNombre()" [reconocimiento]="reconocimiento()" />
     }
   }
   <section class="card detalle">
@@ -54,8 +54,7 @@
               } @else { Sin firmas registradas }
             </td>
             <td>
-              <p>Disponibilidad del PDF no informada por Laravel.</p>
-              <a class="btn btn-consulta" [routerLink]="['/certificaciones/certificados', registro.id_certificado, 'documentos', documento.id_certificado_documento, 'visor']">Previsualizar</a>
+              <a class="btn btn-consulta" [routerLink]="['/certificaciones/certificados', registro.id_certificado, 'documentos', documento.id_certificado_documento, 'visor']">Consultar documento y PDF</a>
               <a class="btn" routerLink="/certificaciones/verificacion" [queryParams]="{ codigo: documento.codigo_verificacion }">Consultar código</a>
             </td>
           </tr>
@@ -68,7 +67,7 @@
           <p>{{ consulta.fecha_consulta }} · Documento {{ documento.codigo_verificacion }} · {{ consulta.resultado }}</p>
         }
       }
-      <p class="nota">Se muestran metadatos autorizados. La visualización o descarga del archivo y la firma digital no están disponibles en la API.</p>
+      <p class="nota">El archivo se recupera mediante la API autenticada. Su disponibilidad e integridad las comprueba Laravel. Las firmas registradas no acreditan una firma criptográfica.</p>
     }
   </section>
 }

@@ -228,10 +228,10 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
   });
   it('conserva campos e ID tras un 409 de envío y reintenta sin crear otro borrador', async () => {
     sesion(); await formulario(); boton('Volver al formulario').click(); harness.detectChanges();
-    cambiar('lugar', 'Sede de prueba'); cambiar('descripcion', 'Descripción de prueba');
+    cambiar('descripcion', 'Descripción de prueba');
     const datos = modelo().form.getRawValue(); boton('Revisar datos').click(); harness.detectChanges();
     boton('Enviar solicitud').click(); harness.detectChanges();
-    const crear = http.expectOne(solicitudes); crear.flush({ success: true, data: SOLICITUD_API_TEST });
+    const crear = http.expectOne(solicitudes); expect(crear.request.body.sede_propuesta).toBeNull(); crear.flush({ success: true, data: SOLICITUD_API_TEST });
     http.expectOne(solicitudes + '/4/submit').flush({ success: false, data: null }, { status: 409, statusText: 'Conflict' }); harness.detectChanges();
     expect(vista().textContent).toContain('El borrador se guardó, pero no se confirmó el envío.');
     boton('Volver al formulario').click(); harness.detectChanges(); expect(modelo().form.getRawValue()).toEqual(datos);
@@ -295,7 +295,7 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     sesion(); harness = await RouterTestingHarness.create('/solicitudes/mis-solicitudes');
     http.expectOne(req => req.url === solicitudes + '/mine').flush(pagina([{ ...SOLICITUD_API_TEST, estado: 'Enviada' }])); harness.detectChanges();
     expect(vista().querySelector('tbody .estado')?.textContent?.trim()).toBe('Enviada');
-    expect(vista().querySelector('tbody')?.textContent).toContain('Pendiente de asignación de revisor');
+    expect(vista().querySelector('tbody')?.textContent).not.toContain('Pendiente de asignación de revisor');
     expect(vista().textContent).not.toContain('Revisor no informado por la API');
     http.expectNone(req => req.method === 'POST');
   });
@@ -313,7 +313,7 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton)))
       .toEqual(['Ver detalle', 'Iniciar revisión', 'Observar']);
     expect(vista().querySelector('#submenu-recursos-humanos a[href="/solicitudes/revision"]')).not.toBeNull();
-    expect(vista().querySelector('tbody')?.textContent).toContain('Solicitud #1');
+    expect(vista().querySelector('tbody')?.textContent).toContain('Solicitud 1');
     expect(vista().querySelector('tbody')?.textContent).toContain(enviada.area_nombre);
     expect(vista().querySelector('tbody')?.textContent).toContain(enviada.solicitante_nombre);
     expect(vista().querySelector('tbody')?.textContent).not.toContain('Área #5');
@@ -681,12 +681,13 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     http.expectOne(solicitudes + '/4/approve').flush({ success: true, data: { ...SOLICITUD_API_TEST, estado: 'Aprobada', id_actividad: null } });
     expect(cambios).toBe(0); escucha.unsubscribe();
   });
-  it('Mis solicitudes vuelve a consultar Laravel al recuperar el foco', async () => {
+  it('Mis solicitudes conserva el resultado sin consultar Laravel al recuperar el foco o cambiar visibilidad', async () => {
     sesion(); harness = await RouterTestingHarness.create('/solicitudes/mis-solicitudes');
     http.expectOne(req => req.url === solicitudes + '/mine').flush(pagina([{ ...SOLICITUD_API_TEST, estado: 'Pendiente de aprobación' }])); harness.detectChanges();
     window.dispatchEvent(new Event('focus'));
-    http.expectOne(req => req.url === solicitudes + '/mine').flush(pagina([{ ...SOLICITUD_API_TEST, estado: 'Rechazada' }])); harness.detectChanges();
-    expect(vista().querySelector('tbody .estado')?.textContent).toBe('Rechazada');
+    document.dispatchEvent(new Event('visibilitychange')); harness.detectChanges();
+    http.expectNone(req => req.url === solicitudes + '/mine');
+    expect(vista().querySelector('tbody .estado')?.textContent).toBe('Pendiente de aprobación');
   });
   it('un 403 de decisión conserva Pendiente y retira las acciones del expediente sin competencia', async () => {
     sesion(['consultar', 'aprobar', 'rechazar'], 9, 'Gerencial');

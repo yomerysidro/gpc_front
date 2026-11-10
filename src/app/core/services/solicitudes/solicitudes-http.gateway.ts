@@ -189,8 +189,8 @@ export class SolicitudesHttpGateway implements SolicitudesGateway {
     const facultades = this.acceso?.capacidades(fila);
     const denegada = this.decisionesDenegadas.has(String(fila.id_solicitud_actividad))
       && this.decisionesDenegadas.get(String(fila.id_solicitud_actividad)) === this.acceso?.estadoAutorizacion;
-    return { id: String(fila.id_solicitud_actividad), numero: `Solicitud #${fila.id_solicitud_actividad}`, areaId: String(fila.id_area), area: fila.area_nombre || `Área #${fila.id_area}`,
-      responsable: fila.solicitante_nombre || `Usuario #${fila.id_usuario_solicitante}`, tipoId: String(fila.id_tipo_actividad), tipo: fila.tipo_actividad_nombre || `Tipo #${fila.id_tipo_actividad}`,
+    return { id: String(fila.id_solicitud_actividad), idSolicitudActividad: fila.id_solicitud_actividad, numero: `Solicitud ${fila.id_solicitud_actividad}`, areaId: String(fila.id_area), area: fila.area_nombre?.trim() || 'No informado',
+      responsable: fila.solicitante_nombre?.trim() || 'No informado', tipoId: String(fila.id_tipo_actividad), tipo: fila.tipo_actividad_nombre || `Tipo #${fila.id_tipo_actividad}`,
       nombre: fila.nombre, descripcion: fila.descripcion ?? '', objetivo: fila.justificacion, inicio: fila.fecha_inicio_propuesta, fin: fila.fecha_fin_propuesta,
       lugar: fila.sede_propuesta ?? '', observaciones: '', fecha: fila.fecha_solicitud, estado: fila.estado, actividadId: fila.id_actividad, revisor: null, ultimaObservacion: null, resultadoRevision: null,
       version: '', puedeVerDetalle: facultades?.propia === true && this.acceso?.consultaPropias === true || this.acceso?.consultaDetalle === true, puedeEditar: facultades?.propia === true && facultades.puedeEditar && ['Borrador', 'Observada'].includes(fila.estado),

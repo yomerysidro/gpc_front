@@ -1,25 +1,55 @@
-@if (certificado(); as certificadoActual) {
+@if (certificado() || soloRevision()) {
 <section aria-label="Visor institucional">
+  @if (documento()?.estado === 'Vigente') {
+    <h2>Documento almacenado</h2>
+    <p>Estado registrado: {{ documento()?.estado }}. Las firmas y la emisión oficial requieren confirmación independiente.</p>
+    <app-visor-pdf [documentoId]="documento()!.id_certificado_documento" />
+  }
   <h2>Previsualización institucional</h2>
   <p class="alert alert-advertencia">Borrador de metadatos. Esta vista no es el PDF oficial ni acredita una firma digital.</p>
-  <div class="acciones">
+  @if (!soloRevision()) { <div class="acciones">
     <button class="btn" type="button" (click)="imprimir()" [disabled]="anulado(documento()?.estado) || cargandoFirmas()">Imprimir previsualización</button>
-  </div>
-  <p class="nota" id="pdf-pendiente">PDF oficial pendiente de integración: Laravel no ofrece una operación autorizada de visualización o descarga. No se puede confirmar la disponibilidad del archivo.</p>
-  <article class="certificado-borrador">
+  </div> }
+  @if (!documento()) { <p class="nota">Sin documento almacenado confirmado. La vista siguiente representa únicamente los datos disponibles.</p> }
+  <article class="certificado-borrador" [class.documento-horizontal]="disenoDocumento()">
     <header>
       <img src="/marca/escudo-160.webp" srcset="/marca/escudo-160.webp 1x, /marca/escudo-320.webp 2x" width="80" height="80" alt="Escudo original de la Municipalidad Distrital de Morales" />
-      <p>Municipalidad Distrital de Morales</p><strong>PREVISUALIZACIÓN · NO ES UN DOCUMENTO OFICIAL FIRMADO</strong>
+      <div class="identidad"><p>Municipalidad Distrital de Morales</p><small>Certificados digitales</small></div>
+      <div class="tipo-codigo"><span>{{ tipo() || 'Tipo pendiente de consulta' }}</span>@if (documento()?.codigo_verificacion; as codigo) { <span class="codigo">{{ codigo }}</span> }</div>
     </header>
+    @if (!disenoDocumento()) {
+    <p class="marca-borrador">PREVISUALIZACIÓN · NO ES UN DOCUMENTO OFICIAL FIRMADO</p>
+    @if (soloRevision()) { <p class="marca-borrador"><strong>No emitida · Revisión de datos sin guardado</strong></p> }
+    }
     <h2>{{ tipo() || 'Tipo de certificado pendiente de consulta' }}</h2>
+    @if (disenoDocumento()) { <p class="otorgamiento">Se otorga el presente certificado a:</p> }
+    <p class="beneficiario">{{ beneficiario() || 'Nombre no disponible' }}</p>
+    @if (dni()) { <p class="documento-identidad">Documento: {{ dni() }}</p> }
+    @if (disenoDocumento()) {
+      <p class="cuerpo-certificado">{{ mensajeRedactado() }}</p>
+      @if (fechaActividad()) { <p class="lugar-certificado">Fecha de realización: {{ fechaActividad() | date:'dd/MM/yyyy' }}</p> }
+      @if (lugar()) { <p class="lugar-certificado">{{ lugar() }}</p> }
+      <div class="espacios-firmas" aria-label="Espacios para firmas"><div></div><div></div></div>
+      <footer class="reserva-verificacion" aria-label="Espacio reservado para código y QR"><span>Espacio reservado para código de verificación</span><span>Espacio reservado para QR</span></footer>
+    } @else {
     @if (reconocimiento(); as registro) {
       <h3>{{ registro.titulo }}</h3>
       <p>{{ registro.descripcion }}</p>
       <dl><dt>Motivo del reconocimiento</dt><dd>{{ registro.motivo }}</dd><dt>Fecha del reconocimiento</dt><dd>{{ registro.fecha_reconocimiento }}</dd></dl>
     } @else { <p>{{ origen() || 'Contenido del origen no disponible mediante el API autorizado.' }}</p> }
     <dl>
+      @if (soloRevision()) {
+        <dt>Actividad</dt><dd>{{ origen() || 'No informada' }}</dd>
+        @if (sesion()) { <dt>Sesión</dt><dd>{{ sesion() }}</dd> }
+        <dt>Fecha de la sesión / actividad</dt><dd>{{ fechaActividad() ? (fechaActividad() | date:'dd/MM/yyyy') : 'No informada' }}</dd>
+        <dt>Lugar registrado</dt><dd>{{ lugar() || 'No informado' }}</dd>
+        <dt>Elegibilidad</dt><dd>{{ elegibilidad() || 'No informada' }}</dd>
+        <dt>Estado del documento</dt><dd>No emitida</dd>
+      } @else { @if (certificado(); as certificadoActual) {
       <dt>Beneficiario</dt><dd>{{ beneficiario() || 'Persona #' + certificadoActual.id_persona + ' · Nombre no disponible' }}</dd>
       <dt>Fecha de emisión</dt><dd>{{ certificadoActual.fecha_emision || 'Pendiente' }}</dd>
+      @if (fechaActividad()) { <dt>Fecha de actividad</dt><dd>{{ fechaActividad() | date:'dd/MM/yyyy' }}</dd> }
+      @if (lugar()) { <dt>Lugar registrado</dt><dd>{{ lugar() }}</dd> }
       <dt>Estado del certificado</dt><dd>{{ estadoRegistro(certificadoActual.estado) }}</dd>
       <dt>Código único de este documento</dt><dd class="codigo">{{ documento()?.codigo_verificacion || 'Pendiente: no hay código de documento disponible' }}</dd>
       <dt>Estado del documento</dt><dd>{{ documento()?.estado || 'Pendiente: no hay documento generado' }}</dd>
@@ -27,7 +57,10 @@
         <dt>Fecha de generación</dt><dd>{{ documentoActual.fecha_generacion }}</dd>
         <dt>Reemisión</dt><dd>{{ documentoActual.motivo_reemision || 'Documento inicial' }}</dd>
       }
+      }
+      }
     </dl>
+    @if (!soloRevision()) {
     @if (anulado(documento()?.estado)) { <p class="alert alert-error">DOCUMENTO ANULADO</p> }
     <h3>Firmas asociadas al documento</h3>
     @if (cargandoFirmas()) { <p role="status">Consultando firmas…</p> }
@@ -39,7 +72,9 @@
       </p>
     }
     <p>El registro de firmas asociadas no confirma la validez criptográfica del documento.</p>
-    <footer>QR pendiente: no hay una URL pública de verificación confirmada y configurada.</footer>
+    <footer>@if (documento()?.estado === 'Vigente') { Consulta el QR auténtico en el PDF almacenado. } @else { QR pendiente: no hay un documento PDF disponible para esta previsualización. }</footer>
+    }
+    }
   </article>
 </section>
 }

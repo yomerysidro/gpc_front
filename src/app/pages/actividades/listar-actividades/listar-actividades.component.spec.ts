@@ -15,7 +15,13 @@ import { DetalleActividadComponent } from '../detalle-actividad/detalle-activida
   template: '<button type="button" (click)="volver.emit()">Volver a actividades</button>' })
 class DetalleActividadPruebaComponent {
   readonly actividadId = input<number | null>(null);
+  readonly revision = input(0);
+  readonly solicitudRuta = input<string | null>(null);
+  readonly operando = input(false);
   readonly volver = output<void>();
+  readonly gestionarPonentes = output<Actividad>();
+  readonly editarActividad = output<Actividad>();
+  readonly cerrarActividad = output<Actividad>();
 }
 
 const ACTIVIDAD: Actividad = {
@@ -97,11 +103,47 @@ describe('Pantalla de Actividades', () => {
     expect(detalle.textContent?.trim()).toBe('Detalles de la actividad');
     expect(listado.getAttribute('aria-selected')).toBe('true');
     expect(detalle.disabled).toBeTrue();
+    expect(detalle.getAttribute('aria-describedby')).toBe('ayuda-detalles-actividad');
+    const ayuda = $<HTMLElement>('.ayuda-pestana'); ayuda.focus();
+    expect($('#ayuda-detalles-actividad').textContent).toBe('Selecciona una actividad para ver sus detalles');
+    expect(getComputedStyle($('#ayuda-detalles-actividad')).visibility).toBe('visible');
     detalle.click();
     listado.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     await fixture.whenStable();
     expect(listado.getAttribute('aria-selected')).toBe('true');
     expect($('app-detalle-actividad')).toBeNull(); expect(servicio.obtener).not.toHaveBeenCalled();
+  });
+
+  it('numera posiciones del conjunto filtrado y continúa en la segunda página sin usar IDs', async () => {
+    servicio.listar.and.returnValue(of(Array.from({ length: 23 }, (_, i) => ({ ...ACTIVIDAD, id_actividad: 100 + i }))));
+    fixture.destroy(); fixture = TestBed.createComponent(ListarActividadesComponent); fixture.autoDetectChanges(); await fixture.whenStable();
+    expect($('thead th').textContent).toBe('N.º'); expect($('tbody tr td').textContent?.trim()).toBe('1');
+    const modelo = fixture.componentInstance as unknown as { pagina: WritableSignal<number> };
+    modelo.pagina.set(2); await fixture.whenStable();
+    expect($('tbody tr td').textContent?.trim()).toBe('11');
+    await escribir('#buscar-actividad', 'Jornada'); expect($('tbody tr td').textContent?.trim()).toBe('1');
+    expect(servicio.listar).toHaveBeenCalledTimes(2);
+  });
+
+  it('espera catálogos antes de mostrar filas y mantiene datos durante un refetch sin reaccionar al foco', async () => {
+    const areas = new Subject<readonly { id_area: number; nombre: string }[]>();
+    const tipos = new Subject<readonly { id_tipo_actividad: number; nombre: string; estado: boolean; descripcion: null }[]>();
+    servicio.listarAreas.and.returnValue(areas); servicio.listarTipos.and.returnValue(tipos);
+    fixture.destroy(); fixture = TestBed.createComponent(ListarActividadesComponent); fixture.autoDetectChanges(); await fixture.whenStable();
+    expect($<HTMLElement>('.tabla-caja').hidden).toBeTrue(); expect($('tbody').textContent).not.toContain(ACTIVIDAD.nombre);
+    expect(fixture.nativeElement.textContent).not.toContain('Área #'); expect(fixture.nativeElement.textContent).not.toContain('Tipo #');
+    areas.next([{ id_area: 2, nombre: 'Área real' }]); areas.complete(); await fixture.whenStable();
+    expect($<HTMLElement>('.tabla-caja').hidden).toBeTrue();
+    tipos.next([{ id_tipo_actividad: 3, nombre: 'Tipo real', estado: true, descripcion: null }]); tipos.complete(); await fixture.whenStable();
+    expect($<HTMLElement>('.tabla-caja').hidden).toBeFalse(); expect($('tbody').textContent).toContain('Área real');
+    const consultas = servicio.listar.calls.count(); window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); await fixture.whenStable();
+    expect(servicio.listar).toHaveBeenCalledTimes(consultas);
+    const respuesta = new Subject<readonly Actividad[]>(); servicio.listar.and.returnValue(respuesta);
+    const modelo = fixture.componentInstance as unknown as { cargar(): void };
+    modelo.cargar(); modelo.cargar(); await fixture.whenStable();
+    expect(servicio.listar).toHaveBeenCalledTimes(consultas + 1); expect($('tbody').textContent).toContain(ACTIVIDAD.nombre);
+    respuesta.error({ status: 500, mensaje: 'Error real', errores: {} }); await fixture.whenStable();
+    expect($('tbody').textContent).toContain(ACTIVIDAD.nombre); expect(fixture.nativeElement.textContent).toContain('Error real');
   });
 
   it('sitúa Ver actividad antes del engranaje y activa el detalle sin cambiar la ruta', async () => {

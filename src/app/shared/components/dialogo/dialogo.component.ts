@@ -20,6 +20,13 @@ export class DialogoComponent {
   readonly idDescripcion = input<string | null>(null);
   /** Se emite al cerrarse por cualquier vía (botón, Esc). */
   readonly cerrado = output<void>();
+  readonly mostrarCerrar = input(false);
+  readonly cierreControlado = input(false);
+  readonly cierreSolicitado = output<void>();
+  protected solicitarCierre(evento?: Event): void {
+    if (this.cierreControlado()) { evento?.preventDefault(); this.cierreSolicitado.emit(); }
+    else if (!evento) this.cerrar();
+  }
 
   protected readonly idTitulo = `dialogo-titulo-${++siguienteId}`;
   private readonly dialogo = viewChild.required<ElementRef<HTMLDialogElement>>('dialogo');

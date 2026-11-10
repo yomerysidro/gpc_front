@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, Observable, of, Subject, switchMap, takeUntil, tap } from 'rxjs';
 import { ErrorApi } from '../../../../core/interfaces/api/api-response.interface';
-import { CertificadoDocumento, CertificadoFirma, CertificadoRow, ConsultaCertificado, Reconocimiento } from '../../../../core/interfaces/emision-certificados/emision-certificados.interface';
+import { CertificadoDocumento, CertificadoFirma, CertificadoRow, ConsultaCertificado, Reconocimiento, RegistroEmision } from '../../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { AuthService } from '../../../../core/services/autenticacion/auth.service';
 import { EmisionCertificadosService } from '../../../../core/services/emision-certificados/emision-certificados.service';
 import { PageTitleComponent } from '../../../../shared/components/page-title/page-title.component';
@@ -37,7 +37,8 @@ export class DetalleCertificadoComponent {
   protected readonly reconocimiento = signal<Reconocimiento | null>(null);
   protected readonly firmantes = signal<Readonly<Record<number, FirmanteVista>>>({});
   protected readonly documentoId = signal<number | null>(null);
-  protected readonly documentoSeleccionado = computed(() => this.documentos().find(documento => documento.id_certificado_documento === this.documentoId()) ?? null);
+  protected readonly documentoSeleccionado = computed(() => this.documentoId() === null ? this.documentos().find(d => d.estado === 'Vigente') ?? null : this.documentos().find(documento => documento.id_certificado_documento === this.documentoId()) ?? null);
+  protected readonly actividadVisual = signal<RegistroEmision | null>(null);
   protected readonly cargandoFirmas = signal(false);
   protected readonly errorFirmantes = signal<string | null>(null);
   protected readonly beneficiario = signal<string | null>(null);
@@ -56,6 +57,7 @@ export class DetalleCertificadoComponent {
           this.cargandoDocumentos.set(false); this.cargandoFirmas.set(false);
           this.tipoNombre.set(null); this.origenNombre.set(null); this.reconocimiento.set(null);
           this.beneficiario.set(null); this.dni.set(null); this.errorRelaciones.set(null);
+          this.actividadVisual.set(null);
           this.documentoId.set(parametros.has('documentoId') ? Number(parametros.get('documentoId')) : null);
         }),
         switchMap(parametros => {
@@ -95,7 +97,13 @@ export class DetalleCertificadoComponent {
     }).pipe(takeUntil(this.cambio), takeUntilDestroyed(this.destroyRef)).subscribe(({ tipo, origenes }) => {
       this.tipoNombre.set(tipo?.nombre_tipo ?? null);
       if (certificado.id_participacion) {
-        this.origenNombre.set(origenes.find(fila => Number(fila['id_participacion']) === certificado.id_participacion) ? `Participación #${certificado.id_participacion}` : null);
+        const participacion = origenes.find(fila => Number(fila['id_participacion']) === certificado.id_participacion);
+        this.origenNombre.set(participacion ? `Participación #${certificado.id_participacion}` : null);
+        if (participacion && this.auth.tienePermiso('actividades.ver')) this.api.obtener('activity', Number(participacion['id_actividad']))
+          .pipe(takeUntil(this.cambio), takeUntilDestroyed(this.destroyRef)).subscribe({
+            next: actividad => { this.actividadVisual.set(actividad); this.origenNombre.set(String(actividad['nombre'])); },
+            error: (error: ErrorApi) => this.errorRelaciones.set(error.mensaje),
+          });
       } else if (certificado.id_practica) {
         const practica = origenes.find(fila => Number(fila['id_practica']) === certificado.id_practica);
         this.origenNombre.set(practica ? `Práctica: ${String(practica['carrera'] ?? '')}` : null);

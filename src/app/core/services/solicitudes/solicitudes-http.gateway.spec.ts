@@ -31,8 +31,9 @@ describe('Adaptación del contrato a las cinco pantallas existentes', () => {
     iniciar(); expect(TestBed.inject(SolicitudesService).integrado).toBeTrue(); let vista: Solicitud | undefined;
     gateway.listar('propias', filtro).subscribe(pagina => vista = pagina.registros[0]);
     http.expectOne(r => r.url === base + '/mine').flush({ success: true, data: { data: [fila], total: 1, current_page: 1, last_page: 1, per_page: 20 } });
-    expect(vista?.objetivo).toBe('Justificación'); expect(vista?.acciones).toEqual(['Enviar']); expect(vista?.version).toBe(''); expect(vista?.numero).toBe('Solicitud #4');
-    expect(vista?.responsable).toBe('Usuario #8'); // identificador real, no nombre ficticio
+    expect(vista?.objetivo).toBe('Justificación'); expect(vista?.acciones).toEqual(['Enviar']); expect(vista?.version).toBe(''); expect(vista?.numero).toBe('Solicitud 4');
+    expect(vista?.idSolicitudActividad).toBe(4); expect(typeof vista?.idSolicitudActividad).toBe('number');
+    expect(vista?.responsable).toBe('No informado'); expect(vista?.area).toBe('No informado');
   });
   it('mapea el formulario al DTO sin observaciones adicionales, versión ni identidad', () => {
     iniciar(); const datos: DatosSolicitud = { areaId: '2', tipoId: '3', nombre: 'Actividad de prueba', descripcion: '', objetivo: 'Justificación', inicio: '2026-12-01', fin: '2026-12-02', lugar: '', observaciones: 'No existe en Laravel' };

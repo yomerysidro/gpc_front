@@ -43,6 +43,8 @@ export class NuevaSolicitudComponent implements OnInit {
   private permisoAreas = this.auth.tienePermiso('solicitudes.crear');
   private readonly areasUsuario = signal<UsuarioSesion | null>(null);
   protected readonly contexto = signal<ContextoSolicitud | null>(null);
+  protected readonly responsableSolicitante = computed(() =>
+    this.auth.usuario()?.nombre?.trim() || this.contexto()?.responsable?.trim() || '');
   protected readonly registro = signal<Solicitud | null>(null);
   protected readonly tipos = signal<readonly { id: string; nombre: string }[]>([]);
   protected readonly areasCatalogo = signal<readonly { id: string; nombre: string }[]>([]);
@@ -70,7 +72,6 @@ export class NuevaSolicitudComponent implements OnInit {
   }, { validators: fechasSolicitud });
   protected readonly camposTexto = [
     { clave: 'nombre', label: 'Nombre de la actividad', maximo: LIMITES_SOLICITUD.nombre, obligatorio: true },
-    { clave: 'lugar', label: 'Sede propuesta', maximo: LIMITES_SOLICITUD.sede, obligatorio: false },
   ] as const;
   protected readonly camposLargos = [
     { clave: 'descripcion', label: 'Descripción', obligatorio: false, maximo: LIMITES_SOLICITUD.descripcion },

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { EmisionCertificadosService } from '../../../core/services/emision-certificados/emision-certificados.service';
 import { PersonService } from '../../../core/services/person/person.service';
 import { FILTROS_SESIONES_VACIOS, SesionesAsistenciaListado } from './sesiones-asistencia-listado';
@@ -17,7 +17,7 @@ describe('Catálogos completos de Sesiones y Asistencias', () => {
     const catalogos: Record<string, readonly RegistroEmision[]> = {
       'activity-session': sesiones,
       activity: [{ id_actividad: 7, nombre: 'Actividad A' }, { id_actividad: 8, nombre: 'Actividad B' }],
-      participation: [{ id_participacion: 21, id_persona: 9 }],
+      participation: [{ id_participacion: 21, id_persona: 9, id_actividad: 7 }, { id_participacion: 22, id_persona: 10, id_actividad: 7 }],
       attendance: [{ id_asistencia: 87, id_participacion: 21, id_actividad_sesion: 300, estado: 'Registrada' },
         { id_asistencia: 88, id_participacion: 21, id_actividad_sesion: 301, estado: 'Justificada' }],
     };
@@ -58,6 +58,35 @@ describe('Catálogos completos de Sesiones y Asistencias', () => {
     expect(api.listarTodos).toHaveBeenCalledTimes(4); expect(personas.listar).toHaveBeenCalledTimes(1);
     modelo.invalidar(); modelo.cargar(true).subscribe();
     expect(api.listarTodos).toHaveBeenCalledTimes(8); expect(personas.listar).toHaveBeenCalledTimes(2);
+  });
+
+  it('incluye inscritos sin asistencia, conserva los IDs de participación y no fabrica marcas ni horas', () => {
+    modelo.cargar(true).subscribe();
+    const filas = modelo.matriz('7', '300');
+    expect(filas.length).toBe(2); expect(filas[0]['id_participacion']).toBe(21); expect(filas[0]['id_asistencia']).toBe(87);
+    expect(filas[1]['id_participacion']).toBe(22); expect(filas[1]['id_asistencia']).toBeUndefined(); expect(filas[1]['hora_entrada']).toBeUndefined();
+    expect(modelo.matriz('7', '301')).toEqual([]); expect(modelo.matriz('', '')).toEqual([]);
+  });
+
+  it('detecta duplicados por participación y sesión sin ocultar a los inscritos pendientes', () => {
+    modelo.cargar(true).subscribe();
+    modelo.asistencias = [...modelo.asistencias, { id_asistencia: 99, id_participacion: 21, id_actividad_sesion: 300 }];
+    const filas = modelo.matriz('7', '300');
+    expect(filas.length).toBe(2);
+    expect(filas[0]['duplicada']).toBeTrue();
+    expect(filas[1]['duplicada']).toBeFalse();
+  });
+
+  it('conserva inscripciones ante un 403 de personas e informa la ruta y estado HTTP', () => {
+    personas.listar.and.returnValue(throwError(() => ({ status: 403, mensaje: 'Consulta denegada' })));
+    modelo.cargar(true).subscribe();
+    expect(modelo.matriz('7', '300').length).toBe(2);
+    expect(modelo.errorPersonas).toContain('/persons/list');
+    expect(modelo.errorPersonas).toContain('403');
+    expect(modelo.matriz('7', '300')[0]['participanteNombre']).toBe('Nombre no disponible');
+    personas.listar.and.returnValue(of([]));
+    modelo.invalidar(); modelo.cargar(true).subscribe();
+    expect(modelo.errorPersonas).toBeNull();
   });
 
   it('mantiene los estados de sesiones sin inventar equivalencias y no sustituye nombres ausentes por IDs', () => {

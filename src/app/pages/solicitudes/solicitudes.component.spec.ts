@@ -2,10 +2,11 @@ import { TODAS_CAPACIDADES_SOLICITUDES_TEST } from '../../core/interfaces/autent
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { FormControl, FormGroup } from '@angular/forms';
+import { By } from '@angular/platform-browser';
 import { of, Subject, throwError } from 'rxjs';
 import { routes } from '../../app.routes';
 import { Solicitud, PaginaSolicitudes } from '../../core/interfaces/solicitudes/solicitud.interface';
@@ -26,7 +27,7 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   let gateway: jasmine.SpyObj<SolicitudesGateway>;
   let http: HttpTestingController;
   let harness: RouterTestingHarness;
-  function configurar(integrado = true, consultarCatalogos = integrado, rol = 'Administrador'): void {
+  function configurar(integrado = true, consultarCatalogos = integrado, rol = 'Administrador', permisos?: readonly string[]): void {
     gateway = jasmine.createSpyObj<SolicitudesGateway>('gateway', ['contexto', 'listar', 'detalle', 'guardar', 'decidir', 'historial', 'documentos', 'documento']);
     gateway.contexto.and.returnValue(of({ responsable: 'Usuario de prueba', areasDisponibles: [{ id: '9', nombre: 'Área de prueba unitaria' }], puedeCrear: true }));
     gateway.listar.and.returnValue(of(pagina)); gateway.detalle.and.returnValue(of(solicitud));
@@ -37,7 +38,7 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(),
       { provide: ACTIVITY_REQUESTS_API_ACTIVA, useValue: integrado || consultarCatalogos },
       { provide: SOLICITUDES_GATEWAY, useValue: integrado ? gateway : null },
-      { provide: AuthService, useValue: { cargarSesion: () => of(true), tienePermiso: (clave: string) => !['areas.ver', 'actividades.ver'].includes(clave) || consultarCatalogos,
+      { provide: AuthService, useValue: { cargarSesion: () => of(true), tienePermiso: (clave: string) => permisos ? permisos.includes(clave) : !['areas.ver', 'actividades.ver'].includes(clave) || consultarCatalogos,
         capacidadesSolicitudes: signal(TODAS_CAPACIDADES_SOLICITUDES_TEST), usuario: signal({ id: 1, nombre: 'Usuario de prueba', email: 'prueba@example.test', rol }), modulos: signal([]) } },
     ] });
     http = TestBed.inject(HttpTestingController);
@@ -57,7 +58,7 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   }
   function catalogos(): void { for (const req of http.match(environment.apiBaseUrl + '/activity-requests/authorized-areas')) req.flush({ success: true, data: [{ id_area: 9, nombre: 'Area HTTP de prueba' }] }); http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1').flush({ success: true, data: [{ id_tipo_actividad: 3, nombre: 'Tipo de prueba', estado: true }] }); harness.detectChanges(); }
   function completar(): void {
-    cambiar('#solicitud-nombre', solicitud.nombre); cambiar('#solicitud-lugar', solicitud.lugar);
+    cambiar('#solicitud-nombre', solicitud.nombre);
     cambiar('#solicitud-tipo', '3'); cambiar('#solicitud-inicio', solicitud.inicio); cambiar('#solicitud-fin', solicitud.fin);
     cambiar('#solicitud-descripcion', solicitud.descripcion); cambiar('#solicitud-objetivo', solicitud.objetivo);
   }
@@ -76,6 +77,36 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     let error: unknown;
     api.listar('revision', { busqueda: '', estado: '', desde: '', hasta: '', pagina: 1 }).subscribe({ error: valor => error = valor });
     expect(error instanceof IntegracionSolicitudesPendiente).toBeTrue(); expect(gateway.listar).not.toHaveBeenCalled(); http.expectNone(() => true);
+  });
+
+  it('Mis solicitudes separa siete columnas y abre el detalle con el ojo sin mostrar datos de revisión', async () => {
+    configurar(); gateway.listar.and.returnValue(of({ ...pagina, registros: [{ ...solicitud, id: '1', idSolicitudActividad: 1, numero: 'Solicitud 1' }] }));
+    await navegar('/solicitudes/mis-solicitudes');
+    expect(Array.from(vista().querySelectorAll('thead th'), celda => celda.textContent?.trim())).toEqual(['N°', 'Actividad', 'Área solicitante', 'Responsable', 'Fecha', 'Estado', 'Acciones']);
+    const celdas = vista().querySelectorAll('tbody tr:first-child > td');
+    expect(celdas.length).toBe(7); expect(celdas[0].textContent?.trim()).toBe('1');
+    expect(celdas[1].textContent?.trim()).toBe(solicitud.nombre); expect(celdas[2].textContent?.trim()).toBe(solicitud.area);
+    expect(celdas[3].textContent?.trim()).toBe(solicitud.responsable); expect(celdas[4].textContent?.trim()).toBe('02/11/2026');
+    expect(celdas[5].textContent?.trim()).toBe(solicitud.estado); expect(vista().querySelector('tbody')?.textContent).not.toContain(solicitud.revisor!);
+    expect(celdas[6].querySelector('[aria-label="Ver detalle"] .material-symbols-outlined')?.textContent).toBe('visibility');
+    await pulsar('Ver detalle'); expect(gateway.detalle).toHaveBeenCalledWith('1', false);
+    expect(vista().querySelector('app-solicitud-detalle')?.textContent).toContain(solicitud.revisor!);
+  });
+
+  it('Mis solicitudes mantiene registros e indicadores durante refetch y después de un error real', async () => {
+    configurar(); gateway.listar.and.returnValue(of({ ...pagina, total: 30, ultimaPagina: 2 }));
+    await navegar('/solicitudes/mis-solicitudes');
+    window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange'));
+    expect(gateway.listar).toHaveBeenCalledTimes(1);
+    const respuesta = new Subject<PaginaSolicitudes<Solicitud>>(); gateway.listar.and.returnValue(respuesta);
+    await pulsar('Siguiente'); expect(gateway.listar).toHaveBeenCalledTimes(2);
+    expect(vista().querySelector('tbody')?.textContent).toContain(solicitud.nombre);
+    expect(vista().querySelector('.indicador strong')?.textContent).toBe('30'); expect(vista().querySelector('.estado-carga')?.textContent).toContain('Actualizando');
+    respuesta.error(new Error('Error de consulta')); harness.detectChanges();
+    expect(vista().querySelector('[role="alert"]')).not.toBeNull();
+    expect(vista().querySelector('tbody')?.textContent).toContain(solicitud.nombre);
+    expect(vista().querySelector('.indicador strong')?.textContent).toBe('30');
+    expect(vista().textContent).not.toContain('No se encontraron solicitudes');
   });
   for (const caso of [{ rol: 'Administrador', cantidad: 10 }, { rol: 'Usuario', cantidad: 1 }]) {
     it('muestra exclusivamente las areas autorizadas por Laravel para ' + caso.rol, async () => {
@@ -197,9 +228,12 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     configurar(); gateway.decidir.and.returnValue(of({ ...solicitud, estado: 'Enviada', acciones: [] }));
     await navegar('/solicitudes/nueva'); catalogos(); completar(); await pulsar('Revisar datos'); await pulsar('Enviar solicitud');
     expect(gateway.guardar).toHaveBeenCalledTimes(1);
-    expect(gateway.guardar.calls.mostRecent().args[0]).toEqual({ areaId: '9', nombre: solicitud.nombre, tipoId: '3', descripcion: solicitud.descripcion, objetivo: solicitud.objetivo, inicio: solicitud.inicio, fin: solicitud.fin, lugar: solicitud.lugar, observaciones: '' });
+    expect(gateway.guardar.calls.mostRecent().args[0]).toEqual({ areaId: '9', nombre: solicitud.nombre, tipoId: '3', descripcion: solicitud.descripcion, objetivo: solicitud.objetivo, inicio: solicitud.inicio, fin: solicitud.fin, lugar: '', observaciones: '' });
     expect(gateway.decidir).toHaveBeenCalledWith('test-1', 'v1', 'Enviar', '');
     expect(TestBed.inject(Router).url).toBe('/solicitudes/mis-solicitudes'); http.expectNone(req => req.method !== 'GET');
+    expect(vista().querySelector('#solicitudes-tab-mis-solicitudes')?.getAttribute('aria-selected')).toBe('true');
+    expect(vista().querySelector('app-nueva-solicitud')).toBeNull();
+    expect(gateway.listar).toHaveBeenCalledTimes(1);
   });
   it('exige un borrador completo según Laravel y conserva el error del servidor', async () => {
     configurar(); gateway.guardar.and.returnValue(throwError(() => ({ status: 422, mensaje: 'El área no está autorizada.' })));
@@ -228,9 +262,12 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   });
   it('aplica los límites de nombre 100, sede 100 y descripción 255 del contrato definitivo', async () => {
     configurar(); await navegar('/solicitudes/nueva'); catalogos(); completar();
-    cambiar('#solicitud-nombre', 'a'.repeat(100)); cambiar('#solicitud-lugar', 's'.repeat(100)); cambiar('#solicitud-descripcion', 'd'.repeat(255));
+    const modelo = harness.fixture.debugElement.query(By.directive(NuevaSolicitudComponent)).componentInstance as { form: FormGroup };
+    modelo.form.controls['lugar'].setValue('s'.repeat(101)); expect(modelo.form.controls['lugar'].hasError('maxlength')).toBeTrue();
+    modelo.form.controls['lugar'].setValue('');
+    cambiar('#solicitud-nombre', 'a'.repeat(100)); cambiar('#solicitud-descripcion', 'd'.repeat(255));
     await pulsar('Revisar datos'); expect(vista().querySelector('app-solicitud-detalle')).not.toBeNull(); await pulsar('Volver al formulario');
-    for (const [selector, longitud] of [['#solicitud-nombre', 101], ['#solicitud-lugar', 101], ['#solicitud-descripcion', 256]] as const) {
+    for (const [selector, longitud] of [['#solicitud-nombre', 101], ['#solicitud-descripcion', 256]] as const) {
       cambiar(selector, 'a'.repeat(longitud)); await pulsar('Revisar datos');
       expect(vista().querySelector('app-solicitud-detalle')).toBeNull(); cambiar(selector, 'Valor válido');
     }
@@ -288,6 +325,194 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     cambiar('#historial-resultado', 'Aprobada'); await pulsar('Buscar');
     expect(gateway.historial.calls.mostRecent().args[0].estado).toBe('Aprobada'); expect(gateway.guardar).not.toHaveBeenCalled();
   });
+  it('abre Mis solicitudes por defecto, con las dos pestañas y una sola entrada en el Sidebar', async () => {
+    configurar(); await navegar('/solicitudes');
+    expect(TestBed.inject(Router).url).toBe('/solicitudes/mis-solicitudes');
+    expect(vista().querySelectorAll('[role=tab]').length).toBe(2);
+    expect(vista().querySelector('#solicitudes-tab-mis-solicitudes')?.getAttribute('aria-selected')).toBe('true');
+    expect(vista().querySelector('app-nueva-solicitud')).toBeNull();
+    const menu = vista().querySelector('#submenu-solicitudes')!;
+    expect(menu.querySelectorAll('a').length).toBe(1);
+    expect(menu.textContent).toContain('Mis solicitudes'); expect(menu.textContent).not.toContain('Nueva solicitud');
+    expect(gateway.listar).toHaveBeenCalledTimes(1); http.expectNone(() => true);
+  });
+
+  it('el botón del listado activa Nueva solicitud y reutiliza exactamente el formulario original', async () => {
+    configurar(); await navegar('/solicitudes/mis-solicitudes');
+    const buscador = vista().querySelector<HTMLElement>('#busqueda-solicitudes')!;
+    expect(buscador.hidden).toBeTrue();
+    await pulsar('Abrir búsqueda');
+    expect(buscador.hidden).toBeFalse();
+    expect(document.activeElement).toBe(vista().querySelector('#filtro-busqueda'));
+    const enlace = vista().querySelector<HTMLAnchorElement>('#solicitudes-panel-mis-solicitudes a[href="/solicitudes/nueva"]')!;
+    expect(enlace).not.toBeNull(); enlace.click(); harness.detectChanges(); await harness.fixture.whenStable(); harness.detectChanges();
+    catalogos();
+    expect(TestBed.inject(Router).url).toBe('/solicitudes/nueva');
+    expect(vista().querySelector('#solicitudes-tab-nueva')?.getAttribute('aria-selected')).toBe('true');
+    expect(vista().querySelectorAll('app-nueva-solicitud').length).toBe(1);
+    expect(vista().querySelector('app-bandeja-solicitudes')).toBeNull();
+    expect(vista().querySelectorAll('#solicitud-nombre').length).toBe(1);
+    expect(vista().textContent).toContain('Completar solicitud');
+    expect(gateway.guardar).not.toHaveBeenCalled();
+  });
+
+  it('conserva la instancia y el paso de revisión al alternar pestañas, y recarga el listado real', async () => {
+    configurar(); await navegar('/solicitudes/nueva'); catalogos(); completar(); await pulsar('Revisar datos');
+    const original = harness.fixture.debugElement.query(By.directive(NuevaSolicitudComponent)).componentInstance;
+    await pulsar('Mis solicitudes');
+    expect(gateway.listar).toHaveBeenCalledTimes(1);
+    expect(vista().querySelector('#solicitudes-panel-nueva')?.hasAttribute('hidden')).toBeTrue();
+    await pulsar('Nueva solicitud');
+    expect(harness.fixture.debugElement.query(By.directive(NuevaSolicitudComponent)).componentInstance).toBe(original);
+    expect(vista().querySelector('app-nueva-solicitud')?.textContent).toContain('Revisa los datos de tu solicitud');
+    await pulsar('Mis solicitudes'); expect(gateway.listar).toHaveBeenCalledTimes(2);
+    expect(vista().querySelectorAll('app-bandeja-solicitudes').length).toBe(1);
+    expect(vista().querySelectorAll('app-nueva-solicitud').length).toBe(1);
+    expect(gateway.guardar).not.toHaveBeenCalled(); http.expectNone(() => true);
+  });
+
+  it('conserva ID y versión del borrador y no duplica el alta al regresar a Nueva solicitud', async () => {
+    configurar(); await navegar('/solicitudes/nueva'); catalogos(); completar(); await pulsar('Guardar borrador');
+    expect(gateway.guardar).toHaveBeenCalledTimes(1);
+    await pulsar('Mis solicitudes'); await pulsar('Nueva solicitud');
+    await pulsar('Guardar borrador');
+    expect(gateway.guardar).toHaveBeenCalledTimes(2);
+    expect(gateway.guardar.calls.mostRecent().args[1]).toEqual({ id: 'test-1', version: 'v1' });
+    http.expectNone(() => true);
+  });
+
+  it('mantiene el ID de edición de la URL al alternar sin volver a consultar ni reconstruir el formulario', async () => {
+    configurar(); gateway.detalle.and.returnValue(of({ ...solicitud, estado: 'Borrador', puedeEditar: true, acciones: ['Enviar'] }));
+    await navegar('/solicitudes/nueva?editar=test-1'); catalogos();
+    const original = harness.fixture.debugElement.query(By.directive(NuevaSolicitudComponent)).componentInstance;
+    await pulsar('Mis solicitudes'); await pulsar('Nueva solicitud');
+    expect(TestBed.inject(Router).url).toBe('/solicitudes/nueva?editar=test-1');
+    expect(harness.fixture.debugElement.query(By.directive(NuevaSolicitudComponent)).componentInstance).toBe(original);
+    expect(gateway.detalle).toHaveBeenCalledTimes(1);
+    expect(vista().querySelector<HTMLInputElement>('#solicitud-nombre')?.value).toBe(solicitud.nombre);
+    http.expectNone(() => true);
+  });
+
+  it('sin permiso de creación conserva el listado y oculta la pestaña y el botón de Nueva solicitud', async () => {
+    configurar(true, true, 'Consulta', ['solicitudes.propias']); await navegar('/solicitudes/mis-solicitudes');
+    expect(vista().querySelectorAll('[role=tab]').length).toBe(1);
+    expect(vista().querySelector('#solicitudes-tab-nueva')).toBeNull();
+    expect(vista().querySelector('#solicitudes-panel-mis-solicitudes a[href="/solicitudes/nueva"]')).toBeNull();
+    expect(vista().querySelector('app-nueva-solicitud')).toBeNull();
+    expect(vista().querySelector('tbody')).not.toBeNull();
+    expect(gateway.listar).toHaveBeenCalledTimes(1);
+    await harness.navigateByUrl('/solicitudes/nueva'); harness.detectChanges();
+    expect(TestBed.inject(Router).url).toBe('/acceso-denegado'); http.expectNone(() => true);
+  });
+
+  it('Mis solicitudes filtra automáticamente con debounce de 300 ms, sin botones ni fechas', async () => {
+    configurar(); await navegar('/solicitudes/mis-solicitudes');
+    const nueva = vista().querySelector<HTMLAnchorElement>('.acciones-cabecera a')!;
+    const posicionNueva = nueva.getBoundingClientRect();
+    const buscador = vista().querySelector<HTMLElement>('#busqueda-solicitudes')!;
+    expect(buscador.hidden).toBeTrue();
+    await pulsar('Abrir búsqueda');
+    expect(buscador.hidden).toBeFalse();
+    expect(nueva.getBoundingClientRect().left).toBe(posicionNueva.left);
+    expect(nueva.getBoundingClientRect().top).toBe(posicionNueva.top);
+    expect(buscador.getBoundingClientRect().right).toBeLessThanOrEqual(vista().querySelector('.boton-busqueda')!.getBoundingClientRect().left);
+    expect((await document.fonts.load('300 20px "Material Symbols Outlined"', 'search')).length).toBeGreaterThan(0);
+    const contexto = document.createElement('canvas').getContext('2d')!; contexto.font = '300 20px "Material Symbols Outlined"';
+    expect(contexto.measureText('search').width).toBeCloseTo(20, 0); expect(contexto.measureText('refresh').width).toBeCloseTo(20, 0);
+    expect(vista().querySelector('#filtro-desde')).toBeNull(); expect(vista().querySelector('#filtro-hasta')).toBeNull();
+    const textos = Array.from(vista().querySelectorAll('button'), b => b.textContent?.trim());
+    expect(textos).not.toContain('Buscar'); expect(textos).not.toContain('Limpiar filtros');
+    expect(vista().querySelector('.busqueda-con-icono .material-symbols-outlined')?.textContent).toBe('search');
+    expect(vista().querySelector('#filtro-estado')).toBeNull();
+    fakeAsync(() => {
+      expect(gateway.listar).toHaveBeenCalledTimes(1);
+      cambiar('#filtro-busqueda', 'Capa'); tick(100);
+      cambiar('#filtro-busqueda', 'Capacitación'); tick(299); expect(gateway.listar).toHaveBeenCalledTimes(1);
+      tick(1); expect(gateway.listar).toHaveBeenCalledTimes(2);
+      expect(gateway.listar.calls.mostRecent().args[1].busqueda).toBe('Capacitación');
+      cambiar('#filtro-busqueda', ''); tick(300); expect(gateway.listar).toHaveBeenCalledTimes(3);
+      expect(gateway.listar.calls.mostRecent().args[1]).toEqual({ busqueda: '', estado: '', desde: '', hasta: '', pagina: 1 });
+      cambiar('#filtro-busqueda', 'Temporal'); tick(300);
+      expect(vista().querySelector('[aria-label="Cerrar búsqueda"]')).toBeNull();
+      vista().querySelector<HTMLButtonElement>('.boton-busqueda')!.click(); harness.fixture.detectChanges();
+      expect(buscador.hidden).toBeTrue(); expect(vista().querySelectorAll('#filtro-busqueda').length).toBe(1);
+      tick(300); expect(gateway.listar.calls.mostRecent().args[1].busqueda).toBe('');
+      vista().querySelector<HTMLButtonElement>('.boton-busqueda')!.click(); harness.detectChanges();
+      vista().querySelector<HTMLInputElement>('#filtro-busqueda')!.click(); harness.detectChanges();
+      expect(buscador.hidden).toBeFalse();
+      document.body.click(); harness.detectChanges();
+      expect(buscador.hidden).toBeTrue();
+    })();
+    http.expectNone(() => true);
+  });
+
+  it('oculta sede manual y revisión vacía, mantiene fechas compactas y el payload nuevo sin sede ficticia', async () => {
+    configurar(); await navegar('/solicitudes/nueva'); catalogos(); completar();
+    expect(vista().querySelector('#solicitud-lugar')).toBeNull();
+    const fechas = Array.from(vista().querySelectorAll<HTMLInputElement>('.programacion input'));
+    expect(fechas.length).toBe(2); for (const fecha of fechas) expect(fecha.getBoundingClientRect().width).toBeLessThanOrEqual(260);
+    await pulsar('Revisar datos');
+    expect(vista().querySelector('app-solicitud-detalle')?.textContent).not.toContain('Lugar');
+    await pulsar('Volver al formulario'); expect(vista().querySelector<HTMLInputElement>('#solicitud-nombre')?.value).toBe(solicitud.nombre);
+    await pulsar('Guardar borrador'); expect(gateway.guardar.calls.mostRecent().args[0].lugar).toBe('');
+  });
+
+  it('conserva sede histórica al editar y revisar aunque no exista un campo manual', async () => {
+    configurar(); gateway.detalle.and.returnValue(of({ ...solicitud, estado: 'Borrador', puedeEditar: true, acciones: ['Enviar'] }));
+    await navegar('/solicitudes/nueva?editar=test-1'); catalogos();
+    expect(vista().querySelector('#solicitud-lugar')).toBeNull();
+    await pulsar('Revisar datos'); expect(vista().querySelector('app-solicitud-detalle')?.textContent).toContain(solicitud.lugar);
+    await pulsar('Guardar borrador'); expect(gateway.guardar.calls.mostRecent().args[0].lugar).toBe(solicitud.lugar);
+  });
+
+  it('muestra el responsable real de la sesión aunque el contexto contenga espacios y conserva el valor al resetear el formulario nativo', async () => {
+    configurar(); gateway.contexto.and.returnValue(of({ responsable: '   ', areasDisponibles: [], puedeCrear: true }));
+    await navegar('/solicitudes/nueva'); catalogos();
+    const responsable = vista().querySelector<HTMLInputElement>('#solicitud-responsable')!;
+    expect(responsable.value).toBe('Usuario de prueba'); expect(responsable.readOnly).toBeTrue();
+    responsable.form!.reset(); harness.detectChanges();
+    expect(responsable.value).toBe('Usuario de prueba');
+  });
+
+  it('distribuye las tres secciones según el ancho real y mantiene fechas dentro de sus tarjetas', async () => {
+    configurar(); await navegar('/solicitudes/nueva'); catalogos();
+    const tarjeta = vista().querySelector<HTMLElement>('.formulario-solicitud')!;
+    const secciones = tarjeta.querySelector<HTMLElement>('.secciones-principales')!;
+    expect(secciones.querySelectorAll(':scope > fieldset').length).toBe(3);
+    expect(vista().querySelectorAll('.actualizar-catalogos').length).toBe(1);
+    expect(vista().querySelector('.fila-titulo .actualizar-catalogos')).not.toBeNull();
+    const estilo = tarjeta.getAttribute('style');
+    try {
+      for (const [ancho, columnas] of [[1050, 3], [740, 2], [480, 1]]) {
+        tarjeta.style.cssText = `position: fixed; width: ${ancho}px; max-width: none; box-sizing: content-box;`;
+        await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+        expect(getComputedStyle(secciones).gridTemplateColumns.split(' ').length).toBe(columnas);
+        for (const input of Array.from(secciones.querySelectorAll<HTMLInputElement>('input[type="date"]'))) {
+          const borde = input.closest('fieldset')!.getBoundingClientRect();
+          expect(input.getBoundingClientRect().right).toBeLessThanOrEqual(borde.right);
+        }
+      }
+      expect(secciones.nextElementSibling?.querySelector('legend')?.textContent).toBe('Descripción y justificación');
+    } finally {
+      if (estilo === null) tarjeta.removeAttribute('style'); else tarjeta.setAttribute('style', estilo);
+    }
+    http.expectNone(() => true);
+  });
+
+  it('actualiza catálogos con icono y estado de carga e impide clics repetidos', async () => {
+    configurar(); await navegar('/solicitudes/nueva'); catalogos();
+    const actualizar = vista().querySelector<HTMLButtonElement>('.actualizar-catalogos')!;
+    expect(actualizar.querySelector('.material-symbols-outlined')?.textContent).toBe('refresh');
+    actualizar.click(); harness.detectChanges();
+    const areas = http.expectOne(environment.apiBaseUrl + '/activity-requests/authorized-areas');
+    const tipos = http.expectOne(environment.apiBaseUrl + '/ativicty-type?estado=1');
+    expect(actualizar.disabled).toBeTrue(); expect(actualizar.getAttribute('aria-busy')).toBe('true');
+    actualizar.click(); http.expectNone(() => true);
+    areas.flush({ success: true, data: [{ id_area: 9, nombre: 'Área autorizada' }] });
+    tipos.flush({ success: true, data: [{ id_tipo_actividad: 3, nombre: 'Tipo real', estado: true }] }); harness.detectChanges();
+    expect(actualizar.disabled).toBeFalse(); expect(actualizar.getAttribute('aria-busy')).toBe('false');
+  });
+
   it('construye tarjetas de documentos con datos recibidos y mantiene la firma deshabilitada', async () => {
     configurar(); gateway.documentos.and.returnValue(of({ registros: [{ id: 'doc-test', beneficiario: 'Beneficiario de prueba unitaria', tipo: 'Certificado de prueba', fecha: '2026-11-02', codigo: 'codigo-devuelto-por-api', estado: 'Pendiente', puedeVer: true }], total: 1, pagina: 1, ultimaPagina: 1 }));
     gateway.documento.and.returnValue(of(new Blob(['%PDF-1.4'], { type: 'application/pdf' })));

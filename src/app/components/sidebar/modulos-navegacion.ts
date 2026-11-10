@@ -57,8 +57,7 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
     { id: 'revisar-solicitudes', label: 'Revisión de solicitudes', icon: 'check_circle', habilitado: true, path: '/solicitudes/revision', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_revision' },
   ] },
   { id: 'solicitudes', label: 'SOLICITUDES', icon: 'forward_to_inbox', hijos: [
-    { id: 'solicitud-nueva', label: 'Nueva solicitud de actividad', icon: 'add', habilitado: true, path: '/solicitudes/nueva', permiso: 'solicitudes.crear' },
-    { id: 'mis-solicitudes', label: 'Mis solicitudes', icon: 'event', habilitado: true, path: '/solicitudes/mis-solicitudes', permiso: 'solicitudes.propias', aliases: ['/solicitudes'] },
+    { id: 'mis-solicitudes', label: 'Mis solicitudes', icon: 'event', habilitado: true, path: '/solicitudes/mis-solicitudes', permiso: 'solicitudes.propias', aliases: ['/solicitudes'], rutasActivas: ['/solicitudes/nueva'] },
   ] },
   { id: 'actividades', label: 'GESTIÓN DE ACTIVIDADES', icon: 'event', hijos: [
     { id: 'actividades', label: 'Actividades', icon: 'event', path: '/certificaciones/actividades', permiso: 'actividades.ver', aliases: ['/actividades'], habilitado: true },
