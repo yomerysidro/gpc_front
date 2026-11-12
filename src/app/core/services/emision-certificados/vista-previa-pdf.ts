@@ -8,9 +8,9 @@ export function validarMensajeCertificado(control: AbstractControl): ValidationE
   if (Array.from(texto).length > 1200) return { longitudUnicode: true };
   return /<[^>]*>|[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\u202A-\u202E\u2066-\u2069]/u.test(texto) ? { textoPlano: true } : null;
 }
-export function decodificarVistaPrevia(pdf: { contenido_base64: string; tipo_contenido: string; nombre_archivo: string; persistido: boolean }): ArchivoPdf {
+export function decodificarVistaPrevia(pdf: { contenido_base64: string; tipo_contenido: string; nombre_archivo: string; persistido: boolean }, persistido = false): ArchivoPdf {
   const base64 = pdf?.contenido_base64;
-  if (pdf?.tipo_contenido !== 'application/pdf' || pdf.persistido !== false || typeof base64 !== 'string' || !base64.length
+  if (pdf?.tipo_contenido !== 'application/pdf' || pdf.persistido !== persistido || typeof base64 !== 'string' || !base64.length
     || base64.length > 4 * Math.ceil(MAX_PDF_PREVIA / 3) || base64.length % 4 !== 0
     || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) throw new Error('La respuesta no contiene una vista previa PDF válida.');
   const binario = atob(base64);

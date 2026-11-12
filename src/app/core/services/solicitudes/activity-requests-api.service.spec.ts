@@ -22,11 +22,11 @@ describe('Contrato HTTP preparado de ActivityRequestWorkflow', () => {
   afterEach(() => http?.verify());
   it('no hace ninguna petición mientras faltan rutas y autenticación', () => {
     iniciar(false); let errores = 0;
-    const operaciones: Observable<unknown>[] = [api.areasAutorizadas(), api.crearBorrador(BORRADOR_API_TEST), api.editarBorrador(4, { nombre: 'Cambio' }), api.enviar(4), api.listar(), api.detalle(4), api.historial(4), api.revisar(4), api.observar(4, 'Motivo'), api.derivar(4), api.aprobar(4), api.rechazar(4, 'Motivo'), api.historialGlobal(), api.detalleRevision(4)];
+    const operaciones: Observable<unknown>[] = [api.areasAutorizadas(), api.crearBorrador(BORRADOR_API_TEST), api.editarBorrador(4, { nombre: 'Cambio' }), api.enviar(4), api.listar(), api.detalle(4), api.historial(4), api.revisar(4), api.observar(4, 'Motivo'), api.derivar(4), api.aprobar(4), api.rechazar(4, 'Motivo'), api.detalleRevision(4)];
     for (const operacion of operaciones) {
       operacion.subscribe({ error: error => { expect(error.message).toContain('pendiente de habilitaci\u00f3n'); errores++; } });
     }
-    expect(errores).toBe(14); http.expectNone(() => true);
+    expect(errores).toBe(operaciones.length); http.expectNone(() => true);
   });
   it('crea con lista blanca y nunca transmite identidad, estado, actividad ni versión del cliente', () => {
     iniciar(); api.crearBorrador({ ...BORRADOR_API_TEST, id_usuario_solicitante: 999, id_usuario_responsable: 999, estado: 'Aprobada', id_actividad: 99, version: 'falsa' } as ActivityRequestDraft).subscribe();
@@ -90,15 +90,10 @@ describe('Contrato HTTP preparado de ActivityRequestWorkflow', () => {
     let historial: readonly unknown[] | undefined; api.historial(4).subscribe(filas => historial = filas);
     http.expectOne(base + '/4/history').flush({ success: true, data: [] }); expect(historial).toEqual([]);
   });
-  it('consulta review-detail y el historial global con los filtros documentados', () => {
+  it('consulta review-detail con autenticación', () => {
     iniciar(); api.detalleRevision(4).subscribe(); const detalle = http.expectOne(base + '/4/review-detail');
     expect(detalle.request.context.get(AUTHENTICATED_REQUEST)).toBeTrue(); detalle.flush({ success: true, data: SOLICITUD_API_TEST });
-    api.historialGlobal({ id_solicitud_actividad: 4, id_usuario_responsable: 8, tipo_decision: 'DERIVAR_GERENCIA', fecha_desde: '2026-11-01', fecha_hasta: '2026-11-02', per_page: 50, page: 2 }).subscribe();
-    const historial = http.expectOne(req => req.url === base + '/decisions/history');
-    expect(historial.request.method).toBe('GET'); expect(historial.request.body).toBeNull();
-    expect(historial.request.params.keys().sort()).toEqual(['fecha_desde', 'fecha_hasta', 'id_solicitud_actividad', 'id_usuario_responsable', 'page', 'per_page', 'tipo_decision']);
-    expect(historial.request.params.get('tipo_decision')).toBe('DERIVAR_GERENCIA');
-    historial.flush({ success: true, data: { data: [], current_page: 2, last_page: 2, per_page: 50, total: 51 } });
+
   });
   it('conserva 422 por campo y errores 401, 403, 404 y 409 sin fabricar confirmaciones', () => {
     iniciar(); let status = 0; let errores: unknown;

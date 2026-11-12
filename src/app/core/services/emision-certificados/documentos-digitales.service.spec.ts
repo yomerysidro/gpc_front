@@ -64,4 +64,19 @@ describe('API real de documentos digitales', () => {
       expect(await respuesta).toEqual(jasmine.objectContaining({ status, mensaje: 'Motivo real del servidor' }));
     });
   }
+  it('consulta metadatos y PDF autorizado sin caché en cada apertura del mismo ID', async () => {
+    api = TestBed.inject(DocumentosDigitalesService);
+    for (const contenido of ['%PDF-1.4\nAnterior', '%PDF-1.4\nConfirmado con responsables']) {
+      const detalle = firstValueFrom(api.detalleFirmas(31));
+      const meta=http.expectOne('/api/certificados-documentos/detail/31?flujo=firmas');
+      expect(meta.request.headers.get('Cache-Control')).toContain('no-store'); expect(meta.request.headers.get('Pragma')).toBe('no-cache');
+      meta.flush({success:true,data:{id_certificado_documento:31}}); await detalle;
+      const respuesta=firstValueFrom(api.archivo(31,true));
+      const pdf=http.expectOne('/api/certificados-documentos/31/firma/pdf-autorizado');
+      expect(pdf.request.withCredentials).toBeTrue(); expect(pdf.request.context.get(AUTHENTICATED_REQUEST)).toBeTrue(); expect(pdf.request.headers.get('Cache-Control')).toContain('no-cache'); expect(pdf.request.headers.get('Cache-Control')).toContain('no-store');
+      pdf.flush(new Blob([contenido],{type:'application/pdf'})); expect(await (await respuesta).blob.text()).toBe(contenido);
+    }
+    http.expectNone(r=>r.method!=='GET');
+  });
+
 });

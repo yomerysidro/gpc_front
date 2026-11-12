@@ -24,14 +24,14 @@ describe('Configuración única del Sidebar institucional', () => {
       'seguridad', 'recursos-humanos', 'solicitudes', 'actividades', 'emision', 'gerencia', 'reportes', 'configuracion',
     ]);
     const entradas = SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos);
-    for (const id of ['mis-solicitudes', 'revisar-solicitudes', 'pendientes-aprobacion', 'historial-decisiones']) {
+    for (const id of ['mis-solicitudes', 'revisar-solicitudes', 'pendientes-aprobacion']) {
       expect(entradas.find(hijo => hijo.id === id)?.habilitado).toBeTrue();
       expect(entradas.find(hijo => hijo.id === id)?.permiso).toContain('solicitudes.');
     }
-    expect(entradas.find(hijo => hijo.id === 'documentos-firmar')?.habilitado).toBeFalse();
+    expect(entradas.find(hijo => hijo.id === 'documentos-firmar')?.habilitado).toBeTrue();
     expect(SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos).find(hijo => hijo.id === 'generar-emitir')?.path).toBe('/certificaciones/generar-emitir');
     expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'emision')!.hijos.map(hijo => hijo.label)).toEqual(['Generar y emitir', 'Certificados emitidos', 'Firmas digitales']);
-    expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'actividades')!.hijos.map(hijo => hijo.id)).toEqual(['actividades', 'participantes', 'sesiones-asistencia']);
+    expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'actividades')!.hijos.map(hijo => hijo.id)).toEqual(['actividades']);
   });
 
   it('no duplica rutas con los mismos parámetros, IDs ni grupos', () => {
@@ -47,7 +47,7 @@ describe('Configuración única del Sidebar institucional', () => {
     expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'solicitudes')!.hijos.map(hijo => hijo.id))
       .toEqual(['mis-solicitudes']);
     expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'gerencia')!.hijos.map(hijo => hijo.id))
-      .toEqual(['pendientes-aprobacion', 'documentos-firmar', 'historial-decisiones']);
+      .toEqual(['pendientes-aprobacion', 'documentos-firmar']);
     const revisiones = SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos).filter(hijo => hijo.id === 'revisar-solicitudes');
     expect(revisiones.length).toBe(1); expect(revisiones[0].path).toBe('/solicitudes/revision');
   });
@@ -95,9 +95,9 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
     for (const id of ['seguridad', 'recursos-humanos', 'actividades', 'emision', 'configuracion']) expect(vista().querySelector('#submenu-' + id)).not.toBeNull();
     for (const id of ['solicitudes', 'gerencia']) expect(vista().querySelector('#submenu-' + id)).not.toBeNull();
     expect(vista().querySelector('#submenu-reportes')?.querySelectorAll('a').length).toBe(4);
-    expect(vista().querySelector('#submenu-actividades')?.querySelectorAll('a').length).toBe(3);
-    expect(vista().querySelector('a[href="/certificaciones/participantes"]')).not.toBeNull();
-    expect(vista().querySelector('a[href="/certificaciones/sesiones-asistencia"]')).not.toBeNull();
+    expect(vista().querySelector('#submenu-actividades')?.querySelectorAll('a').length).toBe(1);
+    expect(vista().querySelector('a[href="/certificaciones/participantes"]')).toBeNull();
+    expect(vista().querySelector('a[href="/certificaciones/sesiones-asistencia"]')).toBeNull();
     const enlaces = Array.from(vista().querySelectorAll('a'), enlace => enlace.getAttribute('href'));
     expect(new Set(enlaces).size).toBe(enlaces.length);
   });
@@ -143,8 +143,8 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
       ['/certificaciones/firmas/asignar-firmantes', 'emision', 'Firmas digitales'],
       ['/gestion/tipos-clasificaciones?pestana=tipos-actividad', 'configuracion', 'Tipos y clasificaciones'],
       ['/certificaciones/actividades', 'actividades', 'Actividades'],
-      ['/certificaciones/participantes?id_actividad=7', 'actividades', 'Participantes'],
-      ['/certificaciones/sesiones-asistencia?id_actividad=7&pestana=asistencias', 'actividades', 'Sesiones y asistencia'],
+      ['/certificaciones/participantes?id_actividad=7', 'actividades', 'Actividades'],
+      ['/certificaciones/sesiones-asistencia?id_actividad=7&pestana=asistencias', 'actividades', 'Actividades'],
     ]) {
       await router.navigateByUrl(url); fixture.detectChanges();
       const activo = vista().querySelectorAll('a[aria-current="page"]');
@@ -218,7 +218,7 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
   function resolverLecturas(): void {
     for (const request of http.match(() => true)) {
       expect(request.request.method).toBe('GET');
-      request.flush({ success: true, message: '', data: [] });
+      request.flush({ success: true, message: '', data: request.request.url.endsWith('/funcionarios-firmantes/trabajadores') ? { funcionarios: [] } : request.request.url.endsWith('/certificados-documentos/list') ? {data:[],current_page:1,last_page:1} : [] });
     }
   }
 
@@ -283,7 +283,8 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
 
   it('mantiene las asignaciones y firmas aplicadas bajo los permisos existentes', async () => {
     const harness = await RouterTestingHarness.create('/certificaciones/firmas/asignar-firmantes'); resolverLecturas();
-    expect(harness.routeNativeElement!.querySelector('app-asignar-firmantes')).not.toBeNull();
+    expect(TestBed.inject(Router).url).toBe('/pendientes/documentos-firmar');
+    expect(harness.routeNativeElement!.querySelector('app-documentos-por-firmar')).not.toBeNull();
     await harness.navigateByUrl('/certificaciones/firmas/aplicadas'); resolverLecturas();
     expect(harness.routeNativeElement!.querySelector('app-firmas-aplicadas')).not.toBeNull();
   });

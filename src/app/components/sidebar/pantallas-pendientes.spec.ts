@@ -56,7 +56,8 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     expect(solicitudes.textContent).not.toContain('Revisión de solicitudes');
     expect(vista.querySelectorAll('app-sidebar a[href="/solicitudes/revision"]').length).toBe(1);
     expect(vista.querySelector('#submenu-recursos-humanos a[href="/solicitudes/revision"]')?.textContent).toContain('Revisión de solicitudes');
-    expect(vista.querySelectorAll('app-sidebar a').length).toBe(25);
+    expect(Array.from(vista.querySelectorAll('#submenu-gerencia a'), enlace => enlace.getAttribute('href')))
+      .toEqual(['/pendientes/pendientes-aprobacion', '/pendientes/documentos-firmar']);
     for (const entrada of pendientes.filter(entrada => entrada.interfazDisponible)) {
       const enlace = vista.querySelector(`app-sidebar a[href="${rutaPantallaPendiente(entrada)}"]`)!;
       expect(enlace.querySelector('.texto-enlace')?.textContent?.trim()).toBe(entrada.label);
@@ -135,7 +136,7 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
   it('consultar una página preliminar no concede acceso a Reportes, Usuarios ni a otros CRUD', async () => {
     permisos.set(['roles.ver', 'roles.editar']);
     const harness = await RouterTestingHarness.create('/pendientes/documentos-firmar');
-    expect(TestBed.inject(Router).url).toBe('/pendientes/documentos-firmar');
+    expect(TestBed.inject(Router).url).toBe('/acceso-denegado');
     await harness.navigateByUrl('/pendientes/indicadores');
     expect(TestBed.inject(Router).url).toBe('/acceso-denegado');
     await harness.navigateByUrl('/usuarios');

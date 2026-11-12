@@ -132,7 +132,7 @@ describe('Generar y emitir: contexto real de sesión sin contratos inventados', 
     expect(vista().querySelector('app-formulario-certificado')).toBeNull();
     expect(vista().querySelector('li.actual')).toBeNull();
     (vista().querySelector('#emision-tab-preparaciones') as HTMLButtonElement).click(); harness.detectChanges();
-    expect(vista().textContent).toContain('estructura de datos');
+    expect(vista().textContent).toContain('La vista previa temporal por sesión no es un documento registrado');
     expect(vista().querySelector('app-listar-certificados')).toBeNull(); http.expectNone(() => true);
   });
 

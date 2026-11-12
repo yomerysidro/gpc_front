@@ -4,7 +4,7 @@ import { defer, Observable, Subject, tap, throwError } from 'rxjs';
 import { ActivityRequestDecisionRow } from '../../interfaces/solicitudes/activity-requests-api.interface';
 import { aErrorApi } from '../../../shared/utils/error-api';
 import { SolicitudesHttpGateway } from './solicitudes-http.gateway';
-import { AccionSolicitud, BandejaSolicitud, ContextoSolicitud, DatosSolicitud, DecisionSolicitud, DocumentoPendiente, FiltroSolicitudes, PaginaSolicitudes, Solicitud } from '../../interfaces/solicitudes/solicitud.interface';
+import { AccionSolicitud, BandejaSolicitud, ContextoSolicitud, DatosSolicitud, DocumentoPendiente, FiltroSolicitudes, PaginaSolicitudes, Solicitud } from '../../interfaces/solicitudes/solicitud.interface';
 
 /** Puerto de integración: modelos de vista, no rutas ni DTO HTTP inventados. */
 export interface SolicitudesGateway {
@@ -16,7 +16,6 @@ export interface SolicitudesGateway {
   detalle(id: string, administrativo?: boolean): Observable<Solicitud>;
   guardar(datos: DatosSolicitud, existente: { id: string; version: string } | null): Observable<Solicitud>;
   decidir(id: string, version: string, accion: AccionSolicitud, motivo: string): Observable<Solicitud>;
-  historial(filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<DecisionSolicitud>>;
   documentos(pagina: number): Observable<PaginaSolicitudes<DocumentoPendiente>>;
   /** PDF autorizado devuelto por el servidor, sin URL de archivo privado en la vista. */
   documento(id: string): Observable<Blob>;
@@ -65,7 +64,6 @@ export class SolicitudesService {
   historialSolicitud(id: string): Observable<readonly ActivityRequestDecisionRow[]> {
     return this.ejecutar(api => api.historialSolicitud?.(id) ?? throwError(() => new IntegracionSolicitudesPendiente()));
   }
-  historial(filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<DecisionSolicitud>> { return this.ejecutar(api => api.historial(filtro)); }
   documentos(pagina: number): Observable<PaginaSolicitudes<DocumentoPendiente>> { return this.ejecutar(api => api.documentos(pagina)); }
   documento(id: string): Observable<Blob> { return this.ejecutar(api => api.documento(id)); }
 }

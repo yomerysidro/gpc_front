@@ -10,6 +10,7 @@ import { SesionResponse } from '../../core/interfaces/autenticacion/auth.interfa
 import { authInterceptor } from '../../core/interceptors/auth.interceptor';
 import { AuthService } from '../../core/services/autenticacion/auth.service';
 import { SessionAuthService } from '../../core/services/autenticacion/session-auth.service';
+import { FirmaDocumentalService } from '../../core/services/emision-certificados/firma-documental.service';
 import { EmisionCertificadosService } from '../../core/services/emision-certificados/emision-certificados.service';
 import { environment } from '../../../environments/environment';
 
@@ -29,6 +30,7 @@ describe('Autorización institucional y navegación de Emisión', () => {
       provideRouter(routes), provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(),
       { provide: AuthService, useClass: SessionAuthService },
       { provide: EmisionCertificadosService, useValue: api },
+      { provide: FirmaDocumentalService, useValue: { trabajadores: () => of([]) } },
     ] });
     http = TestBed.inject(HttpTestingController);
   });
@@ -86,7 +88,7 @@ describe('Autorización institucional y navegación de Emisión', () => {
   it('conecta certificados y firmas y conserva la consulta anterior fuera del Sidebar', async () => {
     await sesion(['emision.ver', 'ponentes-firmantes.ver']);
     const harness = await RouterTestingHarness.create('/inicio');
-    for (const [opcion, titulo] of [['certificados/documentos', 'Certificados emitidos'], ['firmas', 'GESTIÓN DE FIRMANTES MUNICIPALES']]) {
+    for (const [opcion, titulo] of [['certificados/documentos', 'Certificados emitidos'], ['firmas', 'Gestión de firmantes municipales']]) {
       const url = `/certificaciones/${opcion}`;
       const enlace = harness.routeNativeElement!.querySelector<HTMLAnchorElement>(`app-sidebar a[href="${url}"]`)!;
       expect(enlace).withContext(url).not.toBeNull();
@@ -103,19 +105,19 @@ describe('Autorización institucional y navegación de Emisión', () => {
   });
 
   it('la opcion real Firmas del Sidebar abre la gestion municipal sin montar el CRUD generico', async () => {
-    await sesion(['ponentes-firmantes.ver', 'ponentes-firmantes.crear']);
+    await sesion(['emision.ver'], 'Gerencial');
     const harness = await RouterTestingHarness.create('/inicio');
     harness.routeNativeElement!.querySelector<HTMLAnchorElement>('app-sidebar a[href="/certificaciones/firmas"]')!.click();
     await harness.fixture.whenStable(); harness.detectChanges();
     expect(TestBed.inject(Router).url).toBe('/certificaciones/firmas');
     const pagina = harness.routeNativeElement!.querySelector('app-listar-firmas')!;
-    expect(pagina.querySelector('h1')!.textContent).toBe('GESTIÓN DE FIRMANTES MUNICIPALES');
-    expect(pagina.textContent).toContain('REGISTRAR FIRMANTE');
+    expect(pagina.querySelector('h1')!.textContent).toBe('Gestión de firmantes municipales');
+    expect(pagina.textContent).toContain('Seleccionar firmantes para un certificado');
     expect(pagina.querySelector('app-listado-emision')).toBeNull();
     expect(pagina.textContent).not.toContain('Nuevo registro');
     expect(pagina.textContent).not.toContain('Filtrar por');
     expect(pagina.textContent).not.toContain('Valor exacto');
-    expect(api.listarTodos).toHaveBeenCalledWith('firmas');
+    expect(api.listarTodos).not.toHaveBeenCalledWith('firmas');
   });
 
   for (const rol of ['Administrador', 'Digitador']) {

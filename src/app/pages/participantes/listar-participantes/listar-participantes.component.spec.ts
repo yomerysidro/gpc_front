@@ -349,13 +349,14 @@ describe('Participantes: interfaz e inscripción', () => {
     expect(servicio.actividades).toHaveBeenCalledTimes(1); // Solo el montaje general previo de esta prueba.
   });
 
-  it('cancelar conserva el contexto y el Sidebar abre el listado general sin actividad impuesta', async () => {
+  it('cancelar conserva el contexto y la ruta general sigue accesible sin enlace lateral', async () => {
     const h = await navegarContexto();
     const cancelar = Array.from(h.routeNativeElement!.querySelectorAll<HTMLButtonElement>('button')).find(b => b.textContent?.trim() === 'Cancelar')!;
     cancelar.click(); h.detectChanges(); await h.fixture.whenStable(); h.detectChanges();
     expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.value).toBe('10');
     expect(h.routeNativeElement!.querySelector('form')).toBeNull(); expect(servicio.crear).not.toHaveBeenCalled();
-    h.routeNativeElement!.querySelector<HTMLAnchorElement>('app-sidebar a[href="/certificaciones/participantes"]')!.click();
+    expect(h.routeNativeElement!.querySelector('app-sidebar a[href="/certificaciones/participantes"]')).toBeNull();
+    await TestBed.inject(Router).navigateByUrl('/certificaciones/participantes');
     await h.fixture.whenStable(); h.detectChanges();
     expect(TestBed.inject(Router).url).toBe('/certificaciones/participantes');
     expect(h.routeNativeElement!.querySelector<HTMLSelectElement>('#filtro-actividad')?.disabled).toBeFalse();

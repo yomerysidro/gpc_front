@@ -14,7 +14,7 @@ describe('Solicitudes con rutas pendientes y sin almacén temporal', () => {
     expect(api.integrado).toBeFalse(); expect(api.modo).toBe('pendiente');
     const operaciones: Observable<unknown>[] = [api.contexto(), api.listar('propias', filtro), api.listar('revision', filtro), api.listar('gerencia', filtro),
       api.detalle('1'), api.guardar(datos, null), api.decidir('1', '', 'Enviar', ''), api.decidir('1', '', 'Aprobar', ''),
-      api.decidir('1', '', 'Rechazar', 'Prueba'), api.historial(filtro), api.documentos(1), api.documento('1')];
+      api.decidir('1', '', 'Rechazar', 'Prueba'), api.documentos(1), api.documento('1')];
     let errores = 0;
     for (const operacion of operaciones) operacion.subscribe({ next: () => fail('No debe devolver datos'), error: error => {
       expect(error instanceof IntegracionSolicitudesPendiente).toBeTrue(); errores++;

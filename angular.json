@@ -33,13 +33,22 @@
               {
                 "glob": "**/*",
                 "input": "public",
-                "ignore": ["marca/escudo-morales-solo.png"]
+                "ignore": [
+                  "marca/escudo-morales-solo.png"
+                ]
               },
               {
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "/assets/",
-                "ignore": ["**/.gitkeep"]
+                "ignore": [
+                  "**/.gitkeep"
+                ]
+              },
+              {
+                "glob": "pdf.worker.min.mjs",
+                "input": "node_modules/pdfjs-dist/build",
+                "output": "/assets/pdfjs/"
               }
             ],
             "styles": [
@@ -114,13 +123,22 @@
               {
                 "glob": "**/*",
                 "input": "public",
-                "ignore": ["marca/escudo-morales-solo.png"]
+                "ignore": [
+                  "marca/escudo-morales-solo.png"
+                ]
               },
               {
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "/assets/",
-                "ignore": ["**/.gitkeep"]
+                "ignore": [
+                  "**/.gitkeep"
+                ]
+              },
+              {
+                "glob": "pdf.worker.min.mjs",
+                "input": "node_modules/pdfjs-dist/build",
+                "output": "/assets/pdfjs/"
               }
             ],
             "styles": [

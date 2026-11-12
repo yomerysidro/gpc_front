@@ -60,19 +60,16 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
     { id: 'mis-solicitudes', label: 'Mis solicitudes', icon: 'event', habilitado: true, path: '/solicitudes/mis-solicitudes', permiso: 'solicitudes.propias', aliases: ['/solicitudes'], rutasActivas: ['/solicitudes/nueva'] },
   ] },
   { id: 'actividades', label: 'GESTIÓN DE ACTIVIDADES', icon: 'event', hijos: [
-    { id: 'actividades', label: 'Actividades', icon: 'event', path: '/certificaciones/actividades', permiso: 'actividades.ver', aliases: ['/actividades'], habilitado: true },
-    { id: 'participantes', label: 'Participantes', icon: 'group', path: '/certificaciones/participantes', permiso: 'participantes.ver', aliases: ['/participantes'], habilitado: true },
-    { id: 'sesiones-asistencia', label: 'Sesiones y asistencia', icon: 'how_to_reg', path: '/certificaciones/sesiones-asistencia', permiso: 'actividades.ver', habilitado: true },
+    { id: 'actividades', label: 'Actividades', icon: 'event', path: '/certificaciones/actividades', permiso: 'actividades.ver', aliases: ['/actividades'], rutasActivas: ['/certificaciones/participantes', '/certificaciones/sesiones-asistencia'], habilitado: true },
   ] },
   { id: 'emision', label: 'EMISIÓN DE CERTIFICADOS', icon: 'workspace_premium', hijos: [
     { id: 'generar-emitir', label: 'Generar y emitir', icon: 'forward_to_inbox', path: '/certificaciones/generar-emitir', permiso: 'emision.ver', aliases: ['/emision', '/certificados', '/certificaciones/certificados'], rutasActivas: ['/certificaciones/certificados/:id'], habilitado: true },
     { id: 'emitidos', label: 'Certificados emitidos', icon: 'visibility', path: '/certificaciones/certificados/documentos', rutasActivas: ['/certificaciones/certificados/:id/documentos'], permiso: 'emision.ver', habilitado: true },
-    { id: 'firmas', label: 'Firmas digitales', icon: 'edit', path: '/certificaciones/firmas', permiso: 'ponentes-firmantes.ver', aliases: ['/firmas', '/ponentes-firmantes'], habilitado: true },
+    { id: 'firmas', label: 'Firmas digitales', icon: 'edit', path: '/certificaciones/firmas', permiso: 'emision.ver', aliases: ['/firmas', '/ponentes-firmantes'], habilitado: true },
   ] },
   { id: 'gerencia', label: 'GERENCIA', icon: 'check_circle', hijos: [
     { id: 'pendientes-aprobacion', label: 'Pendientes de aprobación', icon: 'event', habilitado: true, path: '/pendientes/pendientes-aprobacion', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_gerencia' },
-    { id: 'documentos-firmar', interfazDisponible: true, label: 'Documentos por firmar', icon: 'edit', habilitado: false, pendiente: 'No hay bandeja personal ni operación de firma criptográfica.' },
-    { id: 'historial-decisiones', label: 'Historial de decisiones', icon: 'visibility', habilitado: true, path: '/pendientes/historial-decisiones', permiso: 'solicitudes.historial', capacidadSolicitud: 'consultar_historial' },
+    { id: 'documentos-firmar', label: 'Documentos por firmar', icon: 'edit', habilitado: true, path: '/pendientes/documentos-firmar', permiso: 'emision.ver' },
   ] },
   { id: 'reportes', label: 'REPORTES', icon: 'bar_chart', hijos: [
     { id: 'indicadores', label: 'Indicadores generales', icon: 'bar_chart', habilitado: true, path: '/reportes/indicadores', permiso: 'reportes.ver', pendiente: 'Agregados generales y series mensuales pendientes del backend.' },

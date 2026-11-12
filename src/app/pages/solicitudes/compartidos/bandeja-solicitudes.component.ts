@@ -1,5 +1,5 @@
 import { DatePipe, Location } from '@angular/common';
-import { afterNextRender, Component, computed, DestroyRef, ElementRef, HostListener, inject, input, OnInit, signal, viewChild } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, HostListener, ElementRef, inject, input, OnInit, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -74,14 +74,6 @@ export class BandejaSolicitudesComponent implements OnInit {
   private carga?: Subscription;
   private cargaDetalle?: Subscription;
   protected operativo(): boolean { return this.api.integrado; }
-  @HostListener('window:focus')
-  protected actualizarAlVolver(): void {
-    if (this.bandeja() === 'propias') return;
-    if (this.api.integrado && !this.ocupado() && !this.cargando()) {
-      if (this.detalle()) this.dialogo().cerrar();
-      this.cerrarDetalle(); this.cargar(this.pagina()?.pagina ?? 1);
-    }
-  }
   ngOnInit(): void {
     this.api.cambios$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       if (!this.ocupado()) {

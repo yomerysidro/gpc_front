@@ -1,0 +1,67 @@
+<header class="titulo-detalle">
+  <a class="btn regreso" routerLink="/pendientes/documentos-firmar" [queryParams]="{ page: paginaRegreso() }" title="Volver a documentos por firmar" aria-label="Volver a documentos por firmar"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span></a>
+  <h1>Revisar certificado</h1>
+  @if (documento(); as doc) { <span class="estado">{{ nombreEstado(doc.estado_certificado) }}</span> }
+</header>
+@if (cargas().has('documento')) { <p role="status">Consultando documento…</p> }
+@if (errores()['documento']) { <p role="alert">{{ errores()['documento'] }}</p><button type="button" class="btn" (click)="cargarDocumento()">Reintentar documento</button> }
+@if (documento(); as doc) {
+  <div class="detalle-documental">
+    <section class="pdf" aria-label="PDF del certificado">
+      <div class="estado-previa" aria-live="polite">
+        @if (previaCargando()) { <span>Actualizando vista previa...</span> }
+        @else if (errorPrevia()) { <span role="alert">{{ errorPrevia() }}</span> }
+        @else if (seleccionando() && previa() && seleccion().length && !previaVisible()) { <span>Preparando la nueva vista previa. El PDF anterior permanece visible.</span> }
+        @else if (seleccionando() && previa() && seleccion().length) { <span>Vista previa — cambios sin guardar</span> }
+      </div>
+      @if (doc.facultades.descargar) {
+        <app-visor-pdf [integrado]="true" (archivoCargado)="vigente.set($event)"
+          [archivoPrevio]="seleccionando() && seleccion().length && previa() ? previa() : vigente()"
+          [textosEsperados]="seleccionando() && seleccion().length && previa() ? textosPrevia() : []"
+          [persistido]="!seleccionando() || !previa()" [documentoId]="doc.id_certificado_documento"
+          [hashEsperado]="doc.hash_pdf" [flujoFirmas]="true" [controlesZoom]="true" [mostrarDescripcion]="false"
+          (archivoVisualizado)="pdfVisualizado($event)" (errorVisualizacion)="falloVisor($event)" />
+      } @else { <p>No tiene permisos para descargar el PDF.</p> }
+    </section>
+    <aside aria-label="Información y acciones del certificado">
+      <section class="panel-firmas" aria-labelledby="titulo-firmas">
+        <h2 id="titulo-firmas">Firmas del certificado</h2>
+        <p class="estado">{{ nombreEstado(doc.estado_certificado) }}</p>
+        @if (doc.estado_certificado === 'PENDIENTE_FIRMA' && progreso()?.pdf_revisado_disponible) { <p role="status">Documento preparado. Firmas digitales pendientes</p> }
+<button type="button" class="btn" [disabled]="!puedeAsignar() || ocupada()" (click)="abrirSeleccion()">Seleccionar firmantes</button>
+@if (aviso()) { <p role="status">{{ aviso() }}</p> }
+@if (seleccionando()) {
+<section aria-label="Seleccionar responsables"><h3>Funcionarios del certificado</h3>
+@if (cargas().has('disponibles')) { <p role="status">Consultando funcionarios…</p> }
+<label>Buscar<input class="input" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" /></label>
+<div class="funcionarios">@for (t of filtrados(); track t.id_persona_trabajador) { <label class="firmante"><span><input type="checkbox" [checked]="marcado(t)" [disabled]="ocupada()" (change)="alternar(t)" /> {{ t.nombre }}</span><span>{{ t.cargo }}</span><small>{{ t.area || 'Área no informada' }}</small></label> }</div>
+<label>Modalidad<select class="input" [ngModel]="modalidad()" (ngModelChange)="cambiarModalidad($event)" [disabled]="ocupada()"><option value="PARALELA">Paralela</option><option value="SECUENCIAL">Secuencial</option></select></label>
+<ol>@for (t of seleccion(); track t.id_persona_trabajador; let i = $index) { <li>{{ t.nombre }}<button type="button" [disabled]="i === 0 || ocupada()" (click)="mover(i,-1)" aria-label="Subir firmante">↑</button><button type="button" [disabled]="i === seleccion().length - 1 || ocupada()" (click)="mover(i,1)" aria-label="Bajar firmante">↓</button></li> }</ol>
+<p>El plan guardado no se reemplaza automáticamente. Puede seleccionar hasta 8 responsables.</p>
+@if (!listaParaGuardar() && !previaCargando() && seleccion().length) { <button type="button" class="btn" [disabled]="ocupada()" (click)="actualizarPrevia()">Actualizar vista previa</button> }
+<button type="button" class="btn" [disabled]="!listaParaGuardar() || ocupada()" (click)="guardar()">Guardar y confirmar certificado</button><button type="button" class="btn" [disabled]="ocupada()" (click)="cancelar()">Cancelar selección</button></section>
+}
+@if (ocupada()) { <p role="status">Procesando solicitud…</p> }
+@for (clave of ['disponibles', 'guardar', 'cancelar', 'recuperacion']; track clave) { @if (errores()[clave]) { <p role="alert">{{ errores()[clave] }}</p> } }
+
+        @if (cargas().has('progreso')) { <p role="status">Consultando firmas…</p> }
+        @if (errores()['progreso']) { <p role="alert">{{ errores()['progreso'] }}</p> }
+        @if (errores()['integridad'] || integridad()?.integridad_verificada === false) { <p role="alert">No se pudo verificar el documento.</p> }
+        @for (f of firmantesOrdenados(); track $index) {
+          <div class="firmante">
+            <strong>{{ f.nombre || f.nombre_aprobado }}</strong>
+            <span>{{ f.cargo || f.cargo_aprobado }}</span>
+            @if (f.orden_firma) { <small>Orden {{ f.orden_firma }}</small> }
+            @if (f.estado || f.estado_firma) { <small>{{ f.estado || f.estado_firma }}</small> }
+          </div>
+        } @empty { <p>Firmantes pendientes de asignación</p> }
+        <div class="acciones-oficiales">
+          <button class="btn accion-firmar" type="button" disabled aria-describedby="motivo-firma" title="Firma digital no disponible: Laravel aún no dispone del motor auténtico.">Firmar digitalmente</button>
+          <small id="motivo-firma">Firma digital no disponible.</small>
+          <button class="btn accion-emitir" type="button" disabled aria-describedby="motivo-emision" title="Emisión bloqueada hasta completar y verificar las firmas auténticas y disponer de emisión autorizada.">Emitir certificado</button>
+          <small id="motivo-emision">Requiere firmas auténticas verificadas y emisión autorizada.</small>
+        </div>
+      </section>
+    </aside>
+  </div>
+}

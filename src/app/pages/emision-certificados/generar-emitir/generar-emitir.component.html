@@ -1,5 +1,5 @@
-﻿<app-page-title title="Generar y emitir" />
-@if (!contexto().general) {
+@if (!revisionBeneficiario()) { <app-page-title title="Generar y emitir" /> }
+@if (!contexto().general && !revisionBeneficiario()) {
   <section class="card contexto-certificacion" aria-label="Contexto de certificación">
     @if (contexto().cargando) { <p role="status">Verificando actividad y sesión con Laravel…</p> }
     @else if (contexto().error) { <p class="alert alert-error" role="alert">{{ contexto().error }}</p> }
@@ -12,6 +12,7 @@
     }
   </section>
 }
+@if (revisionBeneficiario() && contexto().error) { <p class="alert alert-error" role="alert">{{ contexto().error }}</p> }
 @if (modo() === 'existente' && paso() === 1) {
   <nav class="secciones-emision" role="tablist" aria-label="Bandejas de certificación" (keydown)="teclearSecciones($event)">
     <button class="btn" id="emision-tab-pendientes" role="tab" type="button" aria-controls="emision-pendientes" [attr.aria-selected]="seccion() === 'pendientes'" [attr.tabindex]="seccion() === 'pendientes' ? 0 : -1" (click)="cambiarSeccion('pendientes')">Pendientes de certificación</button>
@@ -49,16 +50,17 @@
       </tbody></table></div>
 
 
-<nav class="acciones"><button class="btn" [disabled]="pagina.current_page <= 1" (click)="cargarPendientes(pagina.current_page - 1)">Anterior</button><span>{{ pagina.current_page }} / {{ pagina.last_page }}</span><button class="btn" [disabled]="pagina.current_page >= pagina.last_page" (click)="cargarPendientes(pagina.current_page + 1)">Siguiente</button></nav>
+<nav class="acciones"><button type="button" class="btn" [disabled]="pagina.current_page <= 1" (click)="cargarPendientes(pagina.current_page - 1)">Anterior</button><span>{{ pagina.current_page }} / {{ pagina.last_page }}</span><button type="button" class="btn" [disabled]="pagina.current_page >= pagina.last_page" (click)="cargarPendientes(pagina.current_page + 1)">Siguiente</button></nav>
     }
     } } @else {
-      <button class="btn" (click)="volverPendientes()">Volver a pendientes</button>
+      @if (!revisionBeneficiario()) { <button type="button" class="btn" (click)="volverPendientes()">Volver a pendientes</button> }
       @if (!revisionBeneficiario()) {
       <div class="filtros"><label>Tipo de certificado<select class="input" [formControl]="filtrosPendientes.controls.tipo" (change)="cargarBeneficiarios()"><option value="">Seleccionar tipo</option>@for (t of tiposEvaluacion(); track t.id_tipo_certificado) { <option [value]="t.id_tipo_certificado">{{ t.nombre_tipo }}</option> }</select></label><label>Elegibilidad en esta página<select class="input" (change)="elegibilidad.set($any($event.target).value)"><option value="">Todas</option><option>Elegible</option><option>No elegible</option><option>Pendiente de validación</option></select></label></div>
       }
-      @if (errorBeneficiarios()) { <p role="alert">{{ errorBeneficiarios() }}</p><button class="btn" (click)="cargarBeneficiarios()">Reintentar beneficiarios</button> }
+      @if (errorBeneficiarios()) { <p role="alert">{{ errorBeneficiarios() }}</p><button type="button" class="btn" (click)="cargarBeneficiarios()">Reintentar beneficiarios</button> }
       @if (cargandoBeneficiarios()) { <p role="status">Consultando beneficiarios...</p> }
       @if (evaluacion(); as r) {
+        @if (!revisionBeneficiario()) {
         <h2>Beneficiarios: {{ r.contexto.nombre_sesion || r.contexto.nombre_actividad }}</h2><p>{{ r.contexto.estado_sesion || r.contexto.estado_actividad }}</p>
         @if (r.contadores; as c) { <p>{{ c.inscritos_actividad_vigentes }} inscritos vigentes / {{ c.participantes_sesion }} participantes / {{ c.presentes }} presentes / {{ c.ausentes }} ausentes / {{ c.pendientes }} pendientes / {{ c.por_regularizar === null ? 'No determinable' : c.por_regularizar }} por regularizar</p> }
         <details><summary>Disponibilidad de preparación y emisión</summary>
@@ -66,13 +68,20 @@
           @for (motivo of motivosPreparacion(r); track motivo) { <p>{{ motivo }}</p> }
           @for (motivo of r.motivos_bloqueo_emision || []; track motivo) { <p>{{ motivo }}</p> }
         </details>
+        }
         @if (cargandoRevision()) { <p role="status">Consultando datos para la revisión…</p> }
         @if (errorRevision()) { <p class="alert alert-error" role="alert">{{ errorRevision() }}</p> }
         @if (revisionBeneficiario(); as v) {
           <section aria-label="Asistente del beneficiario seleccionado">
-            <button class="btn" type="button" (click)="cerrarRevision()">Volver a beneficiarios</button>
+            <header class="encabezado-revision">
+              <button class="regresar-beneficiarios" type="button" title="Volver a beneficiarios" aria-label="Volver a beneficiarios" [disabled]="operando()" (click)="cerrarRevision()"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span></button>
+              <h1>Revisar certificado</h1>
+              <p><strong>{{ v.beneficiario.nombre_completo }}</strong> · {{ v.tipo.nombre_tipo }}</p>
+              <p>{{ v.evaluacion.contexto.nombre_actividad }}@if (v.evaluacion.contexto.nombre_sesion) { · {{ v.evaluacion.contexto.nombre_sesion }} }</p>
+              <p>Estado administrativo: {{ v.evaluacion.contexto.estado_sesion || v.evaluacion.contexto.estado_actividad || 'No informado' }}</p>
+            </header>
             <ol class="pasos pasos-beneficiario" aria-label="Pasos del certificado">
-              <li [class.actual]="pasoBeneficiario() === 1">1. Datos del certificado</li><li [class.actual]="pasoBeneficiario() === 2">2. Redactar mensaje</li><li [class.actual]="pasoBeneficiario() === 3">3. Previsualizar</li><li [class.actual]="pasoBeneficiario() === 4">4. Confirmar emisión</li>
+              <li [class.actual]="pasoBeneficiario() === 1">1. Datos</li><li [class.actual]="pasoBeneficiario() === 2">2. Mensaje</li><li [class.actual]="pasoBeneficiario() === 3">3. Previsualizar</li><li [class.actual]="pasoBeneficiario() === 4">4. Confirmar y enviar</li>
             </ol>
             @if (pasoBeneficiario() === 1) {
               <h2>Datos del certificado</h2>
@@ -86,25 +95,56 @@
             @if (pasoBeneficiario() === 2) {
               <h2>Redactar mensaje</h2><p>El nombre del beneficiario se incorpora automáticamente a la plantilla. Escribe solamente el cuerpo del certificado.</p>
               <label for="mensaje-certificado">Mensaje del certificado</label>
-              <textarea id="mensaje-certificado" class="input editor-mensaje" rows="8" [formControl]="mensajeCertificado" [attr.aria-invalid]="mensajeCertificado.touched && mensajeCertificado.invalid" aria-describedby="mensaje-ayuda mensaje-error"></textarea>
-              <p id="mensaje-ayuda">Texto plano. Borrador conservado durante esta navegación; todavía no se guarda en Laravel.</p>
+              <textarea id="mensaje-certificado" class="input editor-mensaje" rows="8" [formControl]="mensajeCertificado" [attr.aria-invalid]="mensajeCertificado.touched && mensajeCertificado.invalid" [attr.aria-describedby]="mensajeCertificado.touched && mensajeCertificado.invalid ? 'mensaje-error' : null"></textarea>
               @if (mensajeCertificado.touched && mensajeCertificado.invalid) { <p id="mensaje-error" role="alert">Escribe un mensaje no vacío en texto plano, sin etiquetas HTML ni controles peligrosos (máximo 1200 caracteres Unicode).</p> }
-              <div class="acciones"><button class="btn" type="button" (click)="mensajeCertificado.setValue('')">Borrar texto</button><button class="btn" type="button" (click)="mensajeCertificado.setValue(textoSugerido())">Restaurar texto sugerido</button></div>
-              <p class="alert alert-advertencia" role="status">{{ avisoMensaje }}</p>
+              <details><summary>Ver detalles</summary><p>{{ avisoMensaje }}</p></details>
               <div class="acciones"><button class="btn" type="button" (click)="pasoBeneficiario.set(1)">Volver a datos</button><button class="btn btn-primary" type="button" [disabled]="generandoPrevia()" (click)="avanzarBeneficiario()">Previsualizar certificado</button></div>
             }
             @if (generandoPrevia()) { <p role="status">Generando vista previa PDF...</p> }
-            @if (errorPrevia()) { <p role="alert">No se pudo generar la vista previa PDF.</p><details><summary>Detalles del error</summary><p>{{ errorPrevia() }}</p></details> }
+            @if (errorPrevia()) { <p role="alert">No se pudo generar la vista previa PDF.</p><details><summary>Ver detalles</summary><p>{{ errorPrevia() }}</p></details> }
             @if (pasoBeneficiario() === 3) {
-              @if (pdfPrevio(); as pdf) { <p role="status">Vista previa lista.</p><app-visor-pdf [archivoPrevio]="pdf.archivo" /> }
-              <div class="acciones"><button class="btn" (click)="editarMensaje()">Volver a editar</button><button class="btn" [disabled]="generandoPrevia()" (click)="previsualizarPdf()">Actualizar vista previa</button><button class="btn btn-primary" [disabled]="!pdfPrevio() || generandoPrevia()" (click)="continuarConfirmacion()">Continuar a confirmación</button></div>
+              @if (pdfPrevio(); as pdf) { <app-visor-pdf [archivoPrevio]="pdf.archivo" [compacto]="true" /> }
+              <div class="acciones"><button type="button" class="btn" (click)="editarMensaje()">Volver a editar</button><button type="button" class="btn btn-primary" [disabled]="!pdfPrevio() || generandoPrevia()" (click)="continuarConfirmacion()">Continuar a confirmar</button></div>
             }
-            @if (pasoBeneficiario() === 4) { @if (pdfPrevio(); as pdf) {
-              <h2>Confirmar emisión</h2><dl class="datos"><dt>Beneficiario</dt><dd>{{ v.beneficiario.nombre_completo }}</dd><dt>Tipo de certificado</dt><dd>{{ v.tipo.nombre_tipo }}</dd><dt>Sesión</dt><dd>{{ v.evaluacion.contexto.nombre_sesion }}</dd></dl>
-              <label><input type="checkbox" [checked]="revisoPrevia()" (change)="revisoPrevia.set($any($event.target).checked)" /> He revisado la última vista previa PDF.</label>
-              <p role="status">Emisión no disponible para este origen.</p><details><summary>Motivo</summary><p>El mensaje no se guarda persistentemente. La API todavía no permite registrar inequívocamente el certificado de esta sesión.</p>@for (motivo of pdf.datos.motivos_bloqueo_emision || []; track motivo) { <p>{{ motivo }}</p> }</details>
-              <div class="acciones"><button class="btn" (click)="pasoBeneficiario.set(3)">Volver al PDF</button><button class="btn" (click)="editarMensaje()">Volver a editar</button><button class="btn btn-primary" disabled>Confirmar y emitir</button></div>
-            } }
+            @if (pasoBeneficiario() === 4 && pdfPrevio()) {
+              <h2>Confirmar y enviar a Gerencia</h2>
+              @if (!documentoPreparado()) {
+                <label>Modalidad de firma
+                  <select id="modalidad-firma-certificado" [value]="modalidadFirma()" [disabled]="operando()" (change)="cambiarModalidad($any($event.target).value)">
+                    <option value="">Seleccione una modalidad</option><option value="Paralela">Paralela</option><option value="Secuencial">Secuencial</option>
+                  </select>
+                </label>
+              } @else { <p>Modalidad aprobada en la revisión: {{ modalidadFirma() }}</p> }
+              @if (operando()) { <p role="status">Procesando documento…</p> }
+              @if (errorOperacion()) { <p role="alert">{{ errorOperacion() }}</p> }
+              @if (enviado()) {
+                <p role="status">Documento enviado a Gerencia. Pendiente de firma.</p>
+                @if (puedeVerGerencia()) {
+                  <a class="btn" routerLink="/pendientes/documentos-firmar" [queryParams]="{ documento: documentoPreparado()!.id_certificado_documento }">Ver documento en Gerencia</a>
+                }
+              } @else if (revisionEnvio()) {
+                <app-visor-pdf [archivoPrevio]="revisionEnvio()!.archivo" [persistido]="true" [compacto]="true" />
+                <button class="btn btn-primary" type="button" [disabled]="operando() || !puedeRemitir()" (click)="confirmarRemision()">Enviar a Gerencia</button>
+              } @else if (documentoPreparado()) {
+                <p role="status">Certificado preparado correctamente.</p><app-visor-pdf [documentoId]="documentoPreparado()!.id_certificado_documento" [hashEsperado]="documentoPreparado()!.hash_pdf" [flujoFirmas]="true" [compacto]="true" />
+                @if (!puedeRemitir()) { <p>El documento no está habilitado para su envío.</p> }
+                <button class="btn btn-primary" type="button" [disabled]="operando() || !puedeRemitir()" (click)="revisarParaEnviar()">Revisar envío a Gerencia</button>
+              } @else if (revisionPdf()) {
+                <p role="status">Documento listo para revisión.</p><app-visor-pdf [archivoPrevio]="revisionPdf()!.archivo" [compacto]="true" />
+                <label><input id="confirmar-pdf-preparado" type="checkbox" [checked]="revisoPrevia()" (change)="revisoPrevia.set($any($event.target).checked)" /> He revisado el PDF que se guardará.</label>
+                <button class="btn btn-primary" type="button" [disabled]="operando() || !revisoPrevia()" (click)="guardarParaFirma()">Confirmar preparación del certificado</button>
+              } @else {
+                @if (pdfPrevio()?.datos?.siguiente_accion_preparacion === 'revisar_documento') {
+                  <button class="btn btn-primary" type="button" [disabled]="operando() || !modalidadFirma()" (click)="revisarParaGuardar()">Revisar PDF para envío</button>
+                } @else {
+                  <p>Envío a Gerencia no disponible para este documento.</p>
+                  @for (motivo of pdfPrevio()?.datos?.motivos_bloqueo_preparacion_persistente || []; track motivo) { <p>{{ motivo }}</p> }
+                }
+              }
+              @if (!documentoPreparado()) {
+                <div class="acciones"><button class="btn" type="button" [disabled]="operando()" (click)="editarMensaje()">Volver a editar</button></div>
+              }
+            }
           </section>
         } @else {
         <div class="tabla"><table class="table beneficiarios-certificacion"><thead><tr><th>Participante</th><th>Documento</th><th>Asistencia</th><th>Elegibilidad</th><th>Tipo aplicable</th><th>Preparación</th><th>Acciones</th></tr></thead><tbody>
@@ -114,14 +154,14 @@
             </td></tr>
           } @empty { <tr><td colspan="7">No hay beneficiarios autorizados.</td></tr> }
         </tbody></table></div>
-        <nav class="acciones"><button class="btn" [disabled]="r.beneficiarios.current_page <= 1 || cargandoBeneficiarios()" (click)="cargarBeneficiarios(r.beneficiarios.current_page - 1)">Anterior</button><span>{{ r.beneficiarios.current_page }} / {{ r.beneficiarios.last_page }} / {{ r.beneficiarios.total }} beneficiarios</span><button class="btn" [disabled]="r.beneficiarios.current_page >= r.beneficiarios.last_page || cargandoBeneficiarios()" (click)="cargarBeneficiarios(r.beneficiarios.current_page + 1)">Siguiente</button></nav>
+        <nav class="acciones"><button type="button" class="btn" [disabled]="r.beneficiarios.current_page <= 1 || cargandoBeneficiarios()" (click)="cargarBeneficiarios(r.beneficiarios.current_page - 1)">Anterior</button><span>{{ r.beneficiarios.current_page }} / {{ r.beneficiarios.last_page }} / {{ r.beneficiarios.total }} beneficiarios</span><button type="button" class="btn" [disabled]="r.beneficiarios.current_page >= r.beneficiarios.last_page || cargandoBeneficiarios()" (click)="cargarBeneficiarios(r.beneficiarios.current_page + 1)">Siguiente</button></nav>
         }
       }
     }
   </section>
 }
   <section id="emision-preparaciones" role="tabpanel" aria-labelledby="emision-tab-preparaciones" [hidden]="paso() !== 1 || seccion() !== 'preparaciones'">
-    <div class="card"><h2>Preparaciones existentes</h2><p>La preparación de certificados por sesión estará disponible cuando se complete su estructura de datos.</p><p>Los registros administrativos generales no acreditan preparación por sesión.</p></div>
+    <div class="card"><h2>Preparaciones existentes</h2><p>Registros disponibles para consulta.</p><details><summary>Disponibilidad del envío</summary><p>La vista previa temporal por sesión no es un documento registrado. La revisión y el envío de documentos persistentes requieren confirmar el contrato de Etapa A.</p></details></div>
     @if (contexto().general && preparacionesVisitadas()) { <app-listar-certificados [seleccionable]="true" (seleccionado)="seleccionar($event)" /> }
   </section>
 @if (seleccion()) {
@@ -139,7 +179,7 @@
   @if (paso() === 3) {
     <section class="card"><h2>Revisar documento</h2><p>Previsualización de metadatos. Emisión oficial pendiente.</p><app-visor-certificado [certificado]="ficha.registro" [beneficiario]="ficha.beneficiario" [dni]="ficha.dni" [tipo]="ficha.tipo" [origen]="origen()" [reconocimiento]="reconocimiento()" />
       @for (a of asignaciones(); track a.firma) { <p>Firmante #{{ a.firma }} / Orden {{ a.orden }} / Sin firma aplicada.</p> }
-      @if (modo() === 'nuevo') { <button class="btn" [disabled]="!formulario()?.puedeGuardarPreparacion() || cargando() || !!error()" (click)="formulario()?.guardar()">Guardar preparación</button> }
+      @if (modo() === 'nuevo') { <button type="button" class="btn" [disabled]="!formulario()?.puedeGuardarPreparacion() || cargando() || !!error()" (click)="formulario()?.guardar()">Guardar preparación</button> }
     </section>
   }
   @if (paso() === 4) {
@@ -147,17 +187,25 @@
       <p>Emisión oficial pendiente: no se ha emitido ningún documento oficial ni se ha aplicado una firma criptográfica.</p>
       @if (!generado() && ficha.registro.id_participacion && !ficha.registro.id_practica && !ficha.registro.id_reconocimiento) {
         <p>Laravel permite solicitar un PDF de desarrollo para participaciones compatibles. El servidor comprueba permisos, tipo, ámbito y configuración antes de guardarlo.</p>
-        <button class="btn btn-primary" [disabled]="!puedeGenerarPdf()" (click)="generarPdf()">{{ generando() ? 'Generando PDF…' : 'Generar PDF de desarrollo' }}</button>
+        <button type="button" class="btn btn-primary" [disabled]="!puedeGenerarPdf()" (click)="generarPdf()">{{ generando() ? 'Generando PDF…' : 'Generar PDF de desarrollo' }}</button>
       }
       @if (errorGeneracion()) { <p class="alert alert-error" role="alert">{{ errorGeneracion() }}</p> }
       @if (generado(); as doc) {
-        <h3>PDF guardado en Laravel</h3><p>Documento #{{ doc.id_certificado_documento }} · {{ doc.codigo_verificacion }}</p><p>Modo: {{ doc.modo }} · Emisión oficial pendiente · Firma criptográfica no acreditada.</p>
+        <h3>Documento disponible para consulta</h3><p>Documento #{{ doc.id_certificado_documento }} · {{ doc.codigo_verificacion }}</p><p>Modo: {{ doc.modo }} · Emisión oficial pendiente · Firma criptográfica no acreditada.</p>
         @if (enlaceVerificacion(doc.url_verificacion); as url) { <a class="btn" [href]="url" target="_blank" rel="noopener noreferrer">Consultar código en la página pública</a> }
         <app-visor-pdf [documentoId]="doc.id_certificado_documento" />
       }
-      <button class="btn" disabled>Generar documento oficial</button>
+      <button type="button" class="btn" disabled>Generar documento oficial</button>
       @if (ficha.registro.id_certificado !== null) { <a class="btn" routerLink="/certificaciones/certificados/documentos" [queryParams]="{ id_certificado: ficha.registro.id_certificado }">Consultar documentos existentes</a> }
     </section>
   }
-  <nav class="acciones"><button class="btn" [disabled]="generando()" (click)="volver()">Anterior</button>@if (paso() < 4) { <button class="btn" [disabled]="cargando() || !!error()" (click)="avanzar()">Siguiente</button> }<button class="btn" [disabled]="generando()" (click)="cancelar()">Volver a pendientes</button></nav>
+  <nav class="acciones"><button type="button" class="btn" [disabled]="generando()" (click)="volver()">Anterior</button>@if (paso() < 4) { <button type="button" class="btn" [disabled]="cargando() || !!error()" (click)="avanzar()">Siguiente</button> }<button type="button" class="btn" [disabled]="generando()" (click)="cancelar()">Volver a pendientes</button></nav>
 }
+
+<app-dialogo #confirmacionEnvio titulo="Enviar documento a Gerencia" [cierreControlado]="true" (cierreSolicitado)="!operando() && confirmacionEnvio.cerrar()">
+  <p>Se enviará el PDF almacenado a Gerencia y quedará pendiente de firma.</p>
+  <div class="acciones">
+    <button class="btn" type="button" [disabled]="operando()" (click)="confirmacionEnvio.cerrar()">Cancelar</button>
+    <button class="btn btn-primary" type="button" [disabled]="operando() || !puedeRemitir()" (click)="remitirAGerencia()">Confirmar envío a Gerencia</button>
+  </div>
+</app-dialogo>

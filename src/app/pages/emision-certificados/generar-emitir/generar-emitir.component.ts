@@ -17,7 +17,8 @@ import { PageTitleComponent } from '../../../shared/components/page-title/page-t
 import { ListarCertificadosComponent } from '../certificados/listar-certificados/listar-certificados.component';
 import { VisorCertificadoComponent } from '../compartidos/visor-certificado.component';
 import { etiquetaEstado } from '../compartidos/estado-emision';
-import { DocumentosDigitalesService, mensajeDocumento, VistaPreviaSesion } from '../../../core/services/emision-certificados/documentos-digitales.service';
+import { DocumentoFirmas, DocumentosDigitalesService, mensajeDocumento, mensajeEtapaA, RevisionDocumental, VistaPreviaSesion } from '../../../core/services/emision-certificados/documentos-digitales.service';
+import { DialogoComponent } from '../../../shared/components/dialogo/dialogo.component';
 import { ArchivoPdf } from '../../../core/interfaces/emision-certificados/documento-digital.interface';
 import { validarMensajeCertificado } from '../../../core/services/emision-certificados/vista-previa-pdf';
 import { DocumentoGenerado } from '../../../core/interfaces/emision-certificados/documento-digital.interface';
@@ -50,7 +51,7 @@ function solicitarContexto(parametros: ParamMap): SolicitudContexto {
 }
 @Component({
   selector: 'app-generar-emitir', standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, RouterLink, PageTitleComponent, ListarCertificadosComponent, VisorCertificadoComponent, FormularioCertificadoComponent, VisorPdfComponent],
+  imports: [DatePipe, ReactiveFormsModule, RouterLink, PageTitleComponent, ListarCertificadosComponent, VisorCertificadoComponent, FormularioCertificadoComponent, VisorPdfComponent, DialogoComponent],
   templateUrl: './generar-emitir.component.html', styleUrls: ['../compartidos/emision.scss', './generar-emitir.component.scss'],
 })
 export class GenerarEmitirComponent {
@@ -61,11 +62,111 @@ export class GenerarEmitirComponent {
   protected readonly generandoPrevia = signal(false);
   protected readonly errorPrevia = signal<string | null>(null);
   protected readonly revisoPrevia = signal(false);
+  protected readonly documentoPreparado = signal<DocumentoFirmas | null>(null);
+  protected readonly revisionPdf = signal<RevisionDocumental | null>(null);
+  protected readonly revisionEnvio = signal<RevisionDocumental | null>(null);
+  protected readonly confirmacionEnvio = viewChild.required<DialogoComponent>('confirmacionEnvio');
+  protected readonly modalidadFirma = signal<'Paralela' | 'Secuencial' | ''>('');
+  protected readonly operando = signal(false);
+  protected readonly errorOperacion = signal<string | null>(null);
+  protected readonly enviado = signal(false);
   private solicitudPrevia?: Subscription;
+  private operacion?: Subscription;
+
+  protected puedeRemitir(): boolean {
+    const doc = this.documentoPreparado();
+    return !!doc && doc.estado_certificado === 'PREPARADO' && doc.facultades?.remitir === true && !this.enviado();
+  }
+
+  protected puedeVerGerencia(): boolean { return this.auth.tienePermiso('emision.ver'); }
+
+  protected cambiarModalidad(valor: string): void {
+    if (this.operando() || this.documentoPreparado() || !['', 'Paralela', 'Secuencial'].includes(valor)) return;
+    this.modalidadFirma.set(valor as 'Paralela' | 'Secuencial' | '');
+    this.revisionPdf.set(null); this.revisoPrevia.set(false); this.errorOperacion.set(null);
+  }
+
+  protected revisarParaGuardar(): void {
+    if (this.operando() || this.documentoPreparado()) return;
+    const previa = this.pdfPrevio();
+    const contexto = this.revisionBeneficiario();
+    const modalidad = this.modalidadFirma();
+    if (!modalidad || !previa || !contexto || previa.datos.siguiente_accion_preparacion !== 'revisar_documento') return;
+    if (previa.mensaje !== this.mensajeCertificado.value || previa.clave !== this.claveBorrador()
+      || !this.puedeRevisar(contexto.beneficiario, contexto.evaluacion)) return;
+    this.revisoPrevia.set(false);
+    this.operar(this.documentosApi.revisarPreparacion(Number(contexto.beneficiario.id_sesion),
+      contexto.beneficiario.id_participacion, Number(contexto.tipo.id_tipo_certificado), previa.mensaje, modalidad),
+      revision => this.revisionPdf.set(revision));
+  }
+
+  protected guardarParaFirma(): void {
+    const revision = this.revisionPdf();
+    const contexto = this.revisionBeneficiario();
+    if (!revision || !contexto || !this.revisoPrevia() || this.documentoPreparado()) return;
+    this.operar(this.documentosApi.guardarPreparacion(Number(contexto.beneficiario.id_sesion), revision.token, {
+      sesion: Number(contexto.beneficiario.id_sesion), tipo: Number(contexto.tipo.id_tipo_certificado),
+      persona: contexto.beneficiario.id_persona, actividad: contexto.beneficiario.id_actividad,
+    }, revision.hash),
+      documento => this.documentoPreparado.set(documento));
+  }
+
+  protected revisarParaEnviar(): void {
+    if (!this.puedeRemitir()) return;
+    this.operar(this.documentosApi.obtenerRevisionEnvio(this.documentoPreparado()!.id_certificado_documento, this.documentoPreparado()!.hash_pdf),
+      revision => this.revisionEnvio.set(revision));
+  }
+
+  protected confirmarRemision(): void {
+    if (!this.revisionEnvio() || !this.puedeRemitir() || this.operando()) return;
+    if (!this.revisionEnvioVigente()) return;
+    this.confirmacionEnvio().abrir();
+  }
+
+  protected remitirAGerencia(): void {
+    const revision = this.revisionEnvio();
+    if (!revision || !this.puedeRemitir() || this.operando()) return;
+    if (!this.revisionEnvioVigente()) return;
+    this.operar(this.documentosApi.confirmarEnvio(this.documentoPreparado()!.id_certificado_documento, revision.token, revision.hash), doc => {
+      this.documentoPreparado.set(doc);
+      this.revisionEnvio.set(null);
+      if (doc.estado_certificado === 'PENDIENTE_FIRMA') this.enviado.set(true);
+      else this.errorOperacion.set('El estado actualizado del documento difiere de Pendiente de firma.');
+      this.confirmacionEnvio().cerrar();
+    });
+  }
+
+  private revisionEnvioVigente(): boolean {
+    const revision = this.revisionEnvio();
+    if (revision && Date.parse(revision.expiresAt) > Date.now()) return true;
+    this.revisionEnvio.set(null);
+    this.confirmacionEnvio().cerrar();
+    this.errorOperacion.set('La revisión venció. Revise nuevamente el documento.');
+    return false;
+  }
+
+  private operar<T>(solicitud: Observable<T>, recibir: (valor: T) => void): void {
+    if (this.operando()) return;
+    this.errorOperacion.set(null);
+    this.operando.set(true);
+    this.operacion = solicitud.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: resultado => { this.operando.set(false); recibir(resultado); },
+      error: (error: ErrorApi) => {
+        this.operando.set(false); this.errorOperacion.set(mensajeEtapaA(error));
+        this.confirmacionEnvio().cerrar();
+        if (error.status === 409) {
+          if (this.documentoPreparado()) this.revisionEnvio.set(null);
+          else { this.revisionPdf.set(null); this.revisoPrevia.set(false); }
+        }
+      },
+    });
+  }
   private invalidarPrevia(): void {
+    this.operacion?.unsubscribe(); this.operando.set(false); this.errorOperacion.set(null);
+    this.revisionPdf.set(null); this.revisionEnvio.set(null); this.documentoPreparado.set(null); this.enviado.set(false);
     this.solicitudPrevia?.unsubscribe(); this.pdfPrevio.set(null); this.generandoPrevia.set(false); this.revisoPrevia.set(false); this.errorPrevia.set(null);
   }
-  protected editarMensaje(): void { this.revisoPrevia.set(false); this.pasoBeneficiario.set(2); }
+  protected editarMensaje(): void { this.invalidarPrevia(); this.pasoBeneficiario.set(2); }
   protected continuarConfirmacion(): void {
     if (this.pdfPrevio()?.mensaje === this.mensajeCertificado.value && this.pdfPrevio()?.clave === this.claveBorrador() && !this.generandoPrevia()) this.pasoBeneficiario.set(4);
   }
@@ -89,7 +190,7 @@ export class GenerarEmitirComponent {
           this.errorPrevia.set('Laravel devolvió un PDF de otro contexto.'); return;
         }
         this.pdfPrevio.set({ ...resultado, mensaje, clave }); this.pasoBeneficiario.set(3);
-      }, error: (e: ErrorApi) => { this.generandoPrevia.set(false); this.errorPrevia.set(mensajeDocumento(e)); },
+      }, error: (e: ErrorApi) => { this.generandoPrevia.set(false); this.errorPrevia.set(mensajeEtapaA(e)); },
     });
   }
   private readonly borradoresMensaje = new Map<string, string>();

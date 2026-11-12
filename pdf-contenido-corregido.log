@@ -1,0 +1,21 @@
+
+> gpc-front@0.0.0 test
+> ng test --watch=false --browsers=ChromeHeadless --include=src/app/pages/gerencia/documentos-por-firmar/detalle-documento-pdf.integration.spec.ts --include=src/app/pages/emision-certificados/compartidos/pdf-continuo.component.spec.ts
+
+- Generating browser application bundles (phase: setup)...
+✔ Browser application bundle generation complete.
+11 11 2026 23:12:42.811:INFO [karma-server]: Karma v6.4.4 server started at http://localhost:9876/
+11 11 2026 23:12:42.819:INFO [launcher]: Launching browsers ChromeHeadless with concurrency unlimited
+11 11 2026 23:12:42.843:INFO [launcher]: Starting browser ChromeHeadless
+11 11 2026 23:12:45.322:INFO [Chrome Headless 157.0.0.0 (Windows 10)]: Connected on socket _y3DOikjLjcqflUyAAAA with id 76331721
+Chrome Headless 157.0.0.0 (Windows 10): Executed 0 of 6[32m SUCCESS[39m (0 secs / 0 secs)
+[1A[2KChrome Headless 157.0.0.0 (Windows 10): Executed 1 of 6[32m SUCCESS[39m (0 secs / 1.002 secs)
+[1A[2KChrome Headless 157.0.0.0 (Windows 10): Executed 2 of 6[32m SUCCESS[39m (0 secs / 1.418 secs)
+[1A[2KChrome Headless 157.0.0.0 (Windows 10): Executed 3 of 6[32m SUCCESS[39m (0 secs / 1.698 secs)
+[1A[2KChrome Headless 157.0.0.0 (Windows 10): Executed 4 of 6[32m SUCCESS[39m (0 secs / 2.974 secs)
+[1A[2KChrome Headless 157.0.0.0 (Windows 10): Executed 5 of 6[32m SUCCESS[39m (0 secs / 11.457 secs)
+[1A[2KChrome Headless 157.0.0.0 (Windows 10): Executed 6 of 6[32m SUCCESS[39m (0 secs / 12.228 secs)
+[1A[2KChrome Headless 157.0.0.0 (Windows 10): Executed 6 of 6[32m SUCCESS[39m (12.321 secs / 12.228 secs)
+[32mTOTAL: 6 SUCCESS[39m
+✔ Browser application bundle generation complete.
+✔ Browser application bundle generation complete.

@@ -85,6 +85,8 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: 'inicio', component: HomeComponent },
+      { path: 'pendientes/documentos-firmar/:id', canActivate: [permissionGuard], data: { titulo: 'Detalle del certificado', permiso: 'emision.ver' },
+        loadComponent: () => import('./pages/gerencia/documentos-por-firmar/detalle-documento.component').then(m => m.DetalleDocumentoComponent) },
       { path: 'reportes', children: REPORTES_ROUTES },
       { path: 'pendientes/indicadores', redirectTo: '/reportes/indicadores', pathMatch: 'full' },
       { path: 'pendientes/reportes-actividades', redirectTo: '/reportes/actividades', pathMatch: 'full' },

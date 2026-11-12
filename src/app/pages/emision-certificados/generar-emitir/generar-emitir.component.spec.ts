@@ -43,7 +43,7 @@ describe('Generar y emitir sin emisión ficticia', () => {
     fixture.detectChanges(); http.expectOne('/api/certificados-documentos/51/archivo').flush(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
     await fixture.whenStable(); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-visor-pdf')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('PDF guardado en Laravel');
+    expect(fixture.nativeElement.textContent).toContain('Documento disponible para consulta');
     expect(Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(b => b.textContent === 'Generar documento oficial')!.disabled).toBeTrue();
   });
   it('conserva el conflicto de generación sin mostrar un documento ficticio y permite reintentar', () => {

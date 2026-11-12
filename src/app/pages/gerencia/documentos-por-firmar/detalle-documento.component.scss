@@ -1,0 +1,30 @@
+:host { display: block; min-width: 0; }
+.titulo-detalle { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; margin-bottom: .75rem; }
+h1, h2 { color: #075a9b; overflow-wrap: anywhere; }
+h1 { font-size: 1.5rem; margin: 0; }
+h2 { font-size: 1.1rem; margin-top: 0; }
+.regreso { padding: .4rem; }
+.detalle-documental { display: grid; grid-template-columns: minmax(0, 3fr) minmax(14rem, 1fr); gap: 1rem; align-items: start; }
+.pdf { min-width: 0; }
+.panel-firmas { padding: 1rem; border-top: 2px solid var(--dorado-500, #c5a04a); background: #fff; border-radius: .5rem; }
+.firmante { display: grid; gap: .2rem; padding-block: .65rem; border-bottom: 1px solid #edf1f5; overflow-wrap: anywhere; }
+.acciones-oficiales { display: grid; gap: .4rem; margin-top: 1rem; }
+.acciones-oficiales .btn { width: 100%; white-space: normal; }
+.acciones-oficiales small { color: #596777; line-height: 1.5; margin-bottom: .4rem; }
+.acciones-oficiales .accion-firmar { background: #075a9b; border-color: #075a9b; color: #fff; }
+.acciones-oficiales .accion-emitir { background: var(--boton-dorado, #e8ad24); border-color: var(--boton-dorado, #e8ad24); color: #253447; }
+.acciones-oficiales .btn:disabled { opacity: .7; }
+aside { min-width: 0; display: grid; gap: .75rem; }
+p { overflow-wrap: anywhere; }
+small { display: block; }
+.estado { color: #075a9b; font-weight: 600; font-size: .85rem; }
+.titulo-detalle .estado { margin-left: auto; background: #075a9b0d; padding: .35rem .65rem; border-radius: 1rem; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 900px) { .detalle-documental { grid-template-columns: minmax(0, 1fr); } }
+
+.funcionarios { max-height: 20rem; overflow: auto; } label { display: block; margin-block: .6rem; } input:not([type=checkbox]), select { max-width: 100%; box-sizing: border-box; } li button { margin: .2rem; }
+
+.panel-firmas > .btn { width: 100%; white-space: normal; }
+ol { padding-left: 1.25rem; overflow-wrap: anywhere; }
+
+.estado-previa { min-height: 3rem; }

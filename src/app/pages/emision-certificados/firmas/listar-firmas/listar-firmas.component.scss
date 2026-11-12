@@ -1,16 +1,12 @@
-.titulo-firmantes { display: flex; align-items: start; gap: var(--espacio-4); flex: 1 1 30rem; }
-.titulo-firmantes p { margin: 0; max-width: 48rem; color: var(--neutro-700); }
-.seguridad { flex: none; width: 2.25em; height: 2.25em; display: grid; place-items: center; background: var(--boton-hover-suave); color: var(--boton-azul); border-radius: var(--radio-lg); font-size: 1.5rem; }
-.encabezado-firmantes { align-items: center; }
-.resumen-firmantes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: var(--espacio-4); margin-block: var(--espacio-5); }
-.resumen-firmantes .card > span { color: var(--neutro-700); font-size: .875rem; }
-.resumen-firmantes .card > strong { display: block; font-size: 1.75rem; color: var(--boton-azul); }
-.privacidad { display: flex; align-items: center; gap: var(--espacio-3); border-top: 3px solid var(--boton-dorado); }
-.privacidad p { margin-bottom: 0; font-size: .8125rem; color: var(--neutro-700); }
-.buscar-firmantes { display: flex; flex-wrap: wrap; align-items: end; gap: var(--espacio-4); margin-bottom: var(--espacio-5); }
-.buscar-firmantes .form-field { flex: 1 1 15rem; margin-bottom: 0; }
-.tarjetas-firmantes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr)); gap: var(--espacio-5); }
-.vacio { text-align: center; padding: var(--espacio-6); }
-.vacio h2 { font-size: 1.125rem; }
-.vacio > .material-symbols-outlined { font-size: 2rem; color: var(--boton-azul); }
-@media (max-width: 480px) { .encabezado-firmantes > .btn, .buscar-firmantes > .btn { width: 100%; } }
+:host { display: block; min-width: 0; }
+h1, h2, h3 { color: #075a9b; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.2rem; }
+h3 { font-size: 1rem; }
+section > .card { margin-top: 1rem; border-top: 2px solid var(--dorado-500, #c5a04a); }
+label { display: block; margin-bottom: .5rem; }
+.input { max-width: 36rem; margin: 0 .5rem .75rem 0; }
+.tarjetas-firmantes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; margin-top: 1rem; }
+.tarjetas-firmantes .card { min-width: 0; overflow-wrap: anywhere; background: #f6f9fc; }
+p { line-height: 1.5; }
+@media (max-width: 600px) { .input { width: 100%; box-sizing: border-box; } .btn { white-space: normal; } }

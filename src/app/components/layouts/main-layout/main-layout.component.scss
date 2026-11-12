@@ -55,7 +55,9 @@ main {
     margin: 0;
     padding: 0;
     border: 0;
-    overflow: clip;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
     color: inherit;
   }
 
@@ -85,7 +87,9 @@ main {
     padding: 0;
     border: 0;
     box-shadow: var(--sombra-lg);
-    overflow: clip;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
   }
 
   // El :host del sidebar declara display: block; sin esto el cajón cerrado seguiría visible.

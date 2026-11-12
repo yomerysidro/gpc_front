@@ -493,13 +493,12 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     expect(TestBed.inject(Router).url).toBe('/solicitudes/revision');
     expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Ver detalle']);
   });
-  it('consultar historial no necesita capacidad de Gerencia ni permisos de escritura', async () => {
-    sesion([], 9, 'Digitador', { consultar_historial: true, consultar_gerencia: false, aprobar: false, rechazar: false });
+  it('la URL retirada usa la vista de respaldo sin consultar el historial global', async () => {
+    sesion(['historial']);
     harness = await RouterTestingHarness.create('/pendientes/historial-decisiones');
-    http.expectOne(req => req.url === solicitudes + '/decisions/history').flush(pagina([])); harness.detectChanges();
-    expect(TestBed.inject(Router).url).toBe('/pendientes/historial-decisiones');
-    expect(vista().querySelector('app-sidebar a[href="/pendientes/historial-decisiones"]')).not.toBeNull();
-    http.expectNone(req => req.method === 'POST');
+    expect(vista().querySelector('app-en-construccion')).not.toBeNull();
+    expect(vista().querySelector('app-sidebar a[href="/pendientes/historial-decisiones"]')).toBeNull();
+    http.expectNone(req => req.url === solicitudes + '/decisions/history');
   });
   it('conserva un 403 real de Laravel y muestra su motivo sin convertirlo en una denegación local', async () => {
     sesion([], 9, 'Administrador', { consultar_gerencia: true });
@@ -642,11 +641,6 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     revision.flush(pagina([final])); harness.detectChanges();
     expect(vista().querySelector('tbody .estado')?.textContent).toBe(estado);
     expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Ver detalle']);
-    await harness.navigateByUrl('/pendientes/historial-decisiones');
-    http.expectOne(req => req.url === solicitudes + '/decisions/history').flush(pagina([{ ...evento,
-      solicitud_nombre: final.nombre, id_area: final.id_area, area_nombre: final.area_nombre, id_usuario_solicitante: final.id_usuario_solicitante }])); harness.detectChanges();
-    expect(vista().querySelector('tbody')?.textContent).toContain('Funcionario autorizado de prueba');
-    expect(vista().querySelector('tbody')?.textContent).toContain(estado);
     if (accion === 'Aprobar') {
       await harness.navigateByUrl('/certificaciones/actividades?actividad=20'); harness.detectChanges();
       const actividad = { id_actividad: 20, id_area: final.id_area, id_tipo_actividad: final.id_tipo_actividad, nombre: final.nombre,
@@ -721,13 +715,6 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     aprobar.flush({ success: true, data: { ...SOLICITUD_API_TEST, estado: 'Aprobada', id_actividad: 20 } });
     http.expectOne(req => req.url === solicitudes).flush(pagina([])); harness.detectChanges();
     expect(vista().textContent).toContain('Estado: Aprobada'); http.expectNone(req => req.url.includes('/activity/'));
-  });
-  it('historial consulta el paginador global incluso sin permiso formal de aprobación', async () => {
-    sesion(['historial']); harness = await RouterTestingHarness.create('/pendientes/historial-decisiones');
-    const historial = http.expectOne(req => req.url === solicitudes + '/decisions/history'); expect(historial.request.withCredentials).toBeTrue();
-    historial.flush(pagina([{ id_solicitud_decision: 1, id_solicitud_actividad: 4, id_usuario_responsable: 9, id_usuario_solicitante: 8, id_area: 2,
-      solicitud_nombre: 'Solicitud HTTP de prueba', tipo_decision: 'APROBAR', estado_anterior: 'Pendiente de aprobación', estado_nuevo: 'Aprobada', observacion: 'Conforme', fecha_decision: '2026-12-10' }]));
-    harness.detectChanges(); expect(vista().querySelector('tbody')?.textContent).toContain('Solicitud HTTP de prueba'); expect(vista().querySelector('tbody')?.textContent).toContain('Conforme');
   });
   it('rechazar exige motivo y nunca envía la identidad del responsable', () => {
     sesion(['consultar', 'rechazar'], 9); const api = TestBed.inject(SolicitudesService);

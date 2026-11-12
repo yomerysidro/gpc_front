@@ -44,24 +44,6 @@ export interface ActivityRequestDecisionRow {
   readonly fecha_decision: string;
 }
 export interface ActivityRequestObservation { readonly observacion?: string | null }
-export interface ActivityRequestGlobalDecisionRow extends ActivityRequestDecisionRow {
-  readonly area_nombre?: string | null;
-  readonly solicitante_nombre?: string | null;
-  readonly id_usuario_solicitante: number;
-  readonly id_area: number;
-  readonly solicitud_nombre: string;
-}
-export interface ActivityRequestHistoryFilters {
-  readonly id_area?: number;
-  readonly id_solicitud_actividad?: number;
-  /** Filtro de auditoría, nunca identidad autenticada para una escritura. */
-  readonly id_usuario_responsable?: number;
-  readonly tipo_decision?: TipoDecisionSolicitud;
-  readonly fecha_desde?: string;
-  readonly fecha_hasta?: string;
-  readonly per_page?: number;
-  readonly page?: number;
-}
 export interface ActivityRequestFilters {
   readonly estado?: EstadoSolicitud;
   readonly id_area?: number;

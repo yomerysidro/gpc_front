@@ -5,7 +5,6 @@ import { environment } from '../../../../environments/environment';
 import { ActivityRequestAuthorizedArea, ActivityRequestDecisionRow, ActivityRequestDraft, ActivityRequestFilters, ActivityRequestObservation, ActivityRequestPage, ActivityRequestResponse, ActivityRequestRow } from '../../interfaces/solicitudes/activity-requests-api.interface';
 import { AUTHENTICATED_REQUEST } from '../../security/auth-request.context';
 import { aErrorApi } from '../../../shared/utils/error-api';
-import { ActivityRequestGlobalDecisionRow, ActivityRequestHistoryFilters } from '../../interfaces/solicitudes/activity-requests-api.interface';
 
 /** Solo habilitar tras publicar rutas Y verificar autenticación/autorización del servidor.
  * No se activa por URL, rol, localStorage ni por recibir un HTTP 200 de otra API. */
@@ -43,13 +42,6 @@ export class ActivityRequestsApiService {
   }
   detalle(id: number): Observable<ActivityRequestRow> { return this.conId(id, () => this.peticion('GET', `/${id}`)); }
   detalleRevision(id: number): Observable<ActivityRequestRow> { return this.conId(id, () => this.peticion('GET', `/${id}/review-detail`)); }
-  historialGlobal(filtros: ActivityRequestHistoryFilters = {}): Observable<ActivityRequestPage<ActivityRequestGlobalDecisionRow>> {
-    let params = new HttpParams();
-    for (const campo of ['id_area', 'id_solicitud_actividad', 'id_usuario_responsable', 'tipo_decision', 'fecha_desde', 'fecha_hasta', 'per_page', 'page'] as const) {
-      const valor = filtros[campo]; if (valor !== undefined && valor !== '') params = params.set(campo, valor);
-    }
-    return this.peticion('GET', '/decisions/history', undefined, params);
-  }
   historial(id: number): Observable<readonly ActivityRequestDecisionRow[]> { return this.conId(id, () => this.peticion('GET', `/${id}/history`)); }
   revisar(id: number, datos: ActivityRequestObservation = {}): Observable<ActivityRequestRow> { return this.decision(id, 'review', datos); }
   observar(id: number, observacion: string): Observable<ActivityRequestRow> { return this.decision(id, 'observe', { observacion }); }

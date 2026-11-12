@@ -48,8 +48,6 @@ export function textoRevisorSolicitud(fila: Solicitud): string {
     ? 'Pendiente de asignación de revisor' : 'Identidad del revisor no disponible');
 }
 export interface FiltroSolicitudes {
-  readonly responsableId?: string;
-  readonly solicitudId?: string;
   readonly busqueda: string;
   readonly estado: string;
   readonly desde: string;
@@ -61,20 +59,6 @@ export interface PaginaSolicitudes<T> {
   readonly total: number;
   readonly pagina: number;
   readonly ultimaPagina: number;
-}
-export interface DecisionSolicitud {
-  readonly nombreSolicitud?: string;
-  readonly estadoAnterior?: EstadoSolicitud;
-  readonly solicitanteId?: number;
-  readonly id: string;
-  readonly solicitudId: string;
-  readonly numero: string;
-  readonly area: string;
-  readonly fecha: string;
-  readonly resultado: 'Aprobada' | 'Observada' | 'Rechazada' | 'Revisión conforme' | 'Derivada a Gerencia';
-  readonly responsable: string;
-  readonly motivo: string;
-  readonly estadoPosterior: EstadoSolicitud;
 }
 export interface DocumentoPendiente {
   readonly id: string;

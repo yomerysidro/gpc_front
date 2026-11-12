@@ -1,4 +1,13 @@
 :host { display: block; min-width: 0; }
+.encabezado-revision { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); column-gap: .6rem; align-items: center; border-left: 3px solid var(--dorado-500, #c5a04a); padding-left: .6rem; overflow-wrap: anywhere; }
+.encabezado-revision h1 { color: #075a9b; font-size: 1.4rem; margin: 0; }
+.encabezado-revision p { grid-column: 2; margin-block: .2rem; }
+.regresar-beneficiarios { display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; padding: 0; border: 0; border-radius: .5rem; background: transparent; color: #075a9b; cursor: pointer; }
+.regresar-beneficiarios:hover { background: #075a9b0d; }
+.regresar-beneficiarios:focus-visible { outline: 2px solid #075a9b; outline-offset: 2px; }
+.regresar-beneficiarios:disabled { opacity: .5; cursor: default; }
+.pasos.pasos-beneficiario { margin-block: .85rem; gap: .5rem; }
+.acciones { display: flex; flex-wrap: wrap; gap: .5rem; }
 .editor-mensaje { display: block; width: 100%; resize: vertical; line-height: 1.7; min-height: 12rem; }
 .secciones-emision { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; .btn[aria-selected="true"] { background: #075a9b; color: white; } }
 .modalidades { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; dd { margin: .35rem 0 0; } dt { color: #075a9b; font-weight: 600; } }

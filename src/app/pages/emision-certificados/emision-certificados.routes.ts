@@ -75,10 +75,10 @@ export const EMISION_CERTIFICADOS_ROUTES: Routes = [
     ],
   },
   {
-    path: 'firmas', canActivate: [permissionGuard], data: { permiso: 'ponentes-firmantes.ver' },
+    path: 'firmas', canActivate: [permissionGuard], data: { permiso: 'emision.ver' },
     children: [
       { path: '', loadComponent: () => import('./firmas/listar-firmas/listar-firmas.component').then(m => m.ListarFirmasComponent) },
-      { path: 'asignar-firmantes', loadComponent: () => import('./firmas/asignar-firmantes/asignar-firmantes.component').then(m => m.AsignarFirmantesComponent) },
+      { path: 'asignar-firmantes', redirectTo: '/pendientes/documentos-firmar', pathMatch: 'full' },
       {
         path: 'aplicadas', canActivate: [permissionGuard], data: { permiso: 'emision.ver', recurso: 'certificados-firmas' },
         loadComponent: () => import('./firmas/firmas-aplicadas.component').then(m => m.FirmasAplicadasComponent),

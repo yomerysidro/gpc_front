@@ -1,9 +1,8 @@
 import { inject, Injectable, InjectionToken } from '@angular/core';
 import { catchError, EMPTY, expand, map, Observable, of, reduce, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../autenticacion/auth.service';
-import { ActivityRequestGlobalDecisionRow, ActivityRequestHistoryFilters } from '../../interfaces/solicitudes/activity-requests-api.interface';
-import { ActivityRequestDraft, ActivityRequestFilters, ActivityRequestRow, TipoDecisionSolicitud } from '../../interfaces/solicitudes/activity-requests-api.interface';
-import { AccionSolicitud, BandejaSolicitud, ContextoSolicitud, DatosSolicitud, DecisionSolicitud, DocumentoPendiente, ESTADOS_SOLICITUD, FiltroSolicitudes, PaginaSolicitudes, Solicitud } from '../../interfaces/solicitudes/solicitud.interface';
+import { ActivityRequestDraft, ActivityRequestFilters, ActivityRequestRow } from '../../interfaces/solicitudes/activity-requests-api.interface';
+import { AccionSolicitud, BandejaSolicitud, ContextoSolicitud, DatosSolicitud, DocumentoPendiente, ESTADOS_SOLICITUD, FiltroSolicitudes, PaginaSolicitudes, Solicitud } from '../../interfaces/solicitudes/solicitud.interface';
 import { ActivityRequestsApiService } from './activity-requests-api.service';
 import type { SolicitudesGateway } from './solicitudes.service';
 
@@ -55,9 +54,6 @@ export class AccesoSolicitudLocal extends Error {
   }
 }
 const restringido = (operacion: 'consulta' | 'accion' = 'consulta') => throwError(() => new AccesoSolicitudLocal(operacion));
-const RESULTADOS: Record<TipoDecisionSolicitud, DecisionSolicitud['resultado']> = {
-  REVISION_CONFORME: 'Revisión conforme', OBSERVAR: 'Observada', DERIVAR_GERENCIA: 'Derivada a Gerencia', APROBAR: 'Aprobada', RECHAZAR: 'Rechazada',
-};
 const ESTADOS_ACCION: Record<AccionSolicitud, readonly string[]> = {
   Enviar: ['Borrador', 'Observada'], 'Iniciar revisión': ['Enviada'], Observar: ['Enviada', 'En revisión', 'Pendiente de aprobación'],
   Derivar: ['En revisión'], Aprobar: ['Pendiente de aprobación'], Rechazar: ['Pendiente de aprobación'],
@@ -148,34 +144,6 @@ export class SolicitudesHttpGateway implements SolicitudesGateway {
     if (!this.disponible) return pendientes();
     if (!this.puedeConsultarHistorial(id)) return restringido();
     return this.api.historial(Number(id));
-  }
-  historial(filtro: FiltroSolicitudes): Observable<PaginaSolicitudes<DecisionSolicitud>> {
-    if (!this.disponible) return pendientes();
-    if (!this.acceso?.consultaHistorial) return restringido();
-    for (const valor of [filtro.solicitudId, filtro.responsableId]) {
-      if (valor !== undefined && valor !== null && valor !== '' && (!Number.isSafeInteger(Number(valor)) || Number(valor) < 1)) return throwError(() => new Error('Los identificadores de filtro deben ser enteros positivos.'));
-    }
-    const tipo = (Object.keys(RESULTADOS) as TipoDecisionSolicitud[]).find(clave => RESULTADOS[clave] === filtro.estado);
-    if (filtro.estado && !tipo) return throwError(() => new Error('Tipo de decisión no admitido por Laravel.'));
-    const parametros: ActivityRequestHistoryFilters = {
-      id_solicitud_actividad: filtro.solicitudId ? Number(filtro.solicitudId) : undefined,
-      id_usuario_responsable: filtro.responsableId ? Number(filtro.responsableId) : undefined,
-      tipo_decision: tipo, fecha_desde: filtro.desde || undefined, fecha_hasta: filtro.hasta || undefined, per_page: 20, page: filtro.pagina,
-    };
-    if (!filtro.busqueda.trim()) return this.api.historialGlobal(parametros).pipe(map(pagina => ({
-      registros: pagina.data.map(fila => this.vistaDecision(fila)), total: pagina.total, pagina: pagina.current_page, ultimaPagina: pagina.last_page,
-    })));
-    return this.api.historialGlobal({ ...parametros, page: 1, per_page: 100 }).pipe(
-      expand(pagina => pagina.current_page < pagina.last_page ? this.api.historialGlobal({ ...parametros, page: pagina.current_page + 1, per_page: 100 }) : EMPTY),
-      reduce((filas, pagina) => [...filas, ...pagina.data], [] as ActivityRequestGlobalDecisionRow[]),
-      map(filas => this.paginar(filas.map(fila => this.vistaDecision(fila)).filter(fila => `${fila.nombreSolicitud} ${fila.numero} ${fila.area}`.toLocaleLowerCase().includes(filtro.busqueda.trim().toLocaleLowerCase())), filtro.pagina)),
-    );
-  }
-  private vistaDecision(fila: ActivityRequestGlobalDecisionRow): DecisionSolicitud {
-    return { id: String(fila.id_solicitud_decision), solicitudId: String(fila.id_solicitud_actividad), numero: `Solicitud #${fila.id_solicitud_actividad}`,
-      nombreSolicitud: fila.solicitud_nombre, solicitanteId: fila.id_usuario_solicitante, area: fila.area_nombre || `Área #${fila.id_area}`,
-      fecha: fila.fecha_decision, resultado: RESULTADOS[fila.tipo_decision], responsable: fila.responsable_nombre || `Usuario #${fila.id_usuario_responsable}`,
-      motivo: fila.observacion ?? '', estadoAnterior: fila.estado_anterior, estadoPosterior: fila.estado_nuevo };
   }
   documentos(_pagina: number): Observable<PaginaSolicitudes<DocumentoPendiente>> { return throwError(() => new Error('La bandeja de documentos por firmar no forma parte del contrato de solicitudes.')); }
   documento(_id: string): Observable<Blob> { return throwError(() => new Error('El contrato de solicitudes no proporciona descarga de documentos.')); }

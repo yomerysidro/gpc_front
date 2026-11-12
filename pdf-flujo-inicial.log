@@ -1,0 +1,24 @@
+
+> gpc-front@0.0.0 test
+> ng test --watch=false --browsers=ChromeHeadless --include=src/app/pages/gerencia/documentos-por-firmar/detalle-documento-pdf.integration.spec.ts
+
+- Generating browser application bundles (phase: setup)...
+✔ Browser application bundle generation complete.
+11 11 2026 23:04:46.426:INFO [karma-server]: Karma v6.4.4 server started at http://localhost:9876/
+11 11 2026 23:04:46.469:INFO [launcher]: Launching browsers ChromeHeadless with concurrency unlimited
+11 11 2026 23:04:46.490:INFO [launcher]: Starting browser ChromeHeadless
+11 11 2026 23:04:49.653:INFO [Chrome Headless 157.0.0.0 (Windows 10)]: Connected on socket Ak_OO2Wlh1allaKGAAAA with id 98653159
+Chrome Headless 157.0.0.0 (Windows 10): Executed 0 of 2[32m SUCCESS[39m (0 secs / 0 secs)
+[1A[2KChrome Headless 157.0.0.0 (Windows 10): Executed 1 of 2[32m SUCCESS[39m (0 secs / 4.068 secs)
+[1A[2K[31mChrome Headless 157.0.0.0 (Windows 10) Detalle → HTTP → bytes temporales → PDF.js real confirma el token visible y muestra los bytes descargados del vigente autorizado FAILED[39m
+	Expected Object({ blob: [object Blob], nombre: 'vista-previa.pdf' }) not to be Object({ blob: [object Blob], nombre: 'vista-previa.pdf' }). Tip: To check for deep equality, use .toEqual() instead of .toBe().
+	    at <Jasmine>
+	    at UserContext.<anonymous> (src/app/pages/gerencia/documentos-por-firmar/detalle-documento-pdf.integration.spec.ts:117:29)
+	    at next (<anonymous>)
+	    at asyncGeneratorStep (node_modules/@babel/runtime/helpers/esm/asyncToGenerator.js:3:1)
+	    at _next (node_modules/@babel/runtime/helpers/esm/asyncToGenerator.js:17:1)
+Chrome Headless 157.0.0.0 (Windows 10): Executed 2 of 2[31m (1 FAILED)[39m (0 secs / 4.653 secs)
+[1A[2KChrome Headless 157.0.0.0 (Windows 10): Executed 2 of 2[31m (1 FAILED)[39m (4.628 secs / 4.653 secs)
+[31mTOTAL: 1 FAILED, 1 SUCCESS[39m
+✔ Browser application bundle generation complete.
+✔ Browser application bundle generation complete.

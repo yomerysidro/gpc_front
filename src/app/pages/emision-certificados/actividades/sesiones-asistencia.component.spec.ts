@@ -101,8 +101,8 @@ describe('Sesiones y asistencia con pestañas y CRUD existentes', () => {
     expect(vista().querySelectorAll('app-listado-emision').length).toBe(1);
     expect(vista().querySelectorAll('table').length).toBe(1);
     expect(vista().querySelector('[role="tabpanel"]:not([hidden]) h2')?.textContent).toBe('Sesiones registradas');
-    expect(vista().querySelectorAll('app-sidebar a[href="' + ruta + '"]').length).toBe(1);
-    expect(vista().querySelector('app-sidebar a[aria-current="page"]')?.getAttribute('href')).toBe(ruta);
+    expect(vista().querySelectorAll('app-sidebar a[href="' + ruta + '"]').length).toBe(0);
+    expect(vista().querySelector('app-sidebar a[aria-current="page"]')?.getAttribute('href')).toBe('/certificaciones/actividades');
     http.expectNone(() => true);
   });
 
@@ -575,9 +575,10 @@ describe('Sesiones y asistencia con pestañas y CRUD existentes', () => {
     http.expectNone(req => req.method !== 'GET');
   });
 
-  it('el Sidebar abre el modo general y limpia la actividad y sesión del ingreso contextual', async () => {
+  it('la ruta directa abre el modo general y limpia la actividad y sesión del ingreso contextual', async () => {
     await iniciar('?id_actividad=7&id_sesion=3&pestana=asistencias'); await cargarAsistencias([]);
-    vista().querySelector<HTMLAnchorElement>('app-sidebar a[href="' + ruta + '"]')!.click();
+    expect(vista().querySelector('app-sidebar a[href="' + ruta + '"]')).toBeNull();
+    await TestBed.inject(Router).navigateByUrl(ruta);
     await harness.fixture.whenStable(); harness.detectChanges(); cargarSesiones();
     expect(TestBed.inject(Router).url).toBe(ruta);
     expect(vista().querySelector<HTMLSelectElement>('#activity-session-buscar-actividad')?.value).toBe('');
@@ -592,10 +593,11 @@ describe('Sesiones y asistencia con pestañas y CRUD existentes', () => {
   });
 
   for (const query of ['?id_actividad=7', '?actividad_filtro=7']) {
-    it('el Sidebar limpia selección previa aun permaneciendo en Sesiones desde ' + query, async () => {
+    it('la ruta general limpia selección previa aun permaneciendo en Sesiones desde ' + query, async () => {
       await iniciar(query); cargarSesiones();
       expect(vista().querySelector<HTMLSelectElement>('#activity-session-buscar-actividad')?.value).toBe('7');
-      vista().querySelector<HTMLAnchorElement>('app-sidebar a[href="' + ruta + '"]')!.click();
+      expect(vista().querySelector('app-sidebar a[href="' + ruta + '"]')).toBeNull();
+      await TestBed.inject(Router).navigateByUrl(ruta);
       await harness.fixture.whenStable(); harness.detectChanges(); cargarSesiones();
       expect(TestBed.inject(Router).url).toBe(ruta);
       expect(vista().querySelector<HTMLSelectElement>('#activity-session-buscar-actividad')?.value).toBe('');

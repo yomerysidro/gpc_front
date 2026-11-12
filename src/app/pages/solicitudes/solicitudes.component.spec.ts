@@ -28,12 +28,11 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   let http: HttpTestingController;
   let harness: RouterTestingHarness;
   function configurar(integrado = true, consultarCatalogos = integrado, rol = 'Administrador', permisos?: readonly string[]): void {
-    gateway = jasmine.createSpyObj<SolicitudesGateway>('gateway', ['contexto', 'listar', 'detalle', 'guardar', 'decidir', 'historial', 'documentos', 'documento']);
+    gateway = jasmine.createSpyObj<SolicitudesGateway>('gateway', ['contexto', 'listar', 'detalle', 'guardar', 'decidir', 'documentos', 'documento']);
     gateway.contexto.and.returnValue(of({ responsable: 'Usuario de prueba', areasDisponibles: [{ id: '9', nombre: 'Área de prueba unitaria' }], puedeCrear: true }));
     gateway.listar.and.returnValue(of(pagina)); gateway.detalle.and.returnValue(of(solicitud));
     gateway.guardar.and.returnValue(of({ ...solicitud, estado: 'Borrador', puedeEditar: true, acciones: ['Enviar'] }));
     gateway.decidir.and.returnValue(of({ ...solicitud, estado: 'Aprobada', acciones: [] }));
-    gateway.historial.and.returnValue(of({ registros: [], total: 0, pagina: 1, ultimaPagina: 1 }));
     gateway.documentos.and.returnValue(of({ registros: [], total: 0, pagina: 1, ultimaPagina: 1 }));
     TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(),
       { provide: ACTIVITY_REQUESTS_API_ACTIVA, useValue: integrado || consultarCatalogos },
@@ -196,10 +195,10 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     }
     fixture.destroy();
   });
-  it('abre las seis vistas reales sin datos inventados, placeholders ni llamadas HTTP cuando falta el contrato', async () => {
+  it('abre las vistas de solicitudes sin datos inventados, placeholders ni llamadas HTTP cuando falta el contrato', async () => {
     configurar(false);
     await navegar('/solicitudes/nueva');
-    for (const url of ['/solicitudes/nueva', '/solicitudes/mis-solicitudes', '/solicitudes/revision', '/pendientes/pendientes-aprobacion', '/pendientes/documentos-firmar', '/pendientes/historial-decisiones']) {
+    for (const url of ['/solicitudes/nueva', '/solicitudes/mis-solicitudes', '/solicitudes/revision', '/pendientes/pendientes-aprobacion']) {
       await harness.navigateByUrl(url); harness.detectChanges();
       expect(TestBed.inject(Router).url).toBe(url);
       expect(vista().querySelector('app-vista-temporal')).toBeNull();
@@ -320,11 +319,6 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
       expect(vista().textContent).not.toContain('No se encontraron solicitudes');
     });
   }
-  it('conserva la vista de historial vacía solo cuando el servidor confirma cero resultados', async () => {
-    configurar(); await navegar('/pendientes/historial-decisiones'); expect(vista().textContent).toContain('No se encontraron decisiones');
-    cambiar('#historial-resultado', 'Aprobada'); await pulsar('Buscar');
-    expect(gateway.historial.calls.mostRecent().args[0].estado).toBe('Aprobada'); expect(gateway.guardar).not.toHaveBeenCalled();
-  });
   it('abre Mis solicitudes por defecto, con las dos pestañas y una sola entrada en el Sidebar', async () => {
     configurar(); await navegar('/solicitudes');
     expect(TestBed.inject(Router).url).toBe('/solicitudes/mis-solicitudes');
@@ -513,14 +507,54 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     expect(actualizar.disabled).toBeFalse(); expect(actualizar.getAttribute('aria-busy')).toBe('false');
   });
 
-  it('construye tarjetas de documentos con datos recibidos y mantiene la firma deshabilitada', async () => {
-    configurar(); gateway.documentos.and.returnValue(of({ registros: [{ id: 'doc-test', beneficiario: 'Beneficiario de prueba unitaria', tipo: 'Certificado de prueba', fecha: '2026-11-02', codigo: 'codigo-devuelto-por-api', estado: 'Pendiente', puedeVer: true }], total: 1, pagina: 1, ultimaPagina: 1 }));
-    gateway.documento.and.returnValue(of(new Blob(['%PDF-1.4'], { type: 'application/pdf' })));
-    await navegar('/pendientes/documentos-firmar'); expect(vista().querySelectorAll('app-documento-pendiente-card').length).toBe(1);
-    expect(vista().querySelector('app-documento-pendiente-card')?.textContent).toContain('codigo-devuelto-por-api'); expect(boton('Firmar').disabled).toBeTrue();
-    await pulsar('Ver documento'); expect(gateway.documento).toHaveBeenCalledWith('doc-test'); expect(vista().querySelector('iframe')).not.toBeNull();
-    const dialogo = vista().querySelector<HTMLDialogElement>('app-dialogo dialog')!;
-    const cerrado = new Promise<Event>(resolve => dialogo.addEventListener('close', resolve, { once: true }));
-    await pulsar('Cerrar'); await cerrado; harness.detectChanges(); expect(vista().querySelector('iframe')).toBeNull();
+  it('abre un documento desde el enlace de Gerencia y permite reintentar su consulta', async () => {
+    configurar();
+    const base = environment.apiBaseUrl + '/certificados-documentos';
+    await navegar('/pendientes/documentos-firmar/31');
+    http.expectOne(base + '/detail/31?flujo=firmas').flush({ message: 'Error interno' }, { status: 500, statusText: 'Error' });
+    harness.detectChanges();
+    expect(vista().querySelector('app-detalle-documento [role="alert"]')?.textContent).toContain('Intente nuevamente');
+    boton('Reintentar documento').click(); harness.detectChanges();
+    http.expectOne(base + '/detail/31?flujo=firmas').flush({ success: true, data: {
+      id_certificado_documento: 31, estado_certificado: 'PENDIENTE_FIRMA', beneficiario: { nombre: 'Beneficiario autorizado' },
+      actividad: 'Actividad', sesion: 'Sesión', tipo_certificado: 'Participación', modalidad_firma: 'Secuencial',
+      firmantes: [], facultades: { descargar: false },
+    } });
+    http.expectOne(base + '/31/firma/progreso').flush({ success: true, data: { documento: { id_certificado_documento: 31, estado_certificado: 'PENDIENTE_FIRMA', beneficiario: { nombre: 'Beneficiario autorizado' }, actividad: 'Actividad', sesion: 'Sesión', tipo_certificado: 'Participación', firmantes: [], facultades: { descargar: false } }, modalidad: null, modalidad_persistida: false, demo_disponible: false } });
+    http.expectOne(base + '/31/firma/verificacion').flush({ success: true, data: { id_certificado_documento: 31, integridad_verificada: true } });
+    harness.detectChanges();
+    expect(vista().querySelector('app-dialogo')).toBeNull();
+    expect(vista().textContent).toContain('Pendiente de firma');
+    expect(vista().querySelector('details')).toBeNull();
+    expect(vista().textContent).toContain('Firmantes pendientes de asignación');
+    expect(TestBed.inject(Router).url).toBe('/pendientes/documentos-firmar/31');
+    http.expectNone(req => req.method !== 'GET');
+  });
+
+  it('muestra los certificados remitidos y abre el PDF almacenado', async () => {
+    configurar();
+    const base = environment.apiBaseUrl + '/certificados-documentos';
+    const doc = { id_certificado_documento: 31, beneficiario: { nombre: 'Beneficiario de prueba' },
+      actividad: 'Actividad de prueba', sesion: 'Sesión de prueba', tipo_certificado: 'Participación',
+      estado_certificado: 'PENDIENTE_FIRMA', firmantes: [], facultades: { descargar: true } };
+    await navegar('/pendientes/documentos-firmar');
+    http.expectOne(r => r.url === base + '/list' && r.params.get('bandeja') === 'por_firmar')
+      .flush({ success: true, data: { data: [doc], current_page: 1, last_page: 1 } });
+    harness.detectChanges();
+    expect(vista().querySelector('tbody')?.textContent).toContain('Pendiente de firma');
+    expect(vista().querySelector('tbody')?.textContent).toContain('Asignación de firmantes pendiente');
+    vista().querySelector<HTMLAnchorElement>('tbody a')!.click();
+    await harness.fixture.whenStable(); harness.detectChanges();
+    http.expectOne(base + '/detail/31?flujo=firmas').flush({ success: true, data: doc });
+    http.expectOne(base + '/31/firma/progreso').flush({ success: true, data: { documento: doc, modalidad: null, modalidad_persistida: false, demo_disponible: false } });
+    http.expectOne(base + '/31/firma/verificacion').flush({ success: true, data: { id_certificado_documento: 31, integridad_verificada: true } });
+    harness.detectChanges();
+    const crearUrl = URL.createObjectURL.bind(URL);
+    const pdfListo = new Promise<void>(resolve => {
+      spyOn(URL, 'createObjectURL').and.callFake(blob => { resolve(); return crearUrl(blob); });
+    });
+    http.expectOne(base + '/31/firma/pdf-autorizado').flush(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+    await pdfListo; harness.detectChanges();
+    expect(vista().querySelector('app-visor-pdf app-pdf-continuo')).not.toBeNull();
   });
 });

@@ -19,6 +19,26 @@ describe('Visor de bytes PDF almacenados', () => {
     expect(f.nativeElement.querySelector('iframe')).not.toBeNull(); expect(f.nativeElement.querySelector('a[download]')).not.toBeNull();
     expect(api.archivo).toHaveBeenCalledOnceWith(31); f.destroy();
   });
+  it('da prioridad a bytes temporales, renueva el iframe y solo acredita su carga actual', () => {
+    const f = TestBed.createComponent(VisorPdfComponent);
+    const primero = { blob: new Blob(['%PDF-1.4\nprimer temporal'], { type: 'application/pdf' }), nombre: 'previa.pdf' };
+    const segundo = { blob: new Blob(['%PDF-1.4\nsegundo temporal'], { type: 'application/pdf' }), nombre: 'previa.pdf' };
+    spyOn(URL, 'createObjectURL').and.returnValues('blob:primera-previa', 'blob:segunda-previa');
+    const revocar = spyOn(URL, 'revokeObjectURL');
+    const visualizado = jasmine.createSpy('visualizado'); f.componentInstance.archivoVisualizado.subscribe(visualizado);
+    f.componentRef.setInput('documentoId', 31); f.componentRef.setInput('archivoPrevio', primero); f.detectChanges(); f.detectChanges();
+    const anterior: HTMLIFrameElement = f.nativeElement.querySelector('iframe');
+    expect(visualizado).not.toHaveBeenCalled(); anterior.dispatchEvent(new Event('load'));
+    expect(visualizado).toHaveBeenCalledWith(primero); visualizado.calls.reset();
+    f.componentRef.setInput('archivoPrevio', segundo); f.detectChanges(); f.detectChanges();
+    const vigente: HTMLIFrameElement = f.nativeElement.querySelector('iframe'); expect(vigente).not.toBe(anterior);
+    expect(vigente.getAttribute('src')).toBe('blob:segunda-previa');
+    expect(revocar).toHaveBeenCalledWith('blob:primera-previa'); expect(api.archivo).not.toHaveBeenCalled();
+    anterior.dispatchEvent(new Event('load')); expect(visualizado).not.toHaveBeenCalled();
+    vigente.dispatchEvent(new Event('load')); expect(visualizado).toHaveBeenCalledOnceWith(segundo);
+    expect(f.nativeElement.querySelector('a[download]').getAttribute('href')).toBe('blob:segunda-previa');
+    f.destroy(); expect(revocar).toHaveBeenCalledWith('blob:segunda-previa');
+  });
   it('revoca los recursos y cambia de documento sin retener el PDF anterior', () => {
     spyOn(URL, 'createObjectURL').and.returnValues('blob:documento-31', 'blob:documento-32'); const revocar = spyOn(URL, 'revokeObjectURL');
     const f = TestBed.createComponent(VisorPdfComponent); f.componentRef.setInput('documentoId', 31); f.detectChanges();
@@ -32,4 +52,20 @@ describe('Visor de bytes PDF almacenados', () => {
     f.detectChanges();
     expect(f.nativeElement.textContent).toContain('El documento no está vigente.'); expect(f.nativeElement.querySelector('iframe, a[download]')).toBeNull(); f.destroy();
   });
+  it('cambia de versión autorizada manteniendo el ID y comparte el mismo blob entre visor y acciones', () => {
+    spyOn(URL, 'createObjectURL').and.returnValues('blob:anterior', 'blob:confirmado');
+    const revocar = spyOn(URL, 'revokeObjectURL');
+    const f = TestBed.createComponent(VisorPdfComponent);
+    f.componentRef.setInput('documentoId', 31); f.componentRef.setInput('flujoFirmas', true); f.componentRef.setInput('hashEsperado', 'hash-anterior'); f.detectChanges();
+    const confirmado = {blob:new Blob(['%PDF-1.4\nPDF confirmado'],{type:'application/pdf'}),nombre:'certificado.pdf'};
+    api.archivo.and.returnValue(of(confirmado));
+    f.componentRef.setInput('hashEsperado','hash-confirmado'); f.detectChanges(); f.detectChanges();
+    expect(api.archivo).toHaveBeenCalledWith(31,true,'hash-confirmado'); expect(revocar).toHaveBeenCalledWith('blob:anterior');
+    const el:HTMLElement=f.nativeElement; const iframe=el.querySelector<HTMLIFrameElement>('iframe')!;
+    expect(iframe.getAttribute('src')).toBe('blob:confirmado');
+    expect(el.querySelector('a[download]')?.getAttribute('href')).toBe('blob:confirmado'); expect(el.querySelector('a[target=_blank]')?.getAttribute('href')).toBe('blob:confirmado');
+    const imprimir=spyOn(iframe.contentWindow!,'print').and.stub(); Array.from(el.querySelectorAll('button')).find(b=>b.textContent==='Imprimir PDF')!.click(); expect(imprimir).toHaveBeenCalled();
+    f.destroy(); expect(revocar).toHaveBeenCalledWith('blob:confirmado');
+  });
+
 });
