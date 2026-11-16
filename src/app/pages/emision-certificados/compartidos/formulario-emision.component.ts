@@ -35,6 +35,7 @@ export class FormularioEmisionComponent implements OnChanges {
   private carga?: Subscription;
   private original: RegistroEmision | null = null;
   protected readonly form = signal(new FormGroup<Record<string, FormControl<string | boolean>>>({}));
+  hayCambiosSinGuardar(): boolean { return this.form().dirty; }
   protected readonly cargando = signal(false);
   readonly enviando = signal(false);
   protected readonly errorCarga = signal<string | null>(null);

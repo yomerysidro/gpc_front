@@ -9,7 +9,21 @@
 .pasos.pasos-beneficiario { margin-block: .85rem; gap: .5rem; }
 .acciones { display: flex; flex-wrap: wrap; gap: .5rem; }
 .editor-mensaje { display: block; width: 100%; resize: vertical; line-height: 1.7; min-height: 12rem; }
-.secciones-emision { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; .btn[aria-selected="true"] { background: #075a9b; color: white; } }
+.titulo-emision, .cabecera-sesion { display: flex; align-items: center; gap: .5rem; color: #075a9b; min-width: 0; }
+.titulo-emision app-page-title { flex: 1; min-width: 0; }
+.titulo-pendientes { text-align: right; font-size: 1rem; color: #075a9b; margin: 0 0 .85rem; }
+.cabecera-sesion { flex-wrap: wrap; margin-block: .75rem; }
+.cabecera-sesion h2 { flex: 1; min-width: 8rem; font-size: 1.1rem; margin: 0; overflow-wrap: anywhere; }
+.estado-sesion { margin-left: auto; border-radius: 1rem; padding: .2rem .65rem; background: #fff5db; color: #795b16; font-size: .8rem; font-weight: 600; }
+.estado-sesion.finalizada { background: #e8f5ec; color: #21643b; }
+.asistencia-indicadores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .6rem; margin-block: .75rem; }
+.asistencia-tarjeta { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .1rem .5rem; padding: .65rem; background: #f7f9fc; border: 1px solid #dfe6ef; border-radius: .5rem; min-width: 0; }
+.asistencia-tarjeta .material-symbols-outlined { grid-row: span 2; color: #075a9b; }
+.asistencia-tarjeta strong { font-size: 1.3rem; color: #075a9b; }
+.asistencia-tarjeta > span:last-child { font-size: .8rem; overflow-wrap: anywhere; }
+.aviso-asistencia { display: flex; gap: .35rem; align-items: center; color: #795b16; font-size: .8rem; }
+.aviso-asistencia .material-symbols-outlined { font-size: 1rem; }
+@media (max-width: 760px) { .asistencia-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .modalidades { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; dd { margin: .35rem 0 0; } dt { color: #075a9b; font-weight: 600; } }
 .contexto-certificacion h2 { font-size: 1.15rem; }
 .motivo-certificacion { font-size: .85rem; margin: .35rem 0; }

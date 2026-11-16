@@ -7,17 +7,34 @@ import { VisorPdfComponent } from './visor-pdf.component';
 describe('Visor de bytes PDF almacenados', () => {
   let api: jasmine.SpyObj<DocumentosDigitalesService>;
   beforeEach(() => {
-    api = jasmine.createSpyObj('DocumentosDigitalesService', ['archivo', 'archivoPublico']);
+    api = jasmine.createSpyObj('DocumentosDigitalesService', ['archivo', 'archivoPublico', 'archivoRrhh']);
     api.archivo.and.returnValue(of({ blob: new Blob(['%PDF-1.4'], { type: 'application/pdf' }), nombre: 'certificado.pdf' }));
     TestBed.configureTestingModule({ providers: [{ provide: DocumentosDigitalesService, useValue: api }] });
   });
   it('no muestra iframe ni descarga antes de recibir el archivo real', () => {
     const archivo = new Subject<ArchivoPdf>(); api.archivo.and.returnValue(archivo);
     const f = TestBed.createComponent(VisorPdfComponent); f.componentRef.setInput('documentoId', 31); f.detectChanges();
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[role="status"]').textContent).toBe('Cargando certificado...');
+    expect(f.nativeElement.textContent).not.toContain('Laravel');
     expect(f.nativeElement.querySelector('iframe, a[download]')).toBeNull();
     archivo.next({ blob: new Blob(['%PDF-1.4'], { type: 'application/pdf' }), nombre: 'certificado.pdf' }); f.detectChanges();
     expect(f.nativeElement.querySelector('iframe')).not.toBeNull(); expect(f.nativeElement.querySelector('a[download]')).not.toBeNull();
+    expect(f.nativeElement.textContent).not.toContain('El PDF almacenado contiene el QR');
+    expect(f.nativeElement.querySelector('iframe').getAttribute('title')).toBe('PDF del certificado');
     expect(api.archivo).toHaveBeenCalledOnceWith(31); f.destroy();
+  });
+  it('RR. HH. visualiza y descarga el mismo blob autorizado sin usar rutas de Gerencia', () => {
+    const archivo = { blob: new Blob(['%PDF-1.4\nRevisión confirmada'], { type: 'application/pdf' }), nombre: 'certificado.pdf' };
+    api.archivoRrhh.and.returnValue(of(archivo));
+    spyOn(URL, 'createObjectURL').and.returnValue('blob:revision-confirmada');
+    const f = TestBed.createComponent(VisorPdfComponent);
+    f.componentRef.setInput('documentoId', 31); f.componentRef.setInput('consultaRrhh', true); f.componentRef.setInput('hashEsperado', 'hash-confirmado');
+    f.detectChanges(); f.detectChanges();
+    expect(api.archivoRrhh).toHaveBeenCalledOnceWith(31, 'hash-confirmado'); expect(api.archivo).not.toHaveBeenCalled();
+    expect(f.nativeElement.querySelector('iframe').getAttribute('src')).toBe('blob:revision-confirmada');
+    expect(f.nativeElement.querySelector('a[download]').getAttribute('href')).toBe('blob:revision-confirmada');
+    f.destroy();
   });
   it('da prioridad a bytes temporales, renueva el iframe y solo acredita su carga actual', () => {
     const f = TestBed.createComponent(VisorPdfComponent);
@@ -50,7 +67,7 @@ describe('Visor de bytes PDF almacenados', () => {
     api.archivo.and.returnValue(throwError(() => ({ status: 409, mensaje: 'El documento no está vigente.', errores: {} })));
     const f = TestBed.createComponent(VisorPdfComponent); f.componentRef.setInput('documentoId', 31); f.detectChanges();
     f.detectChanges();
-    expect(f.nativeElement.textContent).toContain('El documento no está vigente.'); expect(f.nativeElement.querySelector('iframe, a[download]')).toBeNull(); f.destroy();
+    expect(f.nativeElement.textContent).toContain('Operaci\u00f3n en conflicto o bloqueada.'); expect(f.nativeElement.querySelector('iframe, a[download]')).toBeNull(); f.destroy();
   });
   it('cambia de versión autorizada manteniendo el ID y comparte el mismo blob entre visor y acciones', () => {
     spyOn(URL, 'createObjectURL').and.returnValues('blob:anterior', 'blob:confirmado');

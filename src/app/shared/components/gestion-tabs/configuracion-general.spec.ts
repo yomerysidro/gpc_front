@@ -47,11 +47,11 @@ describe('Configuración General agrupada con CRUD existentes', () => {
     await harness.fixture.whenStable(); harness.detectChanges();
   }
 
-  it('presenta solo dos entradas y cambia las tres pestañas institucionales reutilizando sus componentes', async () => {
+  it('presenta firmantes y los dos catálogos y conserva las tres pestañas institucionales', async () => {
     harness = await RouterTestingHarness.create(institucional); harness.detectChanges();
     const opciones = vista().querySelectorAll('#submenu-configuracion a');
-    expect(Array.from(opciones).map(opcion => opcion.textContent?.trim().replace(/^account_balance|^category/, '').trim()))
-      .toEqual(['Gestión institucional', 'Tipos y clasificaciones']);
+    expect(Array.from(opciones).map(opcion => opcion.querySelector('.texto-enlace')?.textContent?.trim()))
+      .toEqual(['Firmantes municipales', 'Gestión institucional', 'Tipos y clasificaciones']);
     expect(vista().querySelector('main h1')?.textContent).toBe('Gestión institucional');
     expect(Array.from(vista().querySelectorAll('main [role="tab"]')).map(tab => tab.textContent)).toEqual(['Áreas municipales', 'Tipos de documento', 'Instituciones']);
     for (const [id, url, componente] of [['areas', '/areas/list', 'app-area'], ['tipos-documento', '/document-types/list', 'app-document-type'], ['instituciones', '/institutions/list', 'app-institution']]) {

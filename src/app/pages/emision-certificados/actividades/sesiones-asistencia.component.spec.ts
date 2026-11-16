@@ -2,10 +2,18 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter, Router, Routes } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of } from 'rxjs';
-import { routes } from '../../../app.routes';
+import { ActividadesComponent } from './actividades.component';
+import { permissionGuard } from '../../../core/guards/permission.guard';
+import { routes as appRoutes } from '../../../app.routes';
+const rutaRetirada = { path: 'sesiones-asistencia', component: ActividadesComponent, canActivate: [permissionGuard], data: { permiso: 'actividades.ver', titulo: 'Sesiones y asistencia', pestanas: [
+  { id: 'sesiones', etiqueta: 'Sesiones', recurso: 'activity-session' }, { id: 'asistencias', etiqueta: 'Asistencias', recurso: 'attendance' },
+], secciones: [{ titulo: 'Sesiones registradas', recurso: 'activity-session' }, { titulo: 'Asistencias registradas', recurso: 'attendance' }] } };
+// Conserva las regresiones CRUD del componente retirado sin reabrir su ruta en la aplicacion.
+const reemplazar = (rutas: Routes): Routes => rutas.map(r => r.path === 'sesiones-asistencia' ? rutaRetirada : { ...r, ...(r.children ? { children: reemplazar(r.children) } : {}) });
+const routes = reemplazar(appRoutes);
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { environment } from '../../../../environments/environment';
 

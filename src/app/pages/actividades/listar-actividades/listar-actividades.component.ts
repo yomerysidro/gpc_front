@@ -69,12 +69,8 @@ export class ListarActividadesComponent {
   protected readonly seleccionada = signal<Actividad | null>(null);
   protected readonly actividadEdicion = signal<Actividad | null>(null);
   protected readonly actividadPonentes = signal<Actividad | null>(null);
-  protected readonly opcionesPonentes = signal<readonly { id_persona_ponente: number; nombre: string }[]>([]);
-  protected readonly cargandoCatalogoPonentes = signal(false);
-  protected readonly errorCatalogoPonentes = signal<string | null>(null);
   protected readonly guardandoPonente = signal(false);
   protected readonly avisoPonentes = signal<string | null>(null);
-  protected readonly formPonente = inject(NonNullableFormBuilder).group({ id_persona_ponente: ['', [Validators.required, Validators.pattern(/^[1-9]\d*$/)]] });
   private readonly confirmacionEstado = viewChild.required<DialogoConfirmacionComponent>('confirmacionEstado');
   private solicitudDetalle?: Subscription;
   private solicitudPonentes?: Subscription;
@@ -299,43 +295,12 @@ export class ListarActividadesComponent {
     else if (accion === 'editar') this.abrirFormulario(actividad);
     else if (accion === 'cerrar') void this.pedirCambioEstado(actividad);
     else {
+      // Consulta histórica de vínculos de actividad; la asignación nueva se realiza por sesión.
       this.actividadPonentes.set(actividad); this.detalle.set(null); this.ponentes.set([]);
-      this.avisoPonentes.set(null); this.formPonente.reset();
-      this.dialogoPonentes().abrir(); this.cargarPonentes(); this.cargarCatalogoPonentes();
+      this.avisoPonentes.set(null);
+      this.dialogoPonentes().abrir(); this.cargarPonentes();
     }
   }
-
-  protected mostrarPonentesContextuales(actividad: Actividad): void {
-    if (!this.permitido('ponentes-firmantes.ver')) return;
-    if (this.actividadPonentes()?.id_actividad === actividad.id_actividad && !this.errorPonentes() && !this.errorCatalogoPonentes()) {
-      this.dialogoPonentes().abrir(); return;
-    }
-    this.ejecutar('ponentes', actividad);
-  }
-
-  protected cargarCatalogoPonentes(): void {
-    if (!this.permitido('ponentes-firmantes.ver')) return;
-    this.cargandoCatalogoPonentes.set(true); this.errorCatalogoPonentes.set(null); this.opcionesPonentes.set([]);
-    this.servicio.listarCatalogoPonentes().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: opciones => { this.opcionesPonentes.set(opciones); this.cargandoCatalogoPonentes.set(false); },
-      error: (error: ErrorApi) => { this.errorCatalogoPonentes.set(this.mensajeError(error)); this.cargandoCatalogoPonentes.set(false); },
-    });
-  }
-
-  protected vincularPonente(): void {
-    const actividad = this.actividadPonentes();
-    if (!actividad || !this.permitido('ponentes-firmantes.crear') || this.guardandoPonente() || this.cargandoPonentes() || this.errorPonentes()) return;
-    this.formPonente.markAllAsTouched();
-    const id = Number(this.formPonente.controls.id_persona_ponente.value);
-    if (this.formPonente.invalid || !this.opcionesPonentes().some(p => p.id_persona_ponente === id)) return;
-    if (this.ponenteAsociado(id)) { this.avisoPonentes.set('El ponente ya está asociado a esta actividad.'); return; }
-    this.guardandoPonente.set(true); this.avisoPonentes.set(null);
-    this.servicio.vincularPonente(actividad.id_actividad, id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: respuesta => { this.guardandoPonente.set(false); this.avisoPonentes.set(respuesta.message); this.formPonente.reset(); this.cargarPonentes(); },
-      error: (error: ErrorApi) => { this.guardandoPonente.set(false); this.avisoPonentes.set(this.mensajeError(error)); },
-    });
-  }
-  protected ponenteAsociado(id: number): boolean { return this.ponentes().some(p => p.id_persona_ponente === id); }
 
   protected bloquearEscapePonentes(evento: Event): void {
     if (this.guardandoPonente()) evento.preventDefault();

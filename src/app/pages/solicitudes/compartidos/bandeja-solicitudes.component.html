@@ -1,4 +1,4 @@
-<header class="encabezado-pagina"><span class="material-symbols-outlined icono-pagina" aria-hidden="true">{{ bandeja() === 'propias' ? 'inbox' : bandeja() === 'revision' ? 'fact_check' : 'approval' }}</span><div class="titulo-y-descripcion"><div class="fila-titulo"><app-page-title [title]="titulo()" />
+<header class="encabezado-pagina"><span class="material-symbols-outlined icono-pagina" aria-hidden="true">{{ bandeja() === 'propias' ? 'description' : bandeja() === 'revision' ? 'fact_check' : 'pending_actions' }}</span><div class="titulo-y-descripcion"><div class="fila-titulo"><app-page-title [title]="titulo()" />
   <div class="acciones-cabecera">@if (bandeja() === 'propias') {
   <div id="busqueda-solicitudes" class="busqueda-desplegable" [hidden]="!busquedaAbierta()" role="search" aria-label="Filtrar mis solicitudes" [formGroup]="filtros">
     <div class="form-field"><label for="filtro-busqueda">Buscar solicitud</label><div class="busqueda-con-icono"><span class="material-symbols-outlined" aria-hidden="true">search</span><input #campoBusqueda class="input" id="filtro-busqueda" formControlName="busqueda" type="search" placeholder="Actividad o número de solicitud" (keydown.escape)="cerrarBusqueda()" /></div></div>
@@ -6,8 +6,14 @@
 }@if (bandeja() === 'propias') { <button #botonBusqueda type="button" class="btn boton-busqueda" [attr.aria-label]="busquedaAbierta() ? 'Ocultar búsqueda' : 'Abrir búsqueda'" title="Buscar solicitud" aria-controls="busqueda-solicitudes" [attr.aria-expanded]="busquedaAbierta()" (click)="busquedaAbierta() ? cerrarBusqueda() : abrirBusqueda()"><span class="material-symbols-outlined" aria-hidden="true">search</span></button> }
   @if (bandeja() === 'propias' && auth.tienePermiso('solicitudes.crear')) { @if (puedeCrear()) { <a class="btn btn-primary" routerLink="/solicitudes/nueva" queryParamsHandling="preserve">Nueva solicitud</a> }
     @else { <button type="button" class="btn btn-primary" disabled title="Requiere habilitación del backend y permiso de creación">Nueva solicitud</button> } }
-  </div></div><p>{{ bandeja() === 'propias' ? 'Consulte el estado y seguimiento de sus actividades propuestas.' : bandeja() === 'revision' ? 'Revise las propuestas antes de su evaluación por Gerencia.' : 'Evalúe las propuestas derivadas por Recursos Humanos.' }}</p></div></header><app-integracion-solicitudes />
-<div class="encabezado"><p>{{ bandeja() === 'propias' ? 'Seguimiento de las solicitudes autorizadas de tu área.' : bandeja() === 'revision' ? 'Evalúa la información y deriva las solicitudes conformes a Gerencia.' : 'Consulta la revisión de RR. HH. antes de registrar una decisión.' }}</p>
+  </div></div></div></header><app-integracion-solicitudes />
+@if (bandeja() === 'gerencia') {
+<div class="pestanas-gerencia" role="tablist" aria-label="Solicitudes de actividades" (keydown)="teclearPestanasGerencia($event)">
+  <button type="button" role="tab" id="gerencia-pendientes" aria-label="Pendientes de aprobación" aria-controls="gerencia-solicitudes" [attr.aria-selected]="pestanaGerencia() === 'pendientes'" [attr.tabindex]="pestanaGerencia() === 'pendientes' ? 0 : -1" [disabled]="ocupado()" (click)="cambiarPestanaGerencia('pendientes')"><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span>Pendientes de aprobación</button>
+  <button type="button" role="tab" id="gerencia-aprobadas" aria-label="Solicitudes aprobadas" aria-controls="gerencia-solicitudes" [attr.aria-selected]="pestanaGerencia() === 'aprobadas'" [attr.tabindex]="pestanaGerencia() === 'aprobadas' ? 0 : -1" [disabled]="ocupado()" (click)="cambiarPestanaGerencia('aprobadas')"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>Solicitudes aprobadas</button>
+</div>
+} @else {
+<div class="encabezado"><p>{{ bandeja() === 'propias' ? 'Seguimiento de las solicitudes autorizadas de tu área.' : 'Evalúa la información y deriva las solicitudes conformes a Gerencia.' }}</p>
 </div>
 
 <div class="indicadores" [class.indicadores-compactos]="bandeja() === 'propias'" aria-label="Resumen de resultados">
@@ -15,14 +21,17 @@
   <section class="card indicador"><strong>{{ pendientes() ?? '—' }}</strong><p>Pendientes</p></section>
   <section class="card indicador"><strong>{{ observadas() ?? '—' }}</strong><p>Observadas</p></section>
 </div>
-<section class="card" aria-label="Bandeja de solicitudes">@if (bandeja() !== 'propias') { <h2>Consulta de solicitudes</h2> }
+}
+<section class="card" aria-label="Bandeja de solicitudes" [attr.id]="bandeja() === 'gerencia' ? 'gerencia-solicitudes' : null" [attr.role]="bandeja() === 'gerencia' ? 'tabpanel' : null" [attr.aria-labelledby]="bandeja() === 'gerencia' ? 'gerencia-' + pestanaGerencia() : null">@if (bandeja() === 'revision') { <h2>Consulta de solicitudes</h2> }
   @if (bandeja() !== 'propias') {
-  <form class="filtros" [formGroup]="filtros" (ngSubmit)="cargar()">
+  <form class="filtros" [class.filtros-gerencia]="bandeja() === 'gerencia'" [formGroup]="filtros" (ngSubmit)="cargar()">
     <div class="form-field"><label for="filtro-busqueda">Actividad o número de solicitud</label><input class="input" id="filtro-busqueda" formControlName="busqueda" type="search" /></div>
+    @if (bandeja() !== 'gerencia') {
     <div class="form-field"><label for="filtro-estado">Estado</label><select class="input" id="filtro-estado" formControlName="estado"><option value="">{{ bandeja() === 'revision' ? 'Enviadas' : 'Todos los estados' }}</option>@for (estado of estados; track estado) { <option [value]="estado">{{ estado }}</option> }</select></div>
     <div class="form-field"><label for="filtro-desde">Desde</label><input class="input" id="filtro-desde" formControlName="desde" type="date" /></div>
     <div class="form-field"><label for="filtro-hasta">Hasta</label><input class="input" id="filtro-hasta" formControlName="hasta" type="date" [min]="filtros.controls.desde.value" /></div>
-    <div class="acciones ancho"><button class="btn btn-primary" type="submit" [disabled]="!operativo() || cargando() || ocupado()">Buscar</button><button class="btn" type="button" [disabled]="!operativo() || ocupado()" (click)="limpiar()">Limpiar filtros</button></div>
+    }
+    <div class="acciones ancho"><button class="btn btn-primary" type="submit" [disabled]="!operativo() || cargando() || ocupado()">Buscar</button>@if (bandeja() !== 'gerencia') { <button class="btn" type="button" [disabled]="!operativo() || ocupado()" (click)="limpiar()">Limpiar filtros</button> }</div>
   </form>
   }
   @if (aviso()) { <p class="aviso" role="status">{{ aviso() }}</p> }
@@ -33,10 +42,14 @@
       <div class="tabla-scroll" tabindex="0" role="region" aria-label="Resultados de solicitudes"><table class="table" [class.tabla-propias]="bandeja() === 'propias'" [attr.aria-busy]="cargando()"><caption>Lista deSolicitudes</caption>
         <thead><tr>@if (bandeja() === 'propias') {
           <th scope="col">N°</th><th scope="col">Actividad</th><th scope="col">Área solicitante</th><th scope="col">Responsable</th><th scope="col">Fecha</th><th scope="col">Estado</th><th scope="col">Acciones</th>
+        } @else if (bandeja() === 'gerencia') {
+          <th scope="col">N.º de solicitud</th><th scope="col">{{ pestanaGerencia() === 'aprobadas' ? 'Actividad' : 'Actividad solicitada' }}</th><th scope="col">Solicitante o área</th><th scope="col">{{ pestanaGerencia() === 'aprobadas' ? 'Fecha de aprobación' : 'Fecha' }}</th><th scope="col">Estado</th><th scope="col">Acción</th>
         } @else { <th scope="col">Solicitud y actividad</th><th scope="col">Área / responsable</th><th scope="col">Fechas</th><th scope="col">Estado y revisión</th><th scope="col">Acciones</th> }</tr></thead>
         <tbody>@for (fila of datos.registros; track fila.id) {
           <tr>@if (bandeja() === 'propias') {
             <td><strong>{{ fila.idSolicitudActividad ?? fila.id }}</strong></td><td class="nombre-actividad">{{ fila.nombre }}</td><td>{{ fila.area }}</td><td>{{ fila.responsable }}</td><td>{{ fila.fecha | date:'dd/MM/yyyy' }}</td><td><app-solicitud-estado-badge [estado]="fila.estado" /></td>
+          } @else if (bandeja() === 'gerencia') {
+            <td>{{ fila.numero }}</td><td>{{ fila.nombre }}</td><td>{{ fila.area }}<small>{{ fila.responsable }}</small></td><td>@if (pestanaGerencia() === 'aprobadas') { {{ fila.fechaAprobacion ? (fila.fechaAprobacion | date:'dd/MM/yyyy') : 'No disponible' }} } @else { {{ fila.fecha | date:'dd/MM/yyyy' }} }</td><td><app-solicitud-estado-badge [estado]="fila.estado" /></td>
           } @else {
           <td><strong>{{ fila.numero }}</strong><p>{{ fila.nombre }}</p></td><td>{{ fila.area }}<small>{{ fila.responsable }}</small></td>
             <td>{{ fila.fecha | date:'dd/MM/yyyy' }}<small>Propuesta: {{ fila.inicio | date:'dd/MM/yyyy' }} – {{ fila.fin | date:'dd/MM/yyyy' }}</small></td>
@@ -49,7 +62,7 @@
           }
             <td><div class="acciones" [class.acciones-gerencia]="bandeja() === 'gerencia'">
               @if (bandeja() === 'gerencia') {
-                <button class="btn accion-icono accion-detalle" type="button" title="Ver detalle" aria-label="Ver detalle" [disabled]="ocupado() || fila.puedeVerDetalle === false" (click)="ver(fila)"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button>
+                <button class="btn accion-detalle" type="button" [disabled]="ocupado() || fila.puedeVerDetalle === false" (click)="ver(fila)">{{ pestanaGerencia() === 'aprobadas' ? 'Ver solicitud' : 'Revisar solicitud' }}</button>
                 @for (accion of acciones(fila); track accion) {
                   <button class="btn accion-icono" type="button" [class.accion-aprobar]="accion === 'Aprobar'" [class.accion-rechazar]="accion === 'Rechazar'" [attr.title]="accion === 'Aprobar' ? 'Aprobar solicitud' : 'Rechazar solicitud'" [attr.aria-label]="accion === 'Aprobar' ? 'Aprobar solicitud' : 'Rechazar solicitud'" [disabled]="ocupado() || !operativo()" (click)="modal().abrir(accion, fila)"><span class="material-symbols-outlined" aria-hidden="true">{{ accion === 'Aprobar' ? 'check_circle' : 'cancel' }}</span></button>
                 }
@@ -64,7 +77,7 @@
               }
             </div></td></tr>
         }</tbody></table></div>
-    } @else { <div class="vacio" role="status">No se encontraron solicitudes para estos filtros.</div> }
+    } @else { <div class="vacio" role="status">{{ bandeja() === 'gerencia' ? (pestanaGerencia() === 'aprobadas' ? 'No se encontraron solicitudes aprobadas.' : 'No hay solicitudes pendientes de aprobación.') : 'No se encontraron solicitudes para estos filtros.' }}</div> }
     <nav class="paginacion" aria-label="Paginación de solicitudes"><button class="btn" type="button" [disabled]="datos.pagina <= 1 || ocupado()" (click)="cargar(datos.pagina - 1)">Anterior</button>
       <span>Página {{ datos.pagina }} de {{ datos.ultimaPagina }} · {{ datos.total }} registros</span><button class="btn" type="button" [disabled]="datos.pagina >= datos.ultimaPagina || ocupado()" (click)="cargar(datos.pagina + 1)">Siguiente</button></nav>
   }
@@ -74,6 +87,9 @@
   @if (cargandoDetalle()) { <p role="status">Consultando detalle autorizado…</p> }
   @if (errorDetalle()) { <p class="error" role="alert">{{ errorDetalle() }}</p> }
   @if (detalle(); as fila) { <app-solicitud-detalle [revision]="bandeja() === 'revision'" [datos]="fila" [registro]="fila" [area]="fila.area" [responsable]="fila.responsable" [tipo]="fila.tipo" /> }
+  @if (bandeja() === 'gerencia' && detalle(); as fila) {
+    <div class="acciones">@for (accion of acciones(fila); track accion) { <button class="btn" type="button" [class.btn-primary]="accion === 'Aprobar'" [disabled]="ocupado() || !operativo()" (click)="modal().abrir(accion, fila)">{{ accion }}</button> }</div>
+  }
   <div class="acciones"><button class="btn" type="button" autofocus (click)="dialogo().cerrar()">Cerrar</button></div>
 </app-dialogo>
 <app-decision-modal [ocupado]="ocupado()" [integrado]="operativo()" (confirmado)="decidir($event)" />

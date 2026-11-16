@@ -26,7 +26,7 @@ describe('Generar y emitir sin emisión ficticia', () => {
     http = TestBed.inject(HttpTestingController); fixture = TestBed.createComponent(GenerarEmitirComponent); fixture.detectChanges();
   });
   afterEach(() => http.verify());
-  function seleccionar(fila = certificado): void { if (!fixture.nativeElement.querySelector('app-listar-certificados')) { fixture.nativeElement.querySelector('#emision-tab-preparaciones').click(); fixture.detectChanges(); } const lista: ListarCertificadosComponent = fixture.debugElement.query(By.directive(ListarCertificadosComponent)).componentInstance; lista.seleccionado.emit({ registro: fila, beneficiario: 'Nombre autorizado de prueba', tipo: 'Tipo del servidor', dni: '12345678' }); fixture.detectChanges(); }
+  function seleccionar(fila = certificado): void { (fixture.componentInstance as any).seleccionar({ registro: fila, beneficiario: 'Nombre autorizado de prueba', tipo: 'Tipo del servidor', dni: '12345678' }); fixture.detectChanges(); }
   function pulsar(texto: string): void { const vista: HTMLElement = fixture.nativeElement; const boton = Array.from(vista.querySelectorAll<HTMLButtonElement>('button')).find(boton => boton.textContent?.trim() === texto && !boton.closest('[hidden]'))!; boton.click(); fixture.detectChanges(); }
   function prepararGeneracion(): void {
     api.obtener.and.callFake(((recurso: string) => of(recurso === 'participation' ? { id_participacion: 30, id_actividad: 7 } : { id_actividad: 7, nombre: 'Actividad del servidor' })) as never);
@@ -49,7 +49,7 @@ describe('Generar y emitir sin emisión ficticia', () => {
   it('conserva el conflicto de generación sin mostrar un documento ficticio y permite reintentar', () => {
     prepararGeneracion(); pulsar('Generar PDF de desarrollo');
     http.expectOne('/api/certificados/9/generar-documento').flush({ message: 'Tipo no autorizado por Laravel' }, { status: 409, statusText: 'Conflict' }); fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Tipo no autorizado por Laravel');
+    expect(fixture.nativeElement.textContent).toContain('Operaci\u00f3n en conflicto o bloqueada.');
     expect(fixture.nativeElement.querySelector('app-visor-pdf')).toBeNull();
     expect(Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(b => b.textContent === 'Generar PDF de desarrollo')!.disabled).toBeFalse();
   });
@@ -69,7 +69,7 @@ describe('Generar y emitir sin emisión ficticia', () => {
   });
   it('un error del origen impide continuar y no crea documentos de respaldo', () => {
     api.obtener.and.returnValue(throwError(() => ({ status: 403, mensaje: 'Origen no autorizado' }))); seleccionar();
-    expect(fixture.nativeElement.textContent).toContain('Origen no autorizado'); const vista: HTMLElement = fixture.nativeElement;
+    expect(fixture.nativeElement.textContent).toContain('No tiene permisos para realizar esta acción'); const vista: HTMLElement = fixture.nativeElement;
     expect(Array.from(vista.querySelectorAll<HTMLButtonElement>('button')).find(boton => boton.textContent?.trim() === 'Siguiente' && !boton.closest('[hidden]'))?.disabled).toBeTrue(); http.expectNone(() => true);
   });
 
@@ -80,12 +80,14 @@ describe('Generar y emitir sin emisión ficticia', () => {
   });
 
   it('conserva el listado y sus filtros al volver sin repetir solicitudes de carga', () => {
-    fixture.nativeElement.querySelector('#emision-tab-preparaciones').click(); fixture.detectChanges();
-    const lista = fixture.debugElement.query(By.directive(ListarCertificadosComponent)).componentInstance;
+    const lista = (fixture.componentInstance as any).pendientes();
+    const filtros = (fixture.componentInstance as any).filtrosPendientes.getRawValue();
     api.listarTodos.calls.reset();
     seleccionar(); pulsar('Anterior');
-    expect(fixture.debugElement.query(By.directive(ListarCertificadosComponent)).componentInstance).toBe(lista);
-    expect(fixture.nativeElement.querySelectorAll('app-listar-certificados').length).toBe(1);
+    expect((fixture.componentInstance as any).pendientes()).toBe(lista);
+    expect((fixture.componentInstance as any).filtrosPendientes.getRawValue()).toEqual(filtros);
+    expect(fixture.nativeElement.querySelector('#emision-pendientes')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('app-listar-certificados').length).toBe(0);
     expect(api.listarTodos).not.toHaveBeenCalled();
   });
 });

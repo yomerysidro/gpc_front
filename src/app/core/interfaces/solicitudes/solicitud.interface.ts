@@ -32,6 +32,8 @@ export interface Solicitud extends DatosSolicitud {
   readonly responsable: string;
   readonly tipo: string;
   readonly fecha: string;
+  /** Solo se muestra cuando la API proporciona una fecha de aprobación persistida. */
+  readonly fechaAprobacion?: string | null;
   readonly estado: EstadoSolicitud;
   readonly revisor: string | null;
   readonly ultimaObservacion: string | null;

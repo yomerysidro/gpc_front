@@ -51,6 +51,7 @@ export class ListadoEmisionComponent implements OnChanges {
   protected readonly erroresMarcas = signal<Readonly<Record<string, string>>>({});
   readonly datosContexto = input<DatosAsistenciaContextual | null>(null);
   readonly accionesExternas = input(false);
+  readonly paginaCompleta = input(false);
   readonly recargarTrasGuardar = input(false);
   readonly asistenciasActualizadas = output<readonly RegistroEmision[]>();
   estaGuardando(): boolean { return this.guardandoSeleccion() || this.guardandoMarca() !== null || !!this.formulario()?.enviando(); }
@@ -58,6 +59,8 @@ export class ListadoEmisionComponent implements OnChanges {
   puedeGuardarAsistencia(): boolean { return this.enDetalle() && !!this.cambiosPendientes() && !this.estaGuardando() && !this.cargando() && !this.requiereActualizar() && !this.soloLecturaSesion() && this.pendientesSesion().every(m => this.permitido(m.asistencia ? 'editar' : 'crear')); }
   guardarAsistencia(): void { if (this.puedeGuardarAsistencia()) this.guardarSeleccion(); }
   descartarCambios(): void { this.descartarSeleccion(); }
+  hayCambiosSinGuardar(): boolean { return !!this.cambiosPendientes() || !!this.formulario()?.hayCambiosSinGuardar(); }
+  refrescarAsistencia(): void { this.actualizarAsistencia(); }
   private claveMarca(participacion: number, sesion: number): string { return `${sesion}:${participacion}`; }
   protected pendientesSesion(): readonly MarcaPendiente[] {
     return this.marcasPendientes().filter(m => String(m.sesion) === this.filtrosSesiones.controls.sesion.value);

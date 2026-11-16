@@ -540,6 +540,7 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     await navegar('/pendientes/documentos-firmar');
     http.expectOne(r => r.url === base + '/list' && r.params.get('bandeja') === 'por_firmar')
       .flush({ success: true, data: { data: [doc], current_page: 1, last_page: 1 } });
+    http.expectOne(base + '/31/firma/progreso').flush({ success: true, data: { documento: doc, disponible_rrhh: false } });
     harness.detectChanges();
     expect(vista().querySelector('tbody')?.textContent).toContain('Pendiente de firma');
     expect(vista().querySelector('tbody')?.textContent).toContain('Asignación de firmantes pendiente');

@@ -71,7 +71,7 @@ describe('Componentes de la estructura base', () => {
       { label: 'Nuevo m?dulo', path: '/nuevo', icon: 'icono_fuera_de_la_fuente' },
     ]);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[aria-controls="submenu-actividades"] .material-symbols-outlined').textContent).toBe('event');
+    expect(fixture.nativeElement.querySelector('[aria-controls="submenu-actividades"] .material-symbols-outlined').textContent).toBe('calendar_month');
     expect(fixture.nativeElement.querySelector('a[href="/eventos-adicionales"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('a[href="/consulta-adicional"] .material-symbols-outlined')).toBeNull();
     expect(fixture.nativeElement.querySelector('a[href="/nuevo"] .material-symbols-outlined')).toBeNull();

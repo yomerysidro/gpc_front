@@ -1,0 +1,135 @@
+import { Component, computed, DestroyRef, inject, PLATFORM_ID, signal } from '@angular/core';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { distinctUntilChanged, map, Subscription } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
+import { CertificadoPublico, PortalCertificadosService } from '../../core/services/emision-certificados/portal-certificados.service';
+import { ArchivoPdf } from '../../core/interfaces/emision-certificados/documento-digital.interface';
+import { PdfContinuoComponent } from '../emision-certificados/compartidos/pdf-continuo.component';
+
+@Component({
+  selector: 'app-portal-certificados', standalone: true,
+  imports: [ReactiveFormsModule, DatePipe, PdfContinuoComponent],
+  templateUrl: './portal-certificados.component.html',
+  styleUrl: './portal-certificados.component.scss',
+})
+export class PortalCertificadosComponent {
+  private readonly api = inject(PortalCertificadosService);
+  private readonly destroy = inject(DestroyRef);
+  private readonly fb = inject(NonNullableFormBuilder);
+  private readonly route = inject(ActivatedRoute, { optional: true });
+  private consulta?: Subscription;
+  private descarga?: Subscription;
+  protected readonly dni = this.fb.control('', [Validators.required, Validators.pattern(/^[0-9]{8}$/)]);
+  protected readonly codigo = this.fb.control('', [Validators.required, Validators.pattern(/^[a-f0-9]{30}$/)]);
+  protected readonly modo = signal<'dni' | 'codigo'>('dni');
+  protected readonly cargando = signal(false);
+  protected readonly cargandoPdf = signal(false);
+  protected readonly mensaje = signal('');
+  protected readonly errorPdf = signal('');
+  protected readonly resultado = signal<CertificadoPublico | null>(null);
+  protected readonly resultadosDni = signal<readonly CertificadoPublico[] | null>(null);
+  protected readonly tarjetas = computed(() => this.modo() === 'dni' ? this.resultadosDni() ?? []
+    : this.resultado() ? [this.resultado()!] : []);
+  protected readonly detalle = signal(false);
+  protected readonly archivo = signal<ArchivoPdf | null>(null);
+  protected readonly urlDescarga = signal<string | null>(null);
+
+  constructor() {
+    if (isPlatformBrowser(inject(PLATFORM_ID))) this.route?.queryParamMap.pipe(map(q => q.get('codigo')), distinctUntilChanged(),
+      takeUntilDestroyed(this.destroy)).subscribe(codigo => {
+        if (codigo === null) return;
+        this.cambiarModo('codigo'); this.codigo.setValue(codigo); this.codigo.markAsTouched(); this.buscar(true);
+      });
+    this.destroy.onDestroy(() => this.limpiarPdf());
+    this.dni.valueChanges.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => this.limpiar());
+    this.codigo.valueChanges.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => this.limpiar());
+  }
+
+  protected cambiarModo(modo: 'dni' | 'codigo'): void {
+    if (this.modo() === modo) return;
+    this.limpiar(); this.modo.set(modo);
+  }
+
+  protected nuevaConsulta(): void {
+    this.limpiar(); this.dni.reset(''); this.codigo.reset('');
+  }
+
+  protected claveTarjeta(certificado: CertificadoPublico): string { return certificado.referencia ?? certificado.codigo; }
+
+  protected buscar(abrirPdf = false): void {
+    const control = this.modo() === 'dni' ? this.dni : this.codigo;
+    control.markAsTouched();
+    if (control.invalid || this.cargando()) return;
+    this.limpiar(); this.cargando.set(true);
+    if (this.modo() === 'dni') {
+      this.consulta = this.api.consultarDni(this.dni.value).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+        next: certificados => {
+          this.cargando.set(false);
+          this.resultadosDni.set(certificados);
+        },
+        error: e => {
+          this.cargando.set(false);
+          this.mensaje.set(e?.status === 429 ? 'Has realizado varias consultas. Espera un momento antes de intentar nuevamente.'
+            : e?.status === 422 ? 'Revisa que el DNI tenga ocho dígitos.'
+            : e?.status === 401 || e?.status === 403 ? 'Esta consulta pública no está autorizada.'
+            : 'No se pudo realizar la consulta. Intenta nuevamente en unos momentos.');
+        },
+      });
+      return;
+    }
+    this.consulta = this.api.verificar(this.codigo.value).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: r => {
+        this.cargando.set(false); this.resultado.set(r);
+        if (abrirPdf && r.urlPdf) this.verCertificado(r);
+      },
+      error: e => {
+        this.cargando.set(false);
+        this.mensaje.set(e?.status === 404 ? 'No se encontró un certificado con ese código. Verifica que esté escrito correctamente.'
+          : e?.status === 422 ? 'Revisa el código de verificación ingresado.'
+          : e?.status === 429 ? 'Has realizado varias consultas. Espera un momento antes de intentar nuevamente.'
+          : e?.status === 403 || e?.status === 401 ? 'Esta consulta pública no está autorizada.'
+          : e?.status === 409 ? 'El certificado todavía no está disponible para consulta pública.'
+          : 'No se pudo conectar con el servicio. Intenta nuevamente en unos momentos.');
+      },
+    });
+  }
+
+  protected verCertificado(certificado?: CertificadoPublico): void {
+    const r = certificado ?? this.resultado();
+    if (!r || r.estado !== 'disponible' || !r.urlPdf || this.cargandoPdf()) return;
+    this.limpiarPdf();
+    this.resultado.set(r); this.detalle.set(true); this.errorPdf.set(''); this.cargandoPdf.set(true);
+    this.descarga = this.api.archivo(r).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: archivo => {
+        this.archivo.set(archivo); this.urlDescarga.set(URL.createObjectURL(archivo.blob)); this.cargandoPdf.set(false);
+      },
+      error: e => {
+        this.cargandoPdf.set(false);
+        if ([401, 403, 404, 409].includes(e?.status)) {
+          const privado = { ...r, urlPdf: null };
+          this.resultado.set(privado);
+          this.resultadosDni.update(filas => filas?.map(fila => fila.codigo === r.codigo ? privado : fila) ?? null);
+        }
+        this.errorPdf.set([401, 403, 404, 409].includes(e?.status)
+          ? 'El documento no está autorizado para visualización o descarga pública.'
+          : 'No se pudo cargar el PDF. Intenta nuevamente.');
+      },
+    });
+  }
+
+  protected volver(): void { this.limpiarPdf(); this.detalle.set(false); if (this.modo() === 'dni') this.resultado.set(null); }
+  protected falloVisor(): void { this.errorPdf.set('No se pudo visualizar el PDF. Puedes descargar el archivo autorizado.'); }
+
+  private limpiarPdf(): void {
+    this.descarga?.unsubscribe();
+    const url = this.urlDescarga(); if (url) URL.revokeObjectURL(url);
+    this.urlDescarga.set(null); this.archivo.set(null); this.errorPdf.set(''); this.cargandoPdf.set(false);
+  }
+  private limpiar(): void {
+    this.consulta?.unsubscribe(); this.cargando.set(false); this.mensaje.set(''); this.resultado.set(null);
+    this.resultadosDni.set(null);
+    this.limpiarPdf(); this.detalle.set(false);
+  }
+}

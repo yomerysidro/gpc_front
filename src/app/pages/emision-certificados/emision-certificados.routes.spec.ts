@@ -10,16 +10,24 @@ import { SesionResponse } from '../../core/interfaces/autenticacion/auth.interfa
 import { authInterceptor } from '../../core/interceptors/auth.interceptor';
 import { AuthService } from '../../core/services/autenticacion/auth.service';
 import { SessionAuthService } from '../../core/services/autenticacion/session-auth.service';
-import { FirmaDocumentalService } from '../../core/services/emision-certificados/firma-documental.service';
+import { FirmantesMunicipalesService } from '../../core/services/emision-certificados/firmantes-municipales.service';
 import { EmisionCertificadosService } from '../../core/services/emision-certificados/emision-certificados.service';
 import { environment } from '../../../environments/environment';
+import { ponenteActividadPrueba, ponentesSesionPrueba } from '../../core/interfaces/emision-certificados/origenes-certificado.fixture';
 
 describe('Autorización institucional y navegación de Emisión', () => {
   let http: HttpTestingController;
   let api: jasmine.SpyObj<EmisionCertificadosService>;
+  let firmas: jasmine.SpyObj<FirmantesMunicipalesService>;
 
   beforeEach(() => {
-    api = jasmine.createSpyObj('EmisionCertificadosService', ['pendientesCertificacion', 'listar', 'relacionRegistros', 'trabajadores', 'listarTodos', 'obtener', 'documentosIdentidad']);
+    firmas = jasmine.createSpyObj('FirmantesMunicipalesService', ['cargar']);
+    firmas.cargar.and.returnValue(of([]));
+    api = jasmine.createSpyObj('EmisionCertificadosService', ['catalogosOrigenes', 'ponentesActividad', 'ponentesCertificacion', 'catalogoAutorizado', 'pendientesCertificacion', 'listar', 'relacionRegistros', 'trabajadores', 'listarTodos', 'obtener', 'documentosIdentidad']);
+    api.catalogosOrigenes.and.returnValue(of({ tipos_actividad: [], tipos_certificado: [], relacion_tipo_actividad_certificado: null, motivo_relacion: '' }));
+    api.ponentesActividad.and.returnValue(of(ponenteActividadPrueba()));
+    api.ponentesCertificacion.and.returnValue(of(ponentesSesionPrueba()));
+    api.catalogoAutorizado.and.returnValue(of([]));
     api.pendientesCertificacion.and.returnValue(of({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }));
     api.listar.and.returnValue(of({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }));
     api.relacionRegistros.and.returnValue(of([]));
@@ -30,11 +38,90 @@ describe('Autorización institucional y navegación de Emisión', () => {
       provideRouter(routes), provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(),
       { provide: AuthService, useClass: SessionAuthService },
       { provide: EmisionCertificadosService, useValue: api },
-      { provide: FirmaDocumentalService, useValue: { trabajadores: () => of([]) } },
+      { provide: FirmantesMunicipalesService, useValue: firmas },
     ] });
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
+  it('abre el reconocimiento en página completa dentro del layout y resalta Generar y emitir', async () => {
+    await sesion(['emision.ver', 'actividades.ver', 'ponentes-firmantes.ver']);
+    const url = '/certificaciones/generar-emitir/reconocimientos/actividad/7/ponentes/71?origen_documental=reconocimiento&actividad_reconocimiento=7';
+    const harness = await RouterTestingHarness.create(url); harness.detectChanges();
+    expect(harness.routeNativeElement!.querySelector('app-header')).not.toBeNull();
+    expect(harness.routeNativeElement!.querySelector('app-sidebar')).not.toBeNull();
+    expect(harness.routeNativeElement!.querySelector('#submenu-emision a[aria-current="page"]')?.textContent).toContain('Generar y emitir');
+    expect(harness.routeNativeElement!.querySelector('app-generar-emitir')).toBeNull();
+    expect(harness.routeNativeElement!.querySelector('app-preparar-reconocimiento')).not.toBeNull();
+    expect(harness.routeNativeElement!.textContent).toContain('Maria Perez');
+    expect(harness.routeNativeElement!.querySelector('app-preparacion-origen a')?.getAttribute('href'))
+      .toBe('/certificaciones/generar-emitir?origen_documental=reconocimiento&actividad_reconocimiento=7');
+    expect(api.ponentesActividad).toHaveBeenCalledWith(7);
+    (harness.routeNativeElement!.querySelector('app-preparacion-origen a') as HTMLAnchorElement).click();
+    await harness.fixture.whenStable(); harness.detectChanges();
+    await harness.fixture.whenStable(); harness.detectChanges();
+    expect(TestBed.inject(Router).url).toBe('/certificaciones/generar-emitir?origen_documental=reconocimiento&actividad_reconocimiento=7');
+    expect(harness.routeNativeElement!.querySelector('app-preparar-reconocimiento')).toBeNull();
+    expect(harness.routeNativeElement!.querySelector('app-reconocimientos-actividad tbody')?.textContent).toContain('Maria Perez');
+    expect(harness.routeNativeElement!.querySelector('app-reconocimientos-actividad app-preparacion-origen')).toBeNull();
+  });
+  it('deniega la ruta de preparación antes de consultar si falta permiso de ponentes', async () => {
+    await sesion(['emision.ver', 'actividades.ver']);
+    await RouterTestingHarness.create('/certificaciones/generar-emitir/reconocimientos/actividad/7/ponentes/71');
+    expect(TestBed.inject(Router).url).toBe('/acceso-denegado'); expect(api.ponentesActividad).not.toHaveBeenCalled();
+  });
+
+  it('abre el reconocimiento por sesión en página completa dentro del layout y resalta Generar y emitir', async () => {
+    await sesion(['emision.ver', 'actividades.ver', 'ponentes-firmantes.ver']);
+    const url = '/certificaciones/generar-emitir/reconocimientos/sesion/15/ponentes/71?id_actividad=7&id_sesion=15&modalidad=sesion&origen=participacion';
+    const harness = await RouterTestingHarness.create(url); harness.detectChanges();
+    const vista = harness.routeNativeElement!;
+    expect(vista.querySelector('app-header')).not.toBeNull();
+    expect(vista.querySelector('app-sidebar')).not.toBeNull();
+    expect(vista.querySelector('#submenu-emision a[aria-current="page"]')?.textContent).toContain('Generar y emitir');
+    expect(vista.querySelector('app-generar-emitir')).toBeNull();
+    expect(vista.querySelector('app-preparar-reconocimiento-sesion')).not.toBeNull();
+    expect(vista.textContent).toContain('Maria Perez');
+    expect(vista.textContent).toContain('Texto del reconocimiento');
+    expect(vista.textContent).toContain('Sesión N.º 001');
+    expect(vista.textContent).toContain('10/02/2026');
+    expect(api.ponentesCertificacion).toHaveBeenCalledWith(15);
+    const volver = vista.querySelector('app-preparacion-origen a')!;
+    expect(volver.getAttribute('href')).toContain('id_sesion=15');
+    expect(volver.getAttribute('href')).toContain('modalidad=sesion');
+  });
+
+  it('deniega la ruta de reconocimiento por sesión antes de consultar si falta permiso de ponentes', async () => {
+    await sesion(['emision.ver', 'actividades.ver']);
+    await RouterTestingHarness.create('/certificaciones/generar-emitir/reconocimientos/sesion/15/ponentes/71');
+    expect(TestBed.inject(Router).url).toBe('/acceso-denegado'); expect(api.ponentesCertificacion).not.toHaveBeenCalled();
+  });
+
+  for (const url of ['/gestion/firmantes-municipales', '/certificaciones/firmas', '/firmas']) {
+    it('redirige y resalta Configuración General reutilizando la pantalla: ' + url, async () => {
+      await sesion(['emision.ver']);
+      const harness = await RouterTestingHarness.create(url); harness.detectChanges();
+      expect(TestBed.inject(Router).url).toBe('/gestion/firmantes-municipales');
+      expect(harness.routeNativeElement!.querySelectorAll('app-listar-firmas').length).toBe(1);
+      expect(harness.routeNativeElement!.querySelector('#submenu-configuracion a[aria-current="page"]')?.textContent).toContain('Firmantes municipales');
+      expect(harness.routeNativeElement!.querySelector('#submenu-emision')?.textContent).not.toContain('Firmas digitales');
+      expect(firmas.cargar).toHaveBeenCalledTimes(1);
+    });
+    it('conserva permisos antes de consultar trabajadores: ' + url, async () => {
+      await sesion(['areas.ver']);
+      await RouterTestingHarness.create(url);
+      expect(TestBed.inject(Router).url).toBe('/acceso-denegado');
+      expect(firmas.cargar).not.toHaveBeenCalled();
+    });
+  }
+
+  it('permite consultar trabajadores con el permiso administrativo del backend', async () => {
+    await sesion(['ponentes-firmantes.editar']);
+    const harness = await RouterTestingHarness.create('/gestion/firmantes-municipales'); harness.detectChanges();
+    expect(TestBed.inject(Router).url).toBe('/gestion/firmantes-municipales');
+    expect(harness.routeNativeElement!.querySelector('app-listar-firmas')?.textContent).toContain('Estado laboral');
+    expect(harness.routeNativeElement!.querySelector('app-sidebar a[href="/gestion/firmantes-municipales"]')).not.toBeNull();
+    expect(firmas.cargar).toHaveBeenCalledTimes(1);
+  });
 
   it('abre Reconocimientos con su permiso propio sin exigir emision.ver', async () => {
     await sesion(['reconocimientos.ver']);
@@ -63,11 +150,12 @@ describe('Autorización institucional y navegación de Emisión', () => {
 
   it('abre la pagina publica sin sesion ni peticiones administrativas y no simula resultados', async () => {
     const harness = await RouterTestingHarness.create('/verificar/CODIGO-PRUEBA');
-    expect(TestBed.inject(Router).url).toBe('/verificar/CODIGO-PRUEBA');
+    expect(TestBed.inject(Router).url).toBe('/portal-certificados?codigo=CODIGO-PRUEBA');
+    http.expectOne('/api/auth/me').flush({}, { status: 401, statusText: 'Unauthorized' }); harness.detectChanges(); harness.detectChanges();
     expect(harness.routeNativeElement!.querySelector('app-header, app-sidebar')).toBeNull();
     expect(harness.routeNativeElement!.textContent).toContain('código de 30 caracteres');
     expect(harness.routeNativeElement!.querySelector<HTMLInputElement>('input')!.value).toBe('CODIGO-PRUEBA');
-    expect(harness.routeNativeElement!.querySelector<HTMLButtonElement>('button')!.disabled).toBeTrue();
+    expect(harness.routeNativeElement!.querySelector('#dni-publico')).toBeNull();
     expect(api.listar).not.toHaveBeenCalled();
     http.expectNone(() => true);
   });
@@ -88,8 +176,7 @@ describe('Autorización institucional y navegación de Emisión', () => {
   it('conecta certificados y firmas y conserva la consulta anterior fuera del Sidebar', async () => {
     await sesion(['emision.ver', 'ponentes-firmantes.ver']);
     const harness = await RouterTestingHarness.create('/inicio');
-    for (const [opcion, titulo] of [['certificados/documentos', 'Certificados emitidos'], ['firmas', 'Gestión de firmantes municipales']]) {
-      const url = `/certificaciones/${opcion}`;
+    for (const [url, titulo] of [['/certificaciones/certificados/documentos', 'Certificados emitidos'], ['/gestion/firmantes-municipales', 'Gestión de firmantes municipales']]) {
       const enlace = harness.routeNativeElement!.querySelector<HTMLAnchorElement>(`app-sidebar a[href="${url}"]`)!;
       expect(enlace).withContext(url).not.toBeNull();
       enlace.click();
@@ -100,19 +187,20 @@ describe('Autorización institucional y navegación de Emisión', () => {
     }
     expect(harness.routeNativeElement!.querySelector('app-sidebar a[href="/certificaciones/verificacion"]')).toBeNull();
     await harness.navigateByUrl('/certificaciones/verificacion');
-    expect(harness.routeNativeElement!.querySelector('main h1')?.textContent?.trim()).toBe('Consulta de certificados');
+    expect(harness.routeNativeElement!.querySelector('main h1')?.textContent?.trim()).toBe('Portal Público de Certificados');
     expect(api.listar).not.toHaveBeenCalledWith('certificados', jasmine.anything());
   });
 
   it('la opcion real Firmas del Sidebar abre la gestion municipal sin montar el CRUD generico', async () => {
     await sesion(['emision.ver'], 'Gerencial');
     const harness = await RouterTestingHarness.create('/inicio');
-    harness.routeNativeElement!.querySelector<HTMLAnchorElement>('app-sidebar a[href="/certificaciones/firmas"]')!.click();
+    harness.routeNativeElement!.querySelector<HTMLAnchorElement>('app-sidebar a[href="/gestion/firmantes-municipales"]')!.click();
     await harness.fixture.whenStable(); harness.detectChanges();
-    expect(TestBed.inject(Router).url).toBe('/certificaciones/firmas');
+    expect(TestBed.inject(Router).url).toBe('/gestion/firmantes-municipales');
     const pagina = harness.routeNativeElement!.querySelector('app-listar-firmas')!;
     expect(pagina.querySelector('h1')!.textContent).toBe('Gestión de firmantes municipales');
-    expect(pagina.textContent).toContain('Seleccionar firmantes para un certificado');
+    expect(pagina.textContent).toContain('Buscar por nombre, cargo o área');
+    expect(pagina.querySelector('a[href="/pendientes/documentos-firmar"]')).toBeNull();
     expect(pagina.querySelector('app-listado-emision')).toBeNull();
     expect(pagina.textContent).not.toContain('Nuevo registro');
     expect(pagina.textContent).not.toContain('Filtrar por');

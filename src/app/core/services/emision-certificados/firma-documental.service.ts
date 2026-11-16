@@ -6,15 +6,22 @@ import { ApiResponse } from '../../interfaces/api/api-response.interface';
 import { AUTHENTICATED_REQUEST } from '../../security/auth-request.context';
 import { aErrorApi } from '../../../shared/utils/error-api';
 import { DocumentoFirmas } from './documentos-digitales.service';
+import { TrabajadorMunicipal } from '../../interfaces/emision-certificados/trabajador-municipal.interface';
+import { FirmantesMunicipalesService } from './firmantes-municipales.service';
+import { pdfConfirmado } from '../../interfaces/emision-certificados/estado-revision';
 
 export type ModalidadFirma = 'PARALELA' | 'SECUENCIAL';
 export interface PlanFirmantes { modalidad: ModalidadFirma; firmantes: { id_persona_trabajador: number; orden_firma: number }[] }
 export interface ConfirmacionPdf extends ProgresoFirma {
+  reintento?: boolean;
   persistido: boolean; completada: boolean;
   id_certificado_documento: number; id_certificado: number; codigo_verificacion: string;
-  persistencia: 'archivo_privado_versionado'; revision_pdf: string;
+  persistencia: 'archivo_privado_versionado'; revision_pdf: string; hash_pdf: string;
 }
 export interface ProgresoFirma {
+  pdf_confirmado?: boolean;
+  disponible_rrhh?: boolean;
+  estado_preparacion?: string | null;
   firmantes_asignados?: ResponsableAsignado[];
   requiere_nueva_revision_pdf?: boolean;
   pdf_revisado_disponible?: boolean;
@@ -30,7 +37,8 @@ export interface ProgresoFirma {
   facultades: { asignar: boolean; firmar: boolean; emitir: boolean; descargar_final: boolean };
   requisitos: { motor_pdf_disponible: boolean; firmantes_pendientes_individuales: boolean; modalidad_documental: boolean; vinculo_versiones: boolean };
 }
-export interface FuncionarioMunicipal { id_persona_trabajador: number; id_persona: number; nombre: string; cargo: string; id_area: number | null; area: string | null; vigente: boolean; disponible_asignacion: boolean; habilitado: boolean }
+/** Candidato autorizado por documento. La compatibilidad habilitado no filtra la selección. */
+export interface FuncionarioMunicipal extends Omit<TrabajadorMunicipal, 'cargo' | 'estado_laboral' | 'elegible_laboralmente' | 'habilitado_firma_certificados'> { cargo: string; estado_laboral?: string; habilitado?: boolean; habilitado_firma_certificados?: boolean; elegible_laboralmente?: boolean }
 export interface ResponsableAsignado extends FuncionarioMunicipal { id_firma: number | null; orden_firma: number; estado: string }
 export interface RevisionFirmantes { token_revision: string; hash_pdf: string; expires_at: string; id_certificado_documento: number; id_certificado: number; codigo_verificacion: string; modalidad: ModalidadFirma; firmantes: ResponsableAsignado[]; persistido: false; vista_previa_pdf: { contenido_base64: string; tipo_contenido: string } }
 export interface ResponsableDisponible { id_firma: number; id_persona: number; nombre: string; cargo: string; credencial_registrada: boolean; credencial_verificada: boolean }
@@ -50,6 +58,7 @@ export interface ResultadoLote { id_certificado_documento: number; status: numbe
 @Injectable({ providedIn: 'root' })
 export class FirmaDocumentalService {
   private readonly http = inject(HttpClient);
+  private readonly municipales = inject(FirmantesMunicipalesService);
   private readonly base = environment.apiBaseUrl.replace(/\/$/, '') + '/certificados-documentos';
   private readonly privado = { withCredentials: true, context: new HttpContext().set(AUTHENTICATED_REQUEST, true) };
 
@@ -57,8 +66,8 @@ export class FirmaDocumentalService {
     if (d.documento?.id_certificado_documento !== id) throw new Error('La respuesta corresponde a otro documento.');
     return d;
   })); }
-  trabajadores() { return this.respuesta(this.http.get<ApiResponse<{ funcionarios: FuncionarioMunicipal[] }>>(environment.apiBaseUrl.replace(/\/$/, '') + '/funcionarios-firmantes/trabajadores', this.privado)).pipe(map(d => { if (!Array.isArray(d.funcionarios)) throw new Error('Respuesta de funcionarios incompleta.'); return d.funcionarios; })); }
-  disponibles(id: number) { return this.consultar<FuncionarioMunicipal[]>(id + '/firma/firmantes-disponibles'); }
+  trabajadores() { return this.municipales.cargar(); }
+  disponibles(id: number) { return this.consultar<FuncionarioMunicipal[]>(id + '/firma/firmantes-disponibles').pipe(map(trabajadores => trabajadores.filter(t => t.vigente === true && t.habilitado_firma_certificados === true && t.disponible_asignacion === true))); }
   asignados(id: number) { return this.consultar<ProgresoFirma>(id + '/firma/firmantes-asignados'); }
   asignar(id: number, modalidad: ModalidadFirma, firmantes: { id_persona_trabajador: number; orden_firma: number }[]) {
     return this.enviar<ProgresoFirma & { persistido: boolean; completada: boolean }>(id + '/firma/asignar', { modalidad, firmantes, confirmar: true }).pipe(map(d => {
@@ -88,7 +97,8 @@ export class FirmaDocumentalService {
   descartarPdf(id: number, token_revision: string) { return this.respuesta(this.http.delete<ApiResponse<{ descartado: boolean }>>(this.base + '/' + id + '/firma/revision-pdf', { ...this.privado, body: { token_revision } })); }
   confirmarPdf(id: number, token_revision: string) {
     return this.enviar<ConfirmacionPdf>(id + '/firma/confirmar-pdf', { token_revision, confirmar: true }).pipe(map(d => {
-      if (d.completada !== true || d.persistido !== true || d.pdf_revisado_disponible !== true) {
+      if (d.completada !== true || d.persistido !== true || !pdfConfirmado(d)
+        || !d.revision_pdf || !/^[a-f0-9]{64}$/.test(d.hash_pdf) || d.documento?.hash_pdf !== d.hash_pdf) {
         throw new Error('Laravel no confirmó que el PDF revisado esté vigente. La asignación puede haber quedado guardada.');
       }
       if (d.id_certificado_documento !== id || d.documento?.id_certificado_documento !== id

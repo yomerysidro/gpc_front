@@ -115,7 +115,7 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     expect(vista().querySelector('app-dialogo .detalle')?.textContent).toContain('Procedente de solicitud aprobada');
     boton('Gestionar actividad').click(); harness.detectChanges(); await harness.fixture.whenStable(); harness.detectChanges();
     expect(vista().querySelector('a[href="/certificaciones/participantes?id_actividad=3"]')).not.toBeNull();
-    expect(vista().querySelector('a[href="/certificaciones/sesiones-asistencia?id_actividad=3"]')).not.toBeNull();
+    expect(vista().querySelector('a[href="/certificaciones/actividades?id_actividad=3"]')).not.toBeNull();
     const solicitud = vista().querySelector<HTMLAnchorElement>('a[href="/solicitudes/revision?solicitud=1"]')!;
     expect(solicitud).not.toBeNull(); await harness.navigateByUrl(solicitud.getAttribute('href')!); harness.detectChanges();
     http.expectOne(req => req.url === solicitudes).flush(pagina([]));
@@ -341,6 +341,39 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     expect(vista().textContent).toContain('Estado: Pendiente de aprobación');
     expect(vista().querySelector('tbody')).toBeNull();
   });
+  it('Gerencia recupera aprobadas desde la URL y consulta el detalle sin repetir decisiones', async () => {
+    sesion(['consultar', 'aprobar', 'rechazar'], 9, 'Gerencial');
+    harness = await RouterTestingHarness.create('/pendientes/pendientes-aprobacion?pestana=aprobadas');
+    const consulta = http.expectOne(req => req.url === solicitudes);
+    expect(consulta.request.params.get('estado')).toBe('Aprobada');
+    const aprobada = { ...SOLICITUD_API_TEST, estado: 'Aprobada', id_actividad: 20 };
+    consulta.flush(pagina([aprobada])); harness.detectChanges();
+    expect(vista().querySelector('h1')?.textContent).toContain('Solicitudes de actividades');
+    expect(vista().querySelectorAll('[role=tab]').length).toBe(2);
+    expect(vista().querySelector('#gerencia-aprobadas')?.getAttribute('aria-selected')).toBe('true');
+    expect(vista().querySelectorAll('tbody tr').length).toBe(1);
+    boton('Ver solicitud').click(); harness.detectChanges();
+    http.expectOne(solicitudes + '/4/review-detail').flush({ success: true, data: aprobada }); harness.detectChanges();
+    expect(vista().querySelector('app-solicitud-detalle')?.textContent).toContain('Aprobada');
+    expect(Array.from(vista().querySelectorAll('app-dialogo button'), nombreBoton)).not.toContain('Aprobar');
+    boton('Cerrar').click(); harness.detectChanges();
+    boton('Pendientes de aprobación').click(); await harness.fixture.whenStable(); harness.detectChanges();
+    const pendientes = http.expectOne(req => req.url === solicitudes);
+    expect(pendientes.request.params.get('estado')).toBe('Pendiente de aprobación');
+    pendientes.flush(pagina([])); harness.detectChanges();
+    expect(vista().querySelector('tbody')).toBeNull();
+    http.expectNone(req => req.method !== 'GET');
+  });
+  for (const status of [401, 403, 404]) it('Gerencia conserva el error de consulta de aprobadas ' + status, async () => {
+    sesion(['consultar', 'aprobar'], 9, 'Gerencial');
+    harness = await RouterTestingHarness.create('/pendientes/pendientes-aprobacion?pestana=aprobadas');
+    http.expectOne(req => req.url === solicitudes).flush({ success: false, message: 'Consulta no autorizada', data: null }, { status, statusText: 'Error' });
+    harness.detectChanges();
+    expect(vista().querySelector('[role=alert]')).not.toBeNull();
+    expect(vista().querySelector('tbody')).toBeNull();
+    expect(vista().textContent).not.toContain('No se encontraron solicitudes aprobadas.');
+    http.expectNone(req => req.method !== 'GET');
+  });
   it('Gerencia consulta pendientes por defecto y no aprueba una solicitud Enviada', async () => {
     sesion(['consultar', 'aprobar', 'rechazar'], 9, 'Gerencial');
     harness = await RouterTestingHarness.create('/pendientes/pendientes-aprobacion');
@@ -362,63 +395,59 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     expect(fila.textContent).not.toContain('Identidad del revisor no disponible');
     expect(fila.textContent).not.toContain('Observar');
     const controles = Array.from(fila.querySelectorAll<HTMLButtonElement>('button'));
-    expect(controles.map(boton => boton.getAttribute('aria-label'))).toEqual(['Ver detalle', 'Aprobar solicitud', 'Rechazar solicitud']);
-    expect(controles.map(boton => boton.title)).toEqual(['Ver detalle', 'Aprobar solicitud', 'Rechazar solicitud']);
-    expect(controles.map(boton => boton.querySelector('span')?.textContent?.trim())).toEqual(['visibility', 'check_circle', 'cancel']);
-    expect(controles.every(boton => boton.querySelector('span')?.getAttribute('aria-hidden') === 'true')).toBeTrue();
+    expect(nombreBoton(controles[0])).toBe('Revisar solicitud');
+    expect(controles.slice(1).map(boton => boton.getAttribute('aria-label'))).toEqual(['Aprobar solicitud', 'Rechazar solicitud']);
+    expect(controles.slice(1).map(boton => boton.querySelector('span')?.textContent?.trim())).toEqual(['check_circle', 'cancel']);
+    expect(controles.slice(1).every(boton => boton.querySelector('span')?.getAttribute('aria-hidden') === 'true')).toBeTrue();
     expect(controles.map(boton => getComputedStyle(boton).color)).toEqual(['rgb(7, 90, 155)', 'rgb(35, 102, 65)', 'rgb(165, 45, 45)']);
     const acciones = fila.querySelector<HTMLElement>('.acciones-gerencia')!;
     expect(getComputedStyle(acciones).display).toBe('flex'); expect(getComputedStyle(acciones).flexWrap).toBe('nowrap');
     for (const ancho of [320, 1280]) {
       vista().style.width = ancho + 'px'; harness.detectChanges();
-      expect(controles.every(boton => boton.getBoundingClientRect().width >= 44 && boton.getBoundingClientRect().height >= 44)).toBeTrue();
+      expect(controles.slice(1).every(boton => boton.getBoundingClientRect().width >= 44 && boton.getBoundingClientRect().height >= 44)).toBeTrue();
       expect(controles[0].getBoundingClientRect().top).toBe(controles[2].getBoundingClientRect().top);
     }
     controles[0].focus(); expect(document.activeElement).toBe(controles[0]);
     http.expectNone(req => req.method === 'POST');
   });
-  it('Gerencia aplica Todos los estados sin parámetro y conserva búsqueda, fechas, paginación y limpieza', async () => {
+  it('Gerencia separa estados mediante pestañas y conserva búsqueda, paginación y limpieza', async () => {
     sesion([...claves, 'aprobar', 'rechazar'], 9, 'Administrador');
     harness = await RouterTestingHarness.create('/pendientes/pendientes-aprobacion');
     const inicial = http.expectOne(req => req.url === solicitudes); expect(inicial.request.params.get('estado')).toBe('Pendiente de aprobación');
     inicial.flush(pagina([])); harness.detectChanges();
-    const estado = vista().querySelector<HTMLSelectElement>('#filtro-estado')!;
-    expect(estado.options[0].text).toBe('Todos los estados'); expect(estado.options[0].value).toBe('');
-    expect(Array.from(estado.options).slice(1).map(opcion => opcion.value)).toEqual(['Borrador', 'Enviada', 'En revisión', 'Observada', 'Pendiente de aprobación', 'Aprobada', 'Rechazada']);
-    expect(estado.value).toBe('Pendiente de aprobación');
-    estado.value = ''; estado.dispatchEvent(new Event('change'));
-    for (const [id, valor] of [['filtro-desde', '2026-11-01'], ['filtro-hasta', '2026-11-30']]) {
-      const campo = vista().querySelector<HTMLInputElement>('#' + id)!; campo.value = valor; campo.dispatchEvent(new Event('input'));
-    }
-    boton('Buscar').click();
+    expect(vista().querySelector('#filtro-estado')).toBeNull();
+    expect(vista().querySelector('#filtro-desde')).toBeNull();
+    expect(vista().querySelector('.indicadores')).toBeNull();
+    expect(vista().textContent).not.toContain('Consulta la revisión de RR. HH.');
+    boton('Solicitudes aprobadas').click(); await harness.fixture.whenStable(); harness.detectChanges();
     const todos = http.expectOne(req => req.url === solicitudes);
-    expect(todos.request.params.has('estado')).toBeFalse(); expect(todos.request.params.get('fecha_desde')).toBe('2026-11-01');
-    expect(todos.request.params.get('fecha_hasta')).toBe('2026-11-30');
+    expect(todos.request.params.get('estado')).toBe('Aprobada');
+    expect(todos.request.params.has('fecha_desde')).toBeFalse();
     todos.flush({ success: true, data: { data: [], total: 21, current_page: 1, last_page: 2, per_page: 20 } }); harness.detectChanges();
     boton('Siguiente').click();
     const siguiente = http.expectOne(req => req.url === solicitudes); expect(siguiente.request.params.get('page')).toBe('2');
-    expect(siguiente.request.params.has('estado')).toBeFalse(); expect(siguiente.request.params.get('fecha_desde')).toBe('2026-11-01'); siguiente.flush(pagina([])); harness.detectChanges();
+    expect(siguiente.request.params.get('estado')).toBe('Aprobada'); siguiente.flush(pagina([])); harness.detectChanges();
     const busqueda = vista().querySelector<HTMLInputElement>('#filtro-busqueda')!;
     busqueda.value = 'Actividad'; busqueda.dispatchEvent(new Event('input')); boton('Buscar').click();
-    const buscar = http.expectOne(req => req.url === solicitudes); expect(buscar.request.params.has('estado')).toBeFalse();
+    const buscar = http.expectOne(req => req.url === solicitudes); expect(buscar.request.params.get('estado')).toBe('Aprobada');
     expect(buscar.request.params.has('busqueda')).toBeFalse(); buscar.flush(pagina([])); harness.detectChanges();
-    boton('Limpiar filtros').click();
-    const limpiar = http.expectOne(req => req.url === solicitudes); expect(limpiar.request.params.get('estado')).toBe('Pendiente de aprobación');
+    expect(Array.from(vista().querySelectorAll('button'), nombreBoton)).not.toContain('Limpiar filtros');
+    busqueda.value = ''; busqueda.dispatchEvent(new Event('input')); boton('Buscar').click();
+    const limpiar = http.expectOne(req => req.url === solicitudes); expect(limpiar.request.params.get('estado')).toBe('Aprobada');
     expect(limpiar.request.params.has('fecha_desde')).toBeFalse(); expect(limpiar.request.params.has('fecha_hasta')).toBeFalse();
     expect(limpiar.request.params.get('page')).toBe('1'); limpiar.flush(pagina([])); harness.detectChanges();
-    expect(estado.value).toBe('Pendiente de aprobación'); expect(busqueda.value).toBe('');
+    expect(vista().querySelector('#gerencia-aprobadas')?.getAttribute('aria-selected')).toBe('true'); expect(busqueda.value).toBe('');
   });
   for (const final of ['Aprobada', 'Rechazada'] as const) it(`Gerencia permite consultar ${final} sin acciones de decisión`, async () => {
     sesion([...claves, 'aprobar', 'rechazar'], 9, 'Administrador');
     harness = await RouterTestingHarness.create('/pendientes/pendientes-aprobacion');
     http.expectOne(req => req.url === solicitudes).flush(pagina([])); harness.detectChanges();
-    const estado = vista().querySelector<HTMLSelectElement>('#filtro-estado')!;
-    estado.value = final; estado.dispatchEvent(new Event('change')); boton('Buscar').click();
-    const consulta = http.expectOne(req => req.url === solicitudes); expect(consulta.request.params.get('estado')).toBe(final);
+    boton('Solicitudes aprobadas').click(); await harness.fixture.whenStable(); harness.detectChanges();
+    const consulta = http.expectOne(req => req.url === solicitudes); expect(consulta.request.params.get('estado')).toBe('Aprobada');
     consulta.flush(pagina([{ ...SOLICITUD_API_TEST, estado: final }])); harness.detectChanges();
     expect(vista().querySelector('tbody .estado')?.textContent).toBe(final);
     expect(getComputedStyle(vista().querySelector('tbody .estado')!).color).toBe(final === 'Aprobada' ? 'rgb(35, 102, 65)' : 'rgb(155, 48, 48)');
-    expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Ver detalle']);
+    expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Ver solicitud']);
     http.expectNone(req => req.method === 'POST');
   });
   it('revisa, observa y deriva usando los endpoints reales y permisos de /me', () => {
@@ -442,7 +471,7 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     expect(vista().querySelector('[role="alert"]')).toBeNull();
     expect(vista().querySelector('tbody')?.textContent).not.toContain('Aprobar');
     expect(vista().querySelector('tbody')?.textContent).not.toContain('Rechazar');
-    expect(vista().querySelector('tbody button[aria-label="Ver detalle"]')).not.toBeNull();
+    expect(vista().querySelector('tbody .accion-detalle')?.textContent).toBe('Revisar solicitud');
     const api = TestBed.inject(SolicitudesService);
     api.decidir('4', '', 'Aprobar', '').subscribe({ next: () => fail('No debe aprobar'), error: error => { expect(error instanceof AccesoSolicitudLocal).toBeTrue(); expect(error.status).toBeUndefined(); } });
     http.expectNone(req => req.method === 'POST');
@@ -459,7 +488,7 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     expect(TestBed.inject(Router).url).toBe('/pendientes/pendientes-aprobacion');
     expect(vista().querySelector('app-sidebar a[href="/pendientes/pendientes-aprobacion"]')).not.toBeNull();
     const textos = Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton));
-    expect(textos).toEqual(['Ver detalle']);
+    expect(textos).toEqual(['Revisar solicitud']);
     const api = TestBed.inject(SolicitudesService);
     for (const accion of ['Aprobar', 'Rechazar'] as const) api.decidir('4', '', accion, 'Motivo de prueba').subscribe({
       next: () => fail('La lectura no concede decisiones'), error: error => { expect(error instanceof AccesoSolicitudLocal).toBeTrue(); expect(error.operacion).toBe('accion'); expect(error.status).toBeUndefined(); },
@@ -556,7 +585,7 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     });
     harness = await RouterTestingHarness.create('/pendientes/pendientes-aprobacion');
     http.expectOne(req => req.url === solicitudes).flush(pagina([{ ...SOLICITUD_API_TEST, estado: caso.enviada ? 'Enviada' : 'Pendiente de aprobación' }])); harness.detectChanges();
-    expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Ver detalle', ...caso.acciones]);
+    expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Revisar solicitud', ...caso.acciones]);
     const api = TestBed.inject(SolicitudesService);
     for (const accion of ['Aprobar', 'Rechazar'] as const) if (!caso.acciones.includes(accion)) {
       api.decidir('4', '', accion, 'Motivo').subscribe({ next: () => fail('No debe decidir'), error: error => expect(error instanceof AccesoSolicitudLocal).toBeTrue() });
@@ -569,7 +598,7 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     const listado = http.expectOne(req => req.url === solicitudes);
     expect(listado.request.params.has('id_area')).toBeFalse();
     listado.flush(pagina([{ ...SOLICITUD_API_TEST, id_area: 101, estado: 'Pendiente de aprobación' }])); harness.detectChanges();
-    expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Ver detalle', 'Aprobar', 'Rechazar']);
+    expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Revisar solicitud', 'Aprobar', 'Rechazar']);
     http.expectNone(solicitudes + '/authorized-areas'); http.expectNone(req => req.method === 'POST');
   });
   it('revocar decidir_propias en /me bloquea un modal abierto aunque aprobar siga habilitado', async () => {
@@ -690,7 +719,7 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     boton('Aprobar').click(); harness.detectChanges(); boton('Confirmar Aprobar').click();
     http.expectOne(solicitudes + '/4/approve').flush({ success: false, message: 'Sin competencia sobre el área.', data: null }, { status: 403, statusText: 'Forbidden' }); harness.detectChanges();
     expect(vista().querySelector('[role="alert"]')?.textContent).toContain('Sin competencia sobre el área.');
-    expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Ver detalle']);
+    expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Revisar solicitud']);
     expect(vista().querySelector('tbody .estado')?.textContent).toBe('Pendiente de aprobación');
     http.expectNone(req => req.url === solicitudes);
   });
@@ -698,9 +727,9 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     sesion(['consultar', 'aprobar', 'rechazar'], 9, 'Gerencial');
     harness = await RouterTestingHarness.create('/pendientes/pendientes-aprobacion');
     http.expectOne(req => req.url === solicitudes).flush(pagina([{ ...SOLICITUD_API_TEST, estado: 'Pendiente de aprobación' }])); harness.detectChanges();
-    boton('Ver detalle').click(); harness.detectChanges();
+    boton('Revisar solicitud').click(); harness.detectChanges();
     http.expectOne(solicitudes + '/4/review-detail').flush({ success: false, message: 'Competencia revocada.', data: null }, { status: 403, statusText: 'Forbidden' }); harness.detectChanges();
-    expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Ver detalle']);
+    expect(Array.from(vista().querySelectorAll('tbody button'), boton => nombreBoton(boton))).toEqual(['Revisar solicitud']);
     expect(vista().querySelector('[role="alert"]')?.textContent).toContain('Competencia revocada.');
     http.expectNone(req => req.method === 'POST');
   });

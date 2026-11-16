@@ -1,3 +1,8 @@
+import { ReconocimientosActividadComponent } from './reconocimientos-actividad.component';
+import { OrigenesTabsComponent, PestanaOrigen } from './origenes-tabs.component';
+import { PonentesSesionComponent } from './ponentes-sesion.component';
+import { PreparacionOrigenComponent } from './preparacion-origen.component';
+import { CambiosCertificadosService } from '../../../core/services/emision-certificados/cambios-certificados.service';
 import { DatePipe, formatDate } from '@angular/common';
 import { Component, DestroyRef, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -45,19 +50,18 @@ function solicitarContexto(parametros: ParamMap): SolicitudContexto {
   const actividad = parametros.get('id_actividad'); const sesion = parametros.get('id_sesion');
   const modalidad = parametros.get('modalidad') ?? (sesion === null ? 'actividad' : 'sesion');
   const idValido = (valor: string | null) => valor !== null && /^[1-9]\d*$/.test(valor) && Number.isSafeInteger(Number(valor));
-  if (!idValido(actividad) || !['participacion', modalidad].includes(parametros.get('origen') ?? '')
+  if (!idValido(actividad) || !['participacion', modalidad, ...(modalidad === 'sesion' ? ['ponente_sesion'] : [])].includes(parametros.get('origen') ?? '')
     || !['actividad', 'sesion'].includes(modalidad) || (modalidad === 'sesion' ? !idValido(sesion) : sesion !== null)) return error;
   return { modalidad: modalidad as 'sesion' | 'actividad', actividad: Number(actividad), sesion: sesion === null ? null : Number(sesion) };
 }
 @Component({
   selector: 'app-generar-emitir', standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, RouterLink, PageTitleComponent, ListarCertificadosComponent, VisorCertificadoComponent, FormularioCertificadoComponent, VisorPdfComponent, DialogoComponent],
+  imports: [ReconocimientosActividadComponent, OrigenesTabsComponent, PonentesSesionComponent, PreparacionOrigenComponent, DatePipe, ReactiveFormsModule, RouterLink, PageTitleComponent, ListarCertificadosComponent, VisorCertificadoComponent, FormularioCertificadoComponent, VisorPdfComponent, DialogoComponent],
   templateUrl: './generar-emitir.component.html', styleUrls: ['../compartidos/emision.scss', './generar-emitir.component.scss'],
 })
 export class GenerarEmitirComponent {
   protected readonly pasoBeneficiario = signal<1 | 2 | 3 | 4>(1);
   protected readonly mensajeCertificado = inject(NonNullableFormBuilder).control('', [validarMensajeCertificado]);
-  protected readonly avisoMensaje = 'El mensaje se utilizará para generar el PDF de vista previa. Todavía no se almacena como certificado emitido.';
   protected readonly pdfPrevio = signal<{ archivo: ArchivoPdf; datos: Omit<VistaPreviaSesion, 'vista_previa_pdf'>; mensaje: string; clave: string } | null>(null);
   protected readonly generandoPrevia = signal(false);
   protected readonly errorPrevia = signal<string | null>(null);
@@ -66,7 +70,7 @@ export class GenerarEmitirComponent {
   protected readonly revisionPdf = signal<RevisionDocumental | null>(null);
   protected readonly revisionEnvio = signal<RevisionDocumental | null>(null);
   protected readonly confirmacionEnvio = viewChild.required<DialogoComponent>('confirmacionEnvio');
-  protected readonly modalidadFirma = signal<'Paralela' | 'Secuencial' | ''>('');
+  protected readonly modalidadFirma = signal<'Paralela' | 'Secuencial' | ''>('Paralela');
   protected readonly operando = signal(false);
   protected readonly errorOperacion = signal<string | null>(null);
   protected readonly enviado = signal(false);
@@ -75,10 +79,29 @@ export class GenerarEmitirComponent {
 
   protected puedeRemitir(): boolean {
     const doc = this.documentoPreparado();
-    return !!doc && doc.estado_certificado === 'PREPARADO' && doc.facultades?.remitir === true && !this.enviado();
+    return !!doc && doc.disponible_rrhh !== true && doc.estado_certificado === 'PREPARADO' && doc.facultades?.remitir === true && !this.enviado();
   }
 
   protected puedeVerGerencia(): boolean { return this.auth.tienePermiso('emision.ver'); }
+
+  protected abrirCertificadoExistente(b: BeneficiarioCertificacion, r: EvaluacionCertificacion): void {
+    if (!b.id_certificado_documento || !mismoContexto(b, r) || this.cargandoRevision() || !this.auth.tienePermiso('emision.ver')) return;
+    const tipo = this.tiposEvaluacion().find(t => Number(t.id_tipo_certificado) === Number(b.id_tipo_certificado));
+    if (!tipo) return;
+    this.cerrarRevision(); this.cargandoRevision.set(true);
+    this.consultaRevision = this.documentosApi.detalleFirmas(b.id_certificado_documento).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: doc => {
+        this.cargandoRevision.set(false);
+        if (doc.id_certificado !== b.id_certificado || doc.id_sesion !== b.id_sesion || doc.id_tipo_certificado !== b.id_tipo_certificado
+          || doc.beneficiario?.id_persona !== b.id_persona || doc.id_actividad !== b.id_actividad) {
+          this.errorRevision.set('No se pudo confirmar el certificado de esta sesión.'); return;
+        }
+        this.revisionBeneficiario.set({ beneficiario: b, tipo, evaluacion: r, actividad: this.contexto().actividad, sesion: this.contexto().sesion });
+        this.modalidadFirma.set(doc.modalidad_firma ?? '');
+        this.mostrarDocumentoPersistido(doc);
+      }, error: (e: ErrorApi) => { this.cargandoRevision.set(false); this.errorRevision.set(mensajeEtapaA(e)); },
+    });
+  }
 
   protected cambiarModalidad(valor: string): void {
     if (this.operando() || this.documentoPreparado() || !['', 'Paralela', 'Secuencial'].includes(valor)) return;
@@ -105,16 +128,53 @@ export class GenerarEmitirComponent {
     const contexto = this.revisionBeneficiario();
     if (!revision || !contexto || !this.revisoPrevia() || this.documentoPreparado()) return;
     this.operar(this.documentosApi.guardarPreparacion(Number(contexto.beneficiario.id_sesion), revision.token, {
-      sesion: Number(contexto.beneficiario.id_sesion), tipo: Number(contexto.tipo.id_tipo_certificado),
+      participacion: contexto.beneficiario.id_participacion, sesion: Number(contexto.beneficiario.id_sesion), tipo: Number(contexto.tipo.id_tipo_certificado),
       persona: contexto.beneficiario.id_persona, actividad: contexto.beneficiario.id_actividad,
     }, revision.hash),
-      documento => this.documentoPreparado.set(documento));
+      documento => { this.mostrarDocumentoPersistido(documento); this.actualizarBeneficiariosPersistidos(); });
   }
 
-  protected revisarParaEnviar(): void {
-    if (!this.puedeRemitir()) return;
-    this.operar(this.documentosApi.obtenerRevisionEnvio(this.documentoPreparado()!.id_certificado_documento, this.documentoPreparado()!.hash_pdf),
-      revision => this.revisionEnvio.set(revision));
+  private mostrarDocumentoPersistido(documento: DocumentoFirmas): void {
+    this.documentoPreparado.set(documento);
+    this.enviado.set(['PENDIENTE_FIRMA', 'FIRMADO', 'EMITIDO'].includes(documento.estado_certificado));
+    this.revisionEnvio.set(null); this.pasoBeneficiario.set(4);
+  }
+
+  protected revisarParaEnviar(evento: MouseEvent): void {
+    // Ignorar el segundo clic de un doble clic sobre Guardar al cambiar de paso.
+    if (!evento || evento.detail > 1 || this.pasoBeneficiario() !== 4 || !this.puedeRemitir() || this.operando()) return;
+    const doc = this.documentoPreparado()!;
+    const revision = this.revisionEnvio();
+    this.operar((revision ? of(revision) : this.documentosApi.obtenerRevisionEnvio(doc.id_certificado_documento, doc.hash_pdf)).pipe(
+      switchMap(revision => {
+        this.revisionEnvio.set(revision);
+        return this.documentosApi.confirmarEnvio(doc.id_certificado_documento, revision.token, revision.hash);
+      }),
+    ), documento => {
+      this.mostrarDocumentoPersistido(documento);
+      this.actualizarBeneficiariosPersistidos();
+    });
+  }
+
+  private readonly cambiosCertificados = inject(CambiosCertificadosService);
+  private actualizarBeneficiariosPersistidos(): void {
+    this.cambiosCertificados.confirmar();
+    const d = this.destinoBeneficiarios;
+    if (!d) return;
+    const tipo = this.filtrosPendientes.controls.tipo.value;
+    this.consultaBeneficiarios?.unsubscribe();
+    this.consultaBeneficiarios = this.api.beneficiariosCertificacion(d.origen, d.sesion ?? d.actividad, {
+      id_actividad: d.actividad, id_sesion: d.sesion, id_tipo_certificado: tipo,
+      page: this.evaluacion()?.beneficiarios.current_page ?? 1,
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: r => {
+        if (this.destinoBeneficiarios === d && this.filtrosPendientes.controls.tipo.value === tipo
+          && r.origen === d.origen && Number(r.contexto.id_actividad) === d.actividad
+          && (d.origen !== 'sesion' || Number(r.contexto.id_sesion) === d.sesion)) this.evaluacion.set(r);
+      },
+      error: () => this.errorBeneficiarios.set('Actualiza el estado de los beneficiarios.'),
+    });
+    this.cargarPendientes();
   }
 
   protected confirmarRemision(): void {
@@ -123,15 +183,12 @@ export class GenerarEmitirComponent {
     this.confirmacionEnvio().abrir();
   }
 
-  protected remitirAGerencia(): void {
+  protected remitirAGerencia(evento: MouseEvent): void {
     const revision = this.revisionEnvio();
-    if (!revision || !this.puedeRemitir() || this.operando()) return;
+    if (!evento || evento.detail > 1 || !revision || !this.puedeRemitir() || this.operando()) return;
     if (!this.revisionEnvioVigente()) return;
     this.operar(this.documentosApi.confirmarEnvio(this.documentoPreparado()!.id_certificado_documento, revision.token, revision.hash), doc => {
-      this.documentoPreparado.set(doc);
-      this.revisionEnvio.set(null);
-      if (doc.estado_certificado === 'PENDIENTE_FIRMA') this.enviado.set(true);
-      else this.errorOperacion.set('El estado actualizado del documento difiere de Pendiente de firma.');
+      this.mostrarDocumentoPersistido(doc);
       this.confirmacionEnvio().cerrar();
     });
   }
@@ -168,7 +225,10 @@ export class GenerarEmitirComponent {
   }
   protected editarMensaje(): void { this.invalidarPrevia(); this.pasoBeneficiario.set(2); }
   protected continuarConfirmacion(): void {
-    if (this.pdfPrevio()?.mensaje === this.mensajeCertificado.value && this.pdfPrevio()?.clave === this.claveBorrador() && !this.generandoPrevia()) this.pasoBeneficiario.set(4);
+    if (this.pdfPrevio()?.mensaje !== this.mensajeCertificado.value || this.pdfPrevio()?.clave !== this.claveBorrador()
+      || this.generandoPrevia() || this.operando() || !this.revisionPdf()) return;
+    this.revisoPrevia.set(true);
+    this.guardarParaFirma();
   }
   protected previsualizarPdf(): void {
     if (this.generandoPrevia()) return;
@@ -182,7 +242,11 @@ export class GenerarEmitirComponent {
     }
     const mensaje = this.mensajeCertificado.value; const clave = this.claveBorrador()!;
     this.invalidarPrevia(); this.generandoPrevia.set(true);
-    this.solicitudPrevia = this.documentosApi.vistaPrevia(sesion, participacion, tipo, mensaje).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.solicitudPrevia = this.documentosApi.vistaPrevia(sesion, participacion, tipo, mensaje).pipe(
+      switchMap(resultado => resultado.datos.siguiente_accion_preparacion === 'revisar_documento' && this.modalidadFirma()
+        ? this.documentosApi.revisarPreparacion(sesion, participacion, tipo, mensaje, this.modalidadFirma() as 'Paralela' | 'Secuencial').pipe(
+          map(revision => { this.revisionPdf.set(revision); return { ...resultado, archivo: revision.archivo }; }))
+        : of(resultado)), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: resultado => {
         if (clave !== this.claveBorrador() || mensaje !== this.mensajeCertificado.value) return;
         this.generandoPrevia.set(false);
@@ -227,11 +291,14 @@ export class GenerarEmitirComponent {
   }
   protected puedeRevisar(b: BeneficiarioCertificacion, r: EvaluacionCertificacion): boolean {
     return this.auth.tienePermiso('participantes.ver') && this.evaluacion() === r && r.beneficiarios.data.includes(b)
+      && !b.id_certificado && !b.id_certificado_documento && !b.id_preparacion
       && mismoContexto(b, r) && this.tiposEvaluacion().some(t => Number(t.id_tipo_certificado) === Number(b.id_tipo_certificado));
   }
   protected revisarBeneficiario(b: BeneficiarioCertificacion, r: EvaluacionCertificacion): void {
     if (!this.puedeRevisar(b, r)) return;
     this.cerrarRevision(); this.cargandoRevision.set(true);
+    // Valor compatible requerido al preparar; Gerencia configura las asignaciones.
+    this.modalidadFirma.set('Paralela');
     const tipo = this.tiposEvaluacion().find(t => Number(t.id_tipo_certificado) === Number(b.id_tipo_certificado))!;
     const actividadId = Number(r.contexto.id_actividad); const sesionId = r.origen === 'sesion' ? Number(r.contexto.id_sesion) : null;
     const actividad = [this.contexto().actividad, ...this.actividadesFiltro()].find(a => a && Number(a['id_actividad']) === actividadId) ?? null;
@@ -305,7 +372,7 @@ export class GenerarEmitirComponent {
             throw new Error('Laravel no confirmó la correspondencia entre la actividad y la sesión.');
           }
           return { ...base, actividad, sesion };
-        }), catchError((error: ErrorApi | Error) => of({ ...base, error: error instanceof Error ? error.message : `${error.status ? `HTTP ${error.status}. ` : ''}${error.mensaje || 'No se pudo verificar el contexto.'}` })),
+        }), catchError((error: ErrorApi | Error) => of({ ...base, error: error instanceof Error ? 'No se pudo confirmar la actividad y sesión seleccionadas.' : mensajeEtapaA(error) })),
         startWith({ ...base, cargando: true }));
     }),
   ), { initialValue: { general: solicitarContexto(this.route.snapshot.queryParamMap).modalidad === 'general', modalidad: null, cargando: false, error: null, actividad: null, sesion: null } as ContextoEmision });
@@ -321,7 +388,39 @@ export class GenerarEmitirComponent {
   protected readonly estado = etiquetaEstado;
   protected readonly pasos = ['Seleccionar origen y registro', 'Preparar certificado', 'Revisar documento', 'Generar y emitir'];
   protected readonly revision = inject(NonNullableFormBuilder).group({ datos: [false, Validators.requiredTrue], origen: [false, Validators.requiredTrue] });
-  protected readonly filtrosPendientes = inject(NonNullableFormBuilder).group({ origen: 'sesion', actividad: '', sesion: '', tipo: '', cantidad: '20' });
+  protected readonly filtrosPendientes = inject(NonNullableFormBuilder).group({ origen: this.origenInicial(this.route.snapshot.queryParamMap), actividad: '', sesion: '', tipo: '', cantidad: '20' });
+  private origenInicial(parametros: ParamMap): string {
+    const origen = parametros.get('origen_documental');
+    return origen === 'reconocimiento' || origen === 'practica' ? origen : 'sesion';
+  }
+  protected pestanaOrigen(): PestanaOrigen {
+    const origen = this.filtrosPendientes.controls.origen.value;
+    return origen === 'reconocimiento' || origen === 'practica' ? origen : 'capacitacion';
+  }
+  private ambitoCapacitacion: 'sesion' | 'actividad' = 'sesion';
+  protected seleccionarOrigen(origen: PestanaOrigen): void {
+    if (this.operando() || this.generando() || this.pestanaOrigen() === origen) return;
+    if (!this.contexto().general) {
+      void this.router.navigate(['/certificaciones/generar-emitir'], { queryParams: origen === 'capacitacion' ? {} : { origen_documental: origen } });
+      return;
+    }
+    if (this.pestanaOrigen() === 'capacitacion') this.ambitoCapacitacion = this.filtrosPendientes.controls.origen.value === 'actividad' ? 'actividad' : 'sesion';
+    this.cerrarRevision(); this.consultaBeneficiarios?.unsubscribe(); this.consultaPendientes?.unsubscribe();
+    this.evaluacion.set(null); this.viendoBeneficiarios.set(false); this.destinoBeneficiarios = null;
+    this.cargandoPendientes.set(false); this.cargandoBeneficiarios.set(false);
+    this.filtrosPendientes.controls.origen.setValue(origen === 'capacitacion' ? this.ambitoCapacitacion : origen);
+    if (origen === 'capacitacion') { this.cargarPendientes(); this.cargarCatalogosEvaluacion(); }
+  }
+  protected cambiarActividadFiltro(): void { this.filtrosPendientes.controls.sesion.setValue(''); }
+  protected sesionBeneficiarios(): RegistroEmision | null {
+    const id = this.destinoBeneficiarios?.sesion;
+    return this.contexto().sesion ?? this.sesionesFiltro().find(s => Number(s['id_actividad_sesion']) === id) ?? null;
+  }
+  protected contextoPonentes(): { actividad: number; sesion: number } | null {
+    const d = this.destinoBeneficiarios;
+    return d?.origen === 'sesion' && d.sesion !== null && Number.isSafeInteger(d.sesion) && d.sesion > 0
+      && !this.contexto().error && !this.contexto().cargando ? { actividad: d.actividad, sesion: d.sesion } : null;
+  }
   protected readonly sesionesFiltro = signal<readonly RegistroEmision[]>([]);
   protected readonly pendientes = signal<PaginaEmision<PendienteCertificacion> | null>(null);
   protected readonly evaluacion = signal<EvaluacionCertificacion | null>(null);
@@ -345,7 +444,10 @@ export class GenerarEmitirComponent {
     effect(() => {
       const ctx = this.contexto();
       if (!ctx.general && ctx.actividad && !ctx.error && !ctx.cargando) untracked(() => {
-        this.filtrosPendientes.patchValue({ origen: ctx.modalidad!, actividad: String(ctx.actividad!['id_actividad']), tipo: '' });
+        const parametros = this.route.snapshot.queryParamMap;
+        const tipoRetorno = parametros.get('origen') === 'ponente_sesion' ? parametros.get('id_tipo_certificado') : null;
+        this.filtrosPendientes.patchValue({ origen: ctx.modalidad!, actividad: String(ctx.actividad!['id_actividad']),
+          tipo: /^[1-9]\d*$/.test(tipoRetorno ?? '') ? tipoRetorno! : '' });
         this.destinoBeneficiarios = { origen: ctx.modalidad!, actividad: Number(ctx.actividad!['id_actividad']), sesion: ctx.sesion ? Number(ctx.sesion['id_actividad_sesion']) : null };
         this.viendoBeneficiarios.set(true); this.cargarPendientes(); this.cargarCatalogosEvaluacion();
       });
@@ -358,7 +460,7 @@ export class GenerarEmitirComponent {
       this.consultaPendientes?.unsubscribe(); this.consultaBeneficiarios?.unsubscribe(); this.consultaCatalogos?.unsubscribe();
       this.pendientes.set(null); this.evaluacion.set(null); this.destinoBeneficiarios = null;
       this.cargandoPendientes.set(false); this.cargandoBeneficiarios.set(false); this.errorPendientes.set(null); this.errorBeneficiarios.set(null);
-      this.filtrosPendientes.reset({ origen: 'sesion', actividad: '', tipo: '', cantidad: '20' });
+      this.filtrosPendientes.reset({ origen: this.origenInicial(parametros), actividad: '', tipo: '', cantidad: '20' });
       this.catalogosCargados = false; this.tiposEvaluacion.set([]); this.actividadesFiltro.set([]);
       this.contextosFormulario.set([siguiente]);
       const general = solicitarContexto(parametros).modalidad === 'general';
@@ -387,10 +489,10 @@ export class GenerarEmitirComponent {
     this.carga = origen.pipe(switchMap(datos => forkJoin({
       documentos: preparado ? this.api.documentosIdentidad().pipe(catchError(() => of({} as Readonly<Partial<Record<number, string>>>))) : of(null),
       datos: of(datos), asignaciones: datos.actividad && this.auth.tienePermiso('ponentes-firmantes.ver')
-        ? this.api.listarTodos('actividades-firmas', { id_actividad: datos.actividad }).pipe(catchError((error: ErrorApi) => { this.error.set('Asignaciones: ' + error.mensaje); return of(null); })) : of(null),
+        ? this.api.listarTodos('actividades-firmas', { id_actividad: datos.actividad }).pipe(catchError((error: ErrorApi) => { this.error.set(mensajeEtapaA(error)); return of(null); })) : of(null),
     })), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ datos, asignaciones, documentos }) => { if (documentos) this.seleccion.set({ ...seleccion, dni: documentos[fila.id_persona] ?? null }); this.origen.set(datos.texto); this.reconocimiento.set(datos.reconocimiento); this.asignaciones.set((asignaciones ?? []).map(firma => ({ firma: firma.id_firma, orden: firma.orden_firma })).sort((a, b) => a.orden - b.orden)); this.cargando.set(false); },
-      error: (error: ErrorApi | Error) => { this.error.set(error instanceof Error ? error.message : error.mensaje); this.cargando.set(false); },
+      error: (error: ErrorApi | Error) => { this.error.set(error instanceof Error ? 'No se pudo completar la operación. Intente nuevamente.' : mensajeEtapaA(error)); this.cargando.set(false); },
     });
   }
   protected avanzar(): void {
@@ -420,14 +522,20 @@ export class GenerarEmitirComponent {
     return id === null ? 'Sin tipo determinado' : this.tiposEvaluacion().find(t => Number(t.id_tipo_certificado) === Number(id))?.nombre_tipo ?? 'Nombre no disponible';
   }
   private mensajeConsulta(error: ErrorApi): string {
-    return `${error.status ? `HTTP ${error.status}. ` : ''}${error.mensaje} ${Object.values(error.errores ?? {}).flat().join(' ')}`.trim();
+    return mensajeEtapaA(error);
   }
   protected cargarCatalogosEvaluacion(): void {
+    if (this.pestanaOrigen() !== 'capacitacion') return;
     if (this.catalogosCargados) return;
     this.catalogosCargados = true; this.errorCatalogos.set(null);
     this.consultaCatalogos = forkJoin({ tipos: this.api.listarTodos('tipos-certificado'),
       actividades: this.contexto().general ? this.api.listarTodos('activity') : of([]), sesiones: this.contexto().general ? this.api.listarTodos('activity-session') : of([]) }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: datos => { this.tiposEvaluacion.set(datos.tipos); this.actividadesFiltro.set(datos.actividades); this.sesionesFiltro.set(datos.sesiones); },
+      next: datos => {
+        this.tiposEvaluacion.set(datos.tipos.filter(t => t.estado === true || String(t.estado) === '1')); this.actividadesFiltro.set(datos.actividades); this.sesionesFiltro.set(datos.sesiones);
+        if (this.route.snapshot.queryParamMap.get('origen') === 'ponente_sesion'
+          && this.route.snapshot.queryParamMap.has('id_tipo_certificado') && this.destinoBeneficiarios
+          && this.tiposEvaluacion().some(t => String(t.id_tipo_certificado) === this.filtrosPendientes.controls.tipo.value)) this.cargarBeneficiarios();
+      },
       error: error => { this.catalogosCargados = false; this.errorCatalogos.set(this.mensajeConsulta(error)); },
     });
   }

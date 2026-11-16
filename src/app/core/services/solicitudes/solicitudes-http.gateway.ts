@@ -145,7 +145,7 @@ export class SolicitudesHttpGateway implements SolicitudesGateway {
     if (!this.puedeConsultarHistorial(id)) return restringido();
     return this.api.historial(Number(id));
   }
-  documentos(_pagina: number): Observable<PaginaSolicitudes<DocumentoPendiente>> { return throwError(() => new Error('La bandeja de documentos por firmar no forma parte del contrato de solicitudes.')); }
+  documentos(_pagina: number): Observable<PaginaSolicitudes<DocumentoPendiente>> { return throwError(() => new Error('La bandeja de certificados por firmar no forma parte del contrato de solicitudes.')); }
   documento(_id: string): Observable<Blob> { return throwError(() => new Error('El contrato de solicitudes no proporciona descarga de documentos.')); }
   accionesPermitidas(fila: Solicitud): readonly AccionSolicitud[] {
     const original = this.registros.get(fila.id);

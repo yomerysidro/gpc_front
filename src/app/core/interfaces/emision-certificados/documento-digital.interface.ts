@@ -13,6 +13,10 @@ export interface DocumentoGenerado {
   puede_firmar: boolean;
 }
 export interface VerificacionDocumento {
+  tipo_certificado?: string | null;
+  actividad?: string | null;
+  sesion?: string | null;
+  fecha_sesion?: string | null;
   codigo_verificacion: string;
   estado_documento: string;
   estado_certificado: string;

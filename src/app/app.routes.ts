@@ -1,5 +1,6 @@
 import { REPORTES_ROUTES } from './pages/reportes/reportes.routes';
-import { Routes } from '@angular/router';
+import { Router, Routes } from '@angular/router';
+import { inject } from '@angular/core';
 import { authGuard } from './core/guards/auth.guard';
 import { cambiosPendientesGuard } from './core/guards/cambios-pendientes.guard';
 import { guestGuard } from './core/guards/guest.guard';
@@ -24,6 +25,10 @@ import { VISTAS_SOLICITUDES } from './pages/solicitudes/solicitudes.routes';
 import { EMISION_CERTIFICADOS_ROUTES } from './pages/emision-certificados/emision-certificados.routes';
 
 const gestionRoutes: Routes = [
+  {
+    path: 'firmantes-municipales', canActivate: [permissionGuard], data: { permiso: 'emision.ver', permisos: ['ponentes-firmantes.editar'], titulo: 'Gestión de firmantes municipales' },
+    loadComponent: () => import('./pages/emision-certificados/firmas/listar-firmas/listar-firmas.component').then(pagina => pagina.ListarFirmasComponent),
+  },
   { path: 'practicantes', pathMatch: 'full', redirectTo: '/gestion/practicas?pestana=practicantes' },
   {
     path: 'personas',
@@ -76,8 +81,12 @@ export const routes: Routes = [
   // El enlace del correo apunta aquí (FRONTEND_URL/reset-password?token=…&email=…).
   { path: 'reset-password', component: RestablecerPasswordComponent },
   { path: 'acceso-denegado', component: AccesoDenegadoComponent },
-  { path: 'verificar', loadComponent: () => import('./pages/emision-certificados/verificacion/verificacion-publica.component').then(m => m.VerificacionPublicaComponent) },
-  { path: 'verificar/:codigo', loadComponent: () => import('./pages/emision-certificados/verificacion/verificacion-publica.component').then(m => m.VerificacionPublicaComponent) },
+  { path: 'portal-certificados',
+    loadComponent: () => import('./pages/portal-certificados/portal-certificados-layout.component').then(m => m.PortalCertificadosLayoutComponent),
+    children: [{ path: '', loadComponent: () => import('./pages/portal-certificados/portal-certificados.component').then(m => m.PortalCertificadosComponent) }],
+  },
+  { path: 'verificar', pathMatch: 'full', redirectTo: ({ queryParams }) => inject(Router).createUrlTree(['/portal-certificados'], { queryParams }) },
+  { path: 'verificar/:codigo', redirectTo: ({ params }) => inject(Router).createUrlTree(['/portal-certificados'], { queryParams: { codigo: params['codigo'] } }) },
 
   {
     path: '',
@@ -167,6 +176,7 @@ export const routes: Routes = [
       { path: 'ponentes-firmantes', pathMatch: 'full', redirectTo: '/gestion/ponentes' },
       { path: 'emision', pathMatch: 'full', redirectTo: '/certificaciones/certificados' },
       { path: 'certificados', pathMatch: 'full', redirectTo: '/certificaciones/certificados' },
+      { path: 'firmas', pathMatch: 'full', redirectTo: '/gestion/firmantes-municipales' },
       { path: 'personas', pathMatch: 'full', redirectTo: '/gestion/personas' },
       { path: 'trabajadores', pathMatch: 'full', redirectTo: '/gestion/trabajadores' },
       { path: 'areas', pathMatch: 'full', redirectTo: '/gestion/configuracion?pestana=areas' },

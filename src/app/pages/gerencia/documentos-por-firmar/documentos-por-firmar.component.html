@@ -1,49 +1,46 @@
-<header class="encabezado-pagina">
-  <span class="material-symbols-outlined icono-pagina" aria-hidden="true">draw</span>
-  <app-page-title title="Documentos por firmar" />
-</header>
-<div role="tablist" aria-label="Documentos por firmar">
-  <button class="btn btn-primary" type="button" role="tab" id="certificados-pendientes" aria-selected="true" aria-controls="bandeja-certificados">Certificados pendientes de firma</button>
+<header class="encabezado-pagina"><span class="material-symbols-outlined icono-pagina" aria-hidden="true">draw</span><app-page-title title="Certificados por firmar" /></header>
+<div class="pestanas-gerencia" role="tablist" aria-label="Certificados por firmar" (keydown)="alTeclear($event)">
+  <button type="button" role="tab" id="certificados-pendientes" [attr.aria-selected]="pestana() === 'pendientes'" [attr.tabindex]="pestana() === 'pendientes' ? 0 : -1" aria-controls="bandeja-certificados" (click)="seleccionarPestana('pendientes')"><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span>Pendientes de firma</button>
+  <button type="button" role="tab" id="certificados-preparados" [attr.aria-selected]="pestana() === 'preparados'" [attr.tabindex]="pestana() === 'preparados' ? 0 : -1" aria-controls="bandeja-preparados" (click)="seleccionarPestana('preparados')"><span class="material-symbols-outlined" aria-hidden="true">verified</span>Certificados preparados</button>
 </div>
-<section class="card" role="tabpanel" id="bandeja-certificados" [attr.aria-busy]="cargando()" aria-labelledby="certificados-pendientes">
-  @if (cargando()) { <p role="status">Consultando certificados…</p> }
+@if (aviso()) { <p class="aviso-exito" role="status">{{ aviso() }}</p> }
+<section class="card" role="tabpanel" id="bandeja-certificados" [hidden]="pestana() !== 'pendientes'" [attr.aria-busy]="cargando()" aria-labelledby="certificados-pendientes">
+  @if (cargando()) { <p role="status">Cargando certificados...</p> }
   @if (error()) { <p class="error" role="alert">{{ error() }}</p><button class="btn" type="button" (click)="cargar()">Reintentar</button> }
   @if (pagina(); as datos) {
     @if (datos.data.length) {
-      <div class="tabla-scroll" role="region" tabindex="0" aria-label="Certificados pendientes de firma">
-        <table class="table">
-          <thead><tr><th>Lote</th><th>Beneficiario</th><th>Actividad / sesión</th><th>Tipo</th><th>Estado</th><th>Firmantes</th><th>Acción</th></tr></thead>
-          <tbody>@for (doc of datos.data; track doc.id_certificado_documento) {
-            <tr><td><input type="checkbox" [attr.aria-label]="'Seleccionar documento de ' + beneficiario(doc)" [checked]="seleccionados().includes(doc.id_certificado_documento)" [disabled]="consultandoLote() || seleccionados().length >= 100 && !seleccionados().includes(doc.id_certificado_documento)" (change)="seleccionarDocumento(doc.id_certificado_documento, $any($event.target).checked)" /></td><td>{{ beneficiario(doc) }}</td><td>{{ doc.actividad || doc.contexto?.actividad || 'Sin actividad registrada' }}<small>{{ doc.sesion || doc.contexto?.sesion || 'Sin sesión registrada' }}</small></td>
-              <td>{{ doc.tipo_certificado || doc.contexto?.tipo_certificado }}</td><td>{{ estado(doc) }}</td>
-              <td>@for (firmante of doc.firmantes; track firmante.id_firma) { <div>{{ firmante.nombre || firmante.nombre_aprobado }}</div> } @empty { Asignación de firmantes pendiente. }</td>
-              <td><a class="btn" [routerLink]="['/pendientes/documentos-firmar', doc.id_certificado_documento]" [queryParams]="{ page: datos.current_page }">Ver documento</a></td></tr>
-          }</tbody>
-        </table>
-      </div>
+      <div class="tabla-scroll" role="region" tabindex="0" aria-label="Pendientes de firma"><table class="table">
+        <thead><tr><th>Beneficiario</th><th>Origen / actividad o periodo</th><th>Tipo</th><th>Estado</th><th>Firmantes</th><th>Acción</th></tr></thead>
+        <tbody>@for (doc of datos.data; track doc.id_certificado_documento) {
+          <tr><td>{{ beneficiario(doc) }}</td><td>{{ doc.origen === 'practica' ? 'Registro de prácticas' : doc.origen === 'reconocimiento' ? 'Reconocimiento municipal' : (doc.actividad || doc.contexto?.actividad || 'Origen no informado') }}@if (doc.sesion || doc.contexto?.sesion) { <small>{{ doc.sesion || doc.contexto?.sesion }}</small> }</td>
+            <td>{{ doc.tipo_certificado || doc.contexto?.tipo_certificado }}</td><td>{{ estado(doc) }}</td>
+            <td>@for (firmante of doc.firmantes; track $index) { <div>{{ firmante.nombre || firmante.nombre_aprobado }}</div> } @empty { Asignación de firmantes pendiente. }</td>
+            <td><a class="btn" [routerLink]="['/pendientes/documentos-firmar', doc.id_certificado_documento]" [queryParams]="{ page: datos.current_page }">Ver documento</a></td></tr>
+        }</tbody>
+      </table></div>
     } @else if (!cargando() && !error()) { <p role="status">No hay certificados pendientes de firma.</p> }
     @if (datos.last_page > 1) {
-      <nav class="paginacion" aria-label="Paginación de certificados">
-        <button class="btn" type="button" [disabled]="cargando() || datos.current_page <= 1" (click)="cambiarPagina(datos.current_page - 1)">Anterior</button>
-        <span>Página {{ datos.current_page }} de {{ datos.last_page }}</span>
-        <button class="btn" type="button" [disabled]="cargando() || datos.current_page >= datos.last_page" (click)="cambiarPagina(datos.current_page + 1)">Siguiente</button>
-      </nav>
+      <nav class="paginacion" aria-label="Paginación de pendientes"><button class="btn" type="button" [disabled]="cargando() || datos.current_page <= 1" (click)="cambiarPagina(datos.current_page - 1)">Anterior</button><span>Página {{ datos.current_page }} de {{ datos.last_page }}</span><button class="btn" type="button" [disabled]="cargando() || datos.current_page >= datos.last_page" (click)="cambiarPagina(datos.current_page + 1)">Siguiente</button></nav>
     }
   }
 </section>
-<section class="card" aria-label="Consulta de progreso por lote">
-  <h2>Consulta por lote</h2><p>{{ seleccionados().length }} documentos seleccionados (máximo 100). Solo consulta; no firma ni emite.</p>
-  <button class="btn" type="button" [disabled]="!seleccionados().length || consultandoLote()" (click)="consultarLote()">Consultar progreso seleccionado</button>
-  @if (consultandoLote()) { <p role="status">Consultando documentos…</p> }
-  @if (errorLote()) { <p role="alert">{{ errorLote() }}</p> }
-  @for (r of resultados(); track r.id_certificado_documento) {
-    <article><h3>Documento {{ r.id_certificado_documento }}</h3>
-      @if (r.success && r.data; as progreso) {
-        <p>{{ beneficiario(progreso.documento) }} · {{ estado(progreso.documento) }}</p>
-        <p>Pendientes: {{ progreso.documento.firmas?.pendientes ?? 'No informado' }} · Modalidad: {{ progreso.modalidad_persistida && progreso.modalidad ? progreso.modalidad : 'Modalidad pendiente de configuración' }}</p>
-        <p>La integridad se comprueba individualmente al abrir el documento.</p>
-        <a class="btn" [routerLink]="['/pendientes/documentos-firmar', r.id_certificado_documento]" [queryParams]="{ page: pagina()?.current_page }">Ver documento</a>
-      } @else { <p role="alert">No se pudo consultar este documento (HTTP {{ r.status }}).</p> }
-    </article>
+<section class="card" role="tabpanel" id="bandeja-preparados" [hidden]="pestana() !== 'preparados'" [attr.aria-busy]="cargandoPreparados()" aria-labelledby="certificados-preparados">
+  @if (cargandoPreparados()) { <p role="status">Cargando certificados...</p> }
+  @if (errorPreparados()) { <p class="error" role="alert">{{ errorPreparados() }}</p><button class="btn" type="button" (click)="cargarPreparados()">Reintentar</button> }
+  @if (!cargandoPreparados() && preparados(); as documentos) {
+    @if (documentos.length) {
+      <div class="tabla-scroll" role="region" tabindex="0" aria-label="Certificados preparados"><table class="table">
+        <thead><tr><th>Beneficiario</th><th>Origen / actividad o periodo</th><th>Tipo</th><th>Firmantes</th><th>Estado</th><th>Acción</th></tr></thead>
+        <tbody>@for (doc of preparadosVisibles(); track doc.id_certificado + ':' + doc.id_certificado_documento) {
+          <tr><td>{{ doc.nombre_completo }}</td><td>{{ doc.origen === 'reconocimiento' || doc.id_reconocimiento ? (doc.titulo_reconocimiento || 'Reconocimiento municipal') : doc.origen === 'practica' || doc.id_practica ? 'Prácticas' : doc.actividad }}@if (doc.sesion) { <small>{{ doc.sesion }}</small> }@if (doc.fecha_inicio_practica) { <small>{{ doc.fecha_inicio_practica }} – {{ doc.fecha_fin_practica }}</small> }</td><td>{{ doc.tipo_certificado }}</td>
+            <td>@for (responsable of doc.responsables_administrativos; track $index) { <div>{{ responsable.nombre }}<small>{{ responsable.cargo }}</small></div> } @empty { No informados }</td>
+            <td><span class="estado-listo">{{ estadoPreparado(doc) }}</span></td>
+            <td>@if (doc.hash_pdf && doc.codigo_verificacion) { <a class="btn" [routerLink]="['/certificaciones/certificados', doc.id_certificado, 'documentos', doc.id_certificado_documento, 'visor']" [queryParams]="{ origen: 'gerencia', page: paginaPreparadosActual() }">Ver documento</a> } @else { Sin PDF disponible }</td></tr>
+        }</tbody>
+      </table></div>
+      @if (paginasPreparados() > 1) {
+        <nav class="paginacion" aria-label="Paginación de preparados"><button class="btn" type="button" [disabled]="paginaPreparadosActual() <= 1" (click)="cambiarPagina(paginaPreparadosActual() - 1)">Anterior</button><span>Página {{ paginaPreparadosActual() }} de {{ paginasPreparados() }}</span><button class="btn" type="button" [disabled]="paginaPreparadosActual() >= paginasPreparados()" (click)="cambiarPagina(paginaPreparadosActual() + 1)">Siguiente</button></nav>
+      }
+    } @else if (!errorPreparados()) { <p role="status">No hay certificados preparados.</p> }
   }
 </section>

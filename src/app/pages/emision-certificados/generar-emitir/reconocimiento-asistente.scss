@@ -1,0 +1,26 @@
+.reconocimiento-asistente {
+  width: 100%; min-width: 0; color: #20374e;
+  h1, h2 { color: #075a9b; }
+  .titulo-asistente { display: flex; align-items: center; gap: 1rem; }
+  .titulo-asistente h1 { margin: 0; }
+  .regreso-asistente { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  header p { margin-top: .3rem; }
+  .pasos-reconocimiento { display: flex; gap: .75rem; overflow-x: auto; padding: 1rem 0; list-style: none; border-bottom: 1px solid #dfe6ef; }
+  .pasos-reconocimiento li { white-space: nowrap; padding: .5rem .75rem; border-bottom: 3px solid #dfe6ef; }
+  .pasos-reconocimiento [aria-current=step] { color: #075a9b; border-color: #bf942d; font-weight: 700; }
+  .contenido-paso { padding: 1rem 0; min-width: 0; }
+  .acciones-paso { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.25rem; }
+  .confirmar { background: #bd932d; color: #172e45; border-color: #bd932d; font-weight: 600; }
+  .mensaje { white-space: pre-wrap; line-height: 1.7; max-width: 70rem; }
+  .informacion-reconocimiento { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+  .ficha-reconocimiento, .texto-reconocimiento { padding: 1rem; border: 1px solid #dfe6ef; border-radius: .65rem; min-width: 0; }
+  h3 { margin: 0 0 .75rem; color: #075a9b; font-size: 1rem; }
+  .resumen-reconocimiento { display: grid; gap: .8rem; margin: 0; }
+  dt, .ayuda-texto { color: #53657a; font-size: .85rem; }
+  dd { margin: .2rem 0 0; overflow-wrap: anywhere; }
+  .funcion-ponente, .solo-lectura { display: inline-block; font-size: .72rem; border-radius: .3rem; padding: .2rem .4rem; background: #f7efd9; color: #6d5318; }
+  .texto-reconocimiento { background: #f8fafc; border-top: 3px solid #bd932d; }
+  .texto-reconocimiento .mensaje { overflow-wrap: anywhere; margin: .8rem 0; }
+  app-visor-pdf { display: block; width: 100%; min-width: 0; }
+  @media (max-width: 800px) { .informacion-reconocimiento { grid-template-columns: 1fr; } .acciones-paso { flex-wrap: wrap; } }
+}

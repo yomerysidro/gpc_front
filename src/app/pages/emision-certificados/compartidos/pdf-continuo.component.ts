@@ -10,6 +10,7 @@ import { ArchivoPdf } from '../../../core/interfaces/emision-certificados/docume
 export class PdfContinuoComponent {
   readonly archivo = input<ArchivoPdf | null>(null);
   readonly zoom = input(100);
+  readonly ajustarAncho = input(false);
   readonly textosEsperados = input<readonly string[]>([]);
   readonly listo = output<ArchivoPdf>();
   readonly fallo = output<string>();
@@ -20,7 +21,7 @@ export class PdfContinuoComponent {
     const tareas = new Set<import('pdfjs-dist').PDFDocumentLoadingTask>();
     destroy.onDestroy(() => { ++secuencia; tareas.forEach(t => void t.destroy()); tareas.clear(); });
     effect(onCleanup => {
-      const archivo = this.archivo(); const zoom = this.zoom(); const contenedor = this.lectura()?.nativeElement;
+      const archivo = this.archivo(); const zoom = this.zoom(); const ajustar = this.ajustarAncho(); const contenedor = this.lectura()?.nativeElement;
       const textosEsperados = this.textosEsperados();
       const turno = ++secuencia;
       if (!archivo || !contenedor) return;
@@ -44,11 +45,14 @@ export class PdfContinuoComponent {
               const contenido = await pagina.getTextContent();
               textos.push(...contenido.items.map(item => 'str' in item ? item.str : ''));
             }
-            const viewport = pagina.getViewport({ scale: zoom / 100 });
+            const ancho = pagina.getViewport({ scale: 1 }).width;
+            const escala = ajustar ? Math.min(1, Math.max(1, contenedor.clientWidth - 24) / ancho) : 1;
+            const viewport = pagina.getViewport({ scale: escala * zoom / 100 });
             const canvas = document.createElement('canvas');
             const ratio = Math.min(window.devicePixelRatio || 1, 2);
             canvas.width = Math.ceil(viewport.width * ratio); canvas.height = Math.ceil(viewport.height * ratio);
             canvas.style.cssText = `display:block;margin:12px auto;width:${viewport.width}px;height:${viewport.height}px;background:white`;
+            if (ajustar && zoom === 100) { canvas.style.maxWidth = 'calc(100% - 24px)'; canvas.style.height = 'auto'; }
             canvas.setAttribute('aria-label', `Página ${numero}`); canvas.setAttribute('role', 'img');
             await pagina.render({ canvasContext: canvas.getContext('2d')!, viewport, transform: [ratio, 0, 0, ratio, 0, 0] }).promise;
             paginas.append(canvas); pagina.cleanup();

@@ -1,11 +1,42 @@
 import { inject } from '@angular/core';
 import { ActivatedRouteSnapshot, Router, Routes } from '@angular/router';
-import { map } from 'rxjs';
+import { catchError, map, of } from 'rxjs';
+import { EmisionCertificadosService } from '../../core/services/emision-certificados/emision-certificados.service';
 import { AuthService } from '../../core/services/autenticacion/auth.service';
 import { permissionGuard } from '../../core/guards/permission.guard';
+import { salirDeAsistencia } from '../actividades/asistencia-sesion/asistencia-sesion.guard';
+
+/** Resuelve enlaces antiguos sin mostrar una segunda lista de sesiones. */
+export const redirigirSesionesAnteriores = (route: ActivatedRouteSnapshot) => {
+  const router = inject(Router);
+  const params = route.queryParams;
+  const actividad = params['id_actividad'] ?? params['actividad'] ?? params['actividad_filtro'];
+  const sesion = params['id_sesion'] ?? params['id_actividad_sesion'] ?? params['sesion_filtro'];
+  const valido = (id: unknown) => /^[1-9]\d*$/.test(String(id)) && Number.isSafeInteger(Number(id));
+  const destino = (id?: unknown) => router.createUrlTree(valido(id) && valido(sesion)
+    ? ['/certificaciones/actividades', id, 'sesiones', sesion, 'asistencia'] : ['/certificaciones/actividades'],
+    { queryParams: { ...params, ...(id !== undefined ? { id_actividad: id } : {}) } });
+  if (valido(actividad) || !valido(sesion)) return destino(actividad);
+  return inject(EmisionCertificadosService).obtener('activity-session', Number(sesion)).pipe(
+    map(fila => Number(fila['id_actividad_sesion']) === Number(sesion) && valido(fila['id_actividad']) ? destino(fila['id_actividad']) : destino()),
+    catchError(() => of(destino())),
+  );
+};
 
 /** Mantiene las URLs públicas del menú; solo cambia la ubicación física de las páginas. */
 export const EMISION_CERTIFICADOS_ROUTES: Routes = [
+  {
+    path: 'generar-emitir/reconocimientos/sesion/:sesionId/ponentes/:ponenteId',
+    canActivate: [permissionGuard],
+    data: { permiso: 'emision.ver', requiere: ['actividades.ver', 'ponentes-firmantes.ver'], titulo: 'Preparar reconocimiento' },
+    loadComponent: () => import('./generar-emitir/preparar-reconocimiento-sesion.component').then(m => m.PrepararReconocimientoSesionComponent),
+  },
+  {
+    path: 'generar-emitir/reconocimientos/actividad/:actividadId/ponentes/:ponenteId',
+    canActivate: [permissionGuard],
+    data: { permiso: 'emision.ver', requiere: ['actividades.ver', 'ponentes-firmantes.ver'], titulo: 'Preparar reconocimiento' },
+    loadComponent: () => import('./generar-emitir/preparar-reconocimiento.component').then(m => m.PrepararReconocimientoComponent),
+  },
   {
     path: 'generar-emitir', canActivate: [permissionGuard, (route: ActivatedRouteSnapshot) => {
       const permiso = route.queryParamMap.has('editar') ? 'emision.editar' : route.queryParamMap.has('nuevo') ? 'emision.crear' : null;
@@ -15,7 +46,12 @@ export const EMISION_CERTIFICADOS_ROUTES: Routes = [
     loadComponent: () => import('./generar-emitir/generar-emitir.component').then(m => m.GenerarEmitirComponent),
   },
   {
-    path: 'actividades/:id', pathMatch: 'full', redirectTo: '/certificaciones/actividades',
+    path: 'actividades/:idActividad/sesiones/:idSesion/asistencia', canActivate: [permissionGuard], canDeactivate: [salirDeAsistencia],
+    data: { permiso: 'actividades.ver', requiere: ['participantes.ver'], titulo: 'Control de asistencia' },
+    loadComponent: () => import('../actividades/asistencia-sesion/asistencia-sesion.component').then(m => m.AsistenciaSesionComponent),
+  },
+  {
+    path: 'actividades/:id', pathMatch: 'full', redirectTo: datos => inject(Router).createUrlTree(['/certificaciones/actividades'], { queryParams: { ...datos.queryParams, id_actividad: datos.params['id'] } }),
   },
   {
     path: 'actividades', canActivate: [permissionGuard], data: { permiso: 'actividades.ver', titulo: 'Actividades' },
@@ -26,13 +62,9 @@ export const EMISION_CERTIFICADOS_ROUTES: Routes = [
     loadComponent: () => import('../participantes/listar-participantes/listar-participantes.component').then(m => m.ListarParticipantesComponent),
   },
   {
-    path: 'sesiones-asistencia', canActivate: [permissionGuard], data: { permiso: 'actividades.ver', titulo: 'Sesiones y asistencia', pestanas: [
-      { id: 'sesiones', etiqueta: 'Sesiones', recurso: 'activity-session' },
-      { id: 'asistencias', etiqueta: 'Asistencias', recurso: 'attendance' },
-    ], secciones: [
-      { titulo: 'Sesiones registradas', recurso: 'activity-session' }, { titulo: 'Asistencias registradas', recurso: 'attendance' },
-    ] },
-    loadComponent: () => import('./actividades/actividades.component').then(m => m.ActividadesComponent),
+    path: 'sesiones-asistencia', canActivate: [permissionGuard, redirigirSesionesAnteriores],
+    data: { permiso: 'actividades.ver' },
+    loadComponent: () => import('../actividades/listar-actividades/listar-actividades.component').then(m => m.ListarActividadesComponent),
   },
   {
     path: 'reconocimientos', canActivate: [permissionGuard], data: { permiso: 'reconocimientos.ver' },
@@ -70,14 +102,14 @@ export const EMISION_CERTIFICADOS_ROUTES: Routes = [
         path: ':id/editar',
         redirectTo: datos => `/certificaciones/generar-emitir?editar=${encodeURIComponent(datos.params['id'])}`,
       },
-      { path: ':id/documentos/:documentoId/visor', loadComponent: () => import('./certificados/detalle-certificado/detalle-certificado.component').then(m => m.DetalleCertificadoComponent) },
+      { path: ':id/documentos/:documentoId/visor', loadComponent: () => import('./documentos/ver-documento.component').then(m => m.VerDocumentoComponent) },
       { path: ':id', loadComponent: () => import('./certificados/detalle-certificado/detalle-certificado.component').then(m => m.DetalleCertificadoComponent) },
     ],
   },
   {
     path: 'firmas', canActivate: [permissionGuard], data: { permiso: 'emision.ver' },
     children: [
-      { path: '', loadComponent: () => import('./firmas/listar-firmas/listar-firmas.component').then(m => m.ListarFirmasComponent) },
+      { path: '', pathMatch: 'full', redirectTo: '/gestion/firmantes-municipales' },
       { path: 'asignar-firmantes', redirectTo: '/pendientes/documentos-firmar', pathMatch: 'full' },
       {
         path: 'aplicadas', canActivate: [permissionGuard], data: { permiso: 'emision.ver', recurso: 'certificados-firmas' },

@@ -70,19 +70,32 @@ describe('Pestañas de Actividades con detalle y servicios reales', () => {
     responder('/participation', []); await fixture.whenStable();
     const detalle = $('#actividades-panel-detalle');
     expect(detalle.textContent).toContain('Solicitud aprobada');
-    expect(detalle.textContent).toContain('Solicitud #42');
+    expect(detalle.textContent).not.toContain('Solicitud #42');
+    expect(detalle.textContent).not.toContain('Estado de solicitud');
+    expect(detalle.textContent).not.toContain('Consultar solicitud');
     const enlaces = Array.from(detalle.querySelectorAll<HTMLAnchorElement>('nav a'));
     expect(enlaces.length).toBe(0);
-    const botonPonentes = detalle.querySelector<HTMLButtonElement>('button[aria-label="Ponentes de la actividad"]')!;
-    expect(botonPonentes.title).toBe('Ponentes de la actividad'); botonPonentes.click(); await fixture.whenStable();
-    responder('/activity-speaker', []); responder('/person-speakers/list', []); responder('/persons/list', []);
+    expect(detalle.querySelector('.asistencia-principal')).not.toBeNull();
+    expect(detalle.querySelector('button[aria-label="Inscribir participante"]')).not.toBeNull();
+    const botonPonentes = detalle.querySelector<HTMLButtonElement>('button[aria-label="Asignar ponentes"]')!;
+    expect(botonPonentes.title).toBe('Asignar ponentes'); botonPonentes.click(); await fixture.whenStable();
+    const responderPonentes = () => {
+      http.expectOne('/api/activity/7/sessions/15/ponentes').flush({ success: true, data: {
+        id_actividad: 7, id_sesion: 15, ponentes_disponibles: [], vinculos: [],
+      } });
+      responder('/person-speakers/list', []); responder('/person-documents/list', []); responder('/document-types/list', []);
+    };
+    responderPonentes();
     await fixture.whenStable();
-    expect($<HTMLDialogElement>('.modal-ponentes dialog').open).toBeTrue();
-    expect($('.modal-ponentes .contexto-actividad').textContent).toContain('Jornada municipal');
-    expect($('.modal-ponentes a')).toBeNull();
-    $<HTMLButtonElement>('.modal-ponentes .dialogo-acciones button').click(); await fixture.whenStable();
+    expect($<HTMLDialogElement>('.modal-ponentes-sesion dialog').open).toBeTrue();
+    expect($('.modal-ponentes-sesion .contexto').textContent).toContain('Jornada municipal');
+    expect($('.modal-ponentes-sesion').textContent).toContain('No hay ponentes asignados');
+    const cierre = new Promise<void>(resolve => $<HTMLDialogElement>('.modal-ponentes-sesion dialog')
+      .addEventListener('close', () => resolve(), { once: true }));
+    $<HTMLButtonElement>('.modal-ponentes-sesion .dialogo-cerrar').click(); await cierre; await fixture.whenStable();
     botonPonentes.click(); await fixture.whenStable();
-    http.expectNone('/api/activity-speaker'); http.expectNone('/api/person-speakers/list');
+    responderPonentes(); await fixture.whenStable();
+    http.expectNone('/api/activity-speaker');
     http.expectNone(req => req.method !== 'GET');
   });
 

@@ -1,14 +1,32 @@
 import { HttpClient, HttpContext, HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { catchError, from, map, Observable, of, switchMap, throwError } from 'rxjs';
+import { catchError, finalize, shareReplay, defer, from, map, Observable, of, switchMap, throwError, timeout, TimeoutError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse, ErrorApi } from '../../interfaces/api/api-response.interface';
 import { ArchivoPdf, DocumentoGenerado, VerificacionDocumento } from '../../interfaces/emision-certificados/documento-digital.interface';
 import { AUTHENTICATED_REQUEST } from '../../security/auth-request.context';
 import { aErrorApi } from '../../../shared/utils/error-api';
 import { decodificarVistaPrevia } from './vista-previa-pdf';
+import {
+  EvaluacionDocumental, EvaluacionPonente, EvaluacionPonenteActividad, EvaluacionPonenteSesion, OrigenDocumental,
+  OrigenPonente, PonentesActividadCertificacion, PonentesCertificacion,
+} from '../../interfaces/emision-certificados/origenes-certificado.interface';
 
 export interface DocumentoFirmas {
+  url_documento?: string; enviado?: boolean; puede_enviar_gerencia?: boolean;
+  remision?: { estado_persistido?: string } | null;
+  mensaje?: string; mensaje_aprobado?: string; motivo?: string; texto_editable?: boolean;
+  modalidad_reconocimiento?: 'actividad' | 'sesion';
+  id_actividad_ponente?: number;
+  origen?: string;
+  id_reconocimiento?: number | null;
+  id_practica?: number | null;
+  pdf_confirmado?: boolean;
+  pdf_revisado_disponible?: boolean;
+  disponible_rrhh?: boolean;
+  estado_preparacion?: string | null;
+  etiqueta_estado?: string;
+  responsables_administrativos?: readonly { nombre: string; cargo: string; orden_firma: number }[];
   id_certificado_documento: number;
   id_certificado?: number;
   id_sesion?: number | null;
@@ -32,8 +50,8 @@ export interface DocumentoFirmas {
   facultades: { remitir: boolean; descargar: boolean };
 }
 interface PdfRevision { contenido_base64: string; tipo_contenido: string; nombre_archivo: string; persistido: boolean; hash_pdf?: string }
-export interface RevisionDocumental { token: string; archivo: ArchivoPdf; expiresAt: string; hash: string }
-export interface ContextoPreparacion { sesion: number; tipo: number; persona: number; actividad: number }
+export interface RevisionDocumental { token: string; archivo: ArchivoPdf; expiresAt: string; hash: string; mensaje?: string; motivo?: string; documento?: DocumentoFirmas }
+export interface ContextoPreparacion { participacion?: number; sesion: number; tipo: number; persona: number; actividad: number }
 interface RevisionEnvio { token_revision: string; expires_at: string; documento: DocumentoFirmas; vista_previa_pdf: PdfRevision }
 export interface VistaPreviaSesion {
   accion: 'vista_previa'; formato: 'pdf'; emitida: false; creado: false; mensaje: string; mensaje_persistido: false;
@@ -55,16 +73,202 @@ export function mensajeEtapaA(error: ErrorApi): string {
 export function mensajeDocumento(error: ErrorApi): string {
   const estados: Record<number, string> = { 0: 'Backend temporalmente inaccesible.', 401: 'Sesión de usuario no autenticada.', 403: 'Acción no autorizada.',
     404: 'Documento o código no encontrado.', 409: 'Operación en conflicto o bloqueada.', 422: 'Validación incorrecta.', 429: 'Demasiadas consultas. Intenta nuevamente.' };
-  const motivo = estados[error.status];
-  return [motivo, error.mensaje, ...Object.values(error.errores).flat()].filter(Boolean).join(' ');
+  if (error.status === 408) return 'No se pudo confirmar el resultado. Actualiza el estado antes de reintentar';
+  return estados[error.status] ?? 'No se pudo completar la operación. Actualiza el estado antes de reintentar';
 }
 
 @Injectable({ providedIn: 'root' })
 export class DocumentosDigitalesService {
+  private readonly consultasSesion = new Map<string, Observable<DocumentoFirmas>>();
   private readonly http = inject(HttpClient);
   private readonly api = environment.apiBaseUrl.replace(/\/$/, '');
   private readonly privado = { context: new HttpContext().set(AUTHENTICATED_REQUEST, true), withCredentials: true };
   private readonly sinCache = { 'Cache-Control': 'no-cache, no-store, max-age=0', Pragma: 'no-cache' };
+
+  revisarOrigen(origen: OrigenDocumental | OrigenPonente, id: number,
+    sesion?: { modalidad_reconocimiento: 'sesion'; id_sesion: number; mensaje?: string; motivo?: string }): Observable<RevisionDocumental & { mensaje: string }> {
+    const porSesion = origen === 'ponente_sesion';
+    if (porSesion !== !!sesion) {
+      return throwError(() => ({ status: 422, mensaje: 'La modalidad solicitada no corresponde a este origen.', errores: {} }));
+    }
+    if (porSesion && (!Number.isSafeInteger(sesion!.id_sesion) || sesion!.id_sesion < 1)) {
+      return throwError(() => ({ status: 422, mensaje: 'La sesión acreditada no es válida.', errores: {} }));
+    }
+    const modalidad = porSesion
+      ? { modalidad_reconocimiento: 'sesion' as const, id_sesion: sesion!.id_sesion }
+      : origen === 'ponente_actividad' ? { modalidad_reconocimiento: 'actividad' as const } : {};
+    return this.operacionOrigen<{ origen: string; id_origen: number; modo: string; persistido: boolean;
+      modalidad_reconocimiento?: string; id_sesion?: number | null; id_actividad_ponente?: number;
+      token_revision: string; expires_at: string; hash_pdf: string; mensaje: string; motivo?: string;
+      recuperado?: boolean; texto_editable?: boolean; id_certificado_documento?: number;
+      vista_previa_pdf: Pick<PdfRevision, 'contenido_base64' | 'tipo_contenido'> }>(origen, id,
+      { accion: 'revisar_documento', ...modalidad, ...(sesion?.mensaje !== undefined ? { mensaje: sesion.mensaje, motivo: sesion.motivo } : {}) }).pipe(switchMap(d => {
+        if (porSesion && d.recuperado === true && d.persistido === true && d.texto_editable === false
+          && d.origen === origen && d.id_origen === id && d.id_actividad_ponente === id
+          && d.modalidad_reconocimiento === 'sesion' && d.id_sesion === sesion!.id_sesion && d.id_certificado_documento) {
+          return this.detalleFirmas(d.id_certificado_documento).pipe(switchMap(documento => {
+            if (documento.hash_pdf !== d.hash_pdf || documento.id_actividad_ponente !== id || documento.id_sesion !== sesion!.id_sesion) throw new Error('Documento recuperado incompatible.');
+            const archivo = decodificarVistaPrevia({ ...d.vista_previa_pdf, nombre_archivo: 'reconocimiento.pdf', persistido: true }, true);
+            return from(this.validarHash(archivo, d.hash_pdf)).pipe(map(() => ({ token: '', expiresAt: '', hash: d.hash_pdf, mensaje: d.mensaje, motivo: d.motivo,
+              documento: { ...documento, mensaje: d.mensaje, mensaje_aprobado: d.mensaje, motivo: d.motivo, texto_editable: false }, archivo })));
+          }));
+        }
+        if (porSesion && sesion?.mensaje !== undefined && (d.mensaje !== sesion.mensaje || d.motivo !== sesion.motivo)) throw new Error('El servidor devolvió textos distintos de los solicitados.');
+        if (d.origen !== origen || d.id_origen !== id || d.modo !== 'administrativo' || d.persistido !== false
+          || !/^[a-f0-9]{64}$/.test(d.token_revision) || typeof d.mensaje !== 'string') throw new Error('No se pudo confirmar la revisión del certificado.');
+        if (origen === 'ponente_actividad' && (d.modalidad_reconocimiento !== 'actividad' || d.id_sesion !== null
+          || d.id_actividad_ponente !== id)) throw new Error('No se pudo confirmar la modalidad del reconocimiento.');
+        if (origen === 'ponente_sesion' && (d.modalidad_reconocimiento !== 'sesion' || Number(d.id_sesion) !== sesion!.id_sesion
+          || d.id_actividad_ponente !== id)) throw new Error('No se pudo confirmar la sesión acreditada del reconocimiento.');
+        // Este contrato omite persistido dentro del PDF temporal; no modifica sus bytes.
+        return this.revisionValidada(d.token_revision, d.expires_at, d.hash_pdf,
+          { ...d.vista_previa_pdf, nombre_archivo: 'vista-previa-certificado.pdf', persistido: false }, false)
+          .pipe(map(revision => ({ ...revision, mensaje: d.mensaje, motivo: d.motivo })));
+      }), catchError(e => this.error(e)));
+  }
+
+  guardarOrigen(evaluacion: EvaluacionDocumental, revision: RevisionDocumental): Observable<DocumentoFirmas> {
+    const ponente = evaluacion.origen === 'ponente_actividad' || evaluacion.origen === 'ponente_sesion';
+    const modalidad = evaluacion.origen === 'ponente_sesion'
+      ? { modalidad_reconocimiento: 'sesion' as const, id_sesion: evaluacion.id_sesion }
+      : evaluacion.origen === 'ponente_actividad' ? { modalidad_reconocimiento: 'actividad' as const } : {};
+    return this.operacionOrigen<DocumentoFirmas & { preparacion_persistida: boolean }>(evaluacion.origen, evaluacion.id_origen,
+      { accion: 'confirmar_preparacion', token_revision: revision.token, confirmar: true, ...modalidad,
+        ...(evaluacion.origen === 'ponente_sesion' && revision.motivo !== undefined ? { mensaje: revision.mensaje, motivo: revision.motivo } : {}) }).pipe(
+      switchMap(d => {
+        if (d.preparacion_persistida !== true || !Number.isSafeInteger(d.id_certificado_documento) || d.id_certificado_documento < 1) {
+          throw new Error('No se pudo confirmar el certificado guardado.');
+        }
+        if (evaluacion.origen === 'ponente_actividad') {
+          if (d.origen !== 'ponente_actividad' || d.modalidad_reconocimiento !== 'actividad' || d.id_sesion !== null
+            || d.id_actividad !== evaluacion.id_actividad || d.id_actividad_ponente !== evaluacion.id_origen) throw new Error('No se pudo confirmar el reconocimiento guardado.');
+          return this.recuperarReconocimientoActividad(evaluacion, d.id_certificado!, revision.hash);
+        }
+        if (evaluacion.origen === 'ponente_sesion') {
+          if (d.origen !== 'ponente_sesion' || d.modalidad_reconocimiento !== 'sesion'
+            || Number(d.id_sesion) !== evaluacion.id_sesion || d.id_actividad !== evaluacion.id_actividad
+            || d.id_actividad_ponente !== evaluacion.id_origen) throw new Error('No se pudo confirmar el reconocimiento de esta sesión.');
+          return this.recuperarReconocimientoSesion(evaluacion, d.id_certificado!, revision.hash).pipe(map(recuperado => {
+            if (recuperado.id_certificado_documento !== d.id_certificado_documento) throw new Error('El documento recuperado no corresponde a la preparación confirmada.');
+            return recuperado;
+          }));
+        }
+        return this.detalleFirmas(d.id_certificado_documento).pipe(map(detalle => {
+          if (detalle.id_certificado !== d.id_certificado || detalle.hash_pdf !== revision.hash
+            || detalle.beneficiario?.id_persona !== evaluacion.id_persona || detalle.id_tipo_certificado !== evaluacion.id_tipo_certificado
+            || detalle.origen !== evaluacion.origen || detalle.id_sesion != null
+            || !['PREPARADO', 'PENDIENTE_FIRMA'].includes(detalle.estado_certificado)) {
+            throw new Error('No se pudo confirmar el origen y el PDF guardado.');
+          }
+          return detalle;
+        }));
+      }), catchError(error => {
+        if (!ponente || ![0, 408, 409].includes(error?.status)) return this.error(error);
+        return this.recuperarPonenteVigente(evaluacion as EvaluacionPonente).pipe(switchMap(vigente => {
+          const existentes = vigente.certificados_existentes ?? [];
+          if (vigente.id_persona !== evaluacion.id_persona || existentes.length !== 1
+            || vigente.puede_consultar_certificado_existente !== true) return throwError(() => error);
+          return vigente.origen === 'ponente_sesion' ? this.recuperarReconocimientoSesion(vigente, existentes[0].id_certificado) : this.abrirReconocimientoPonente(vigente, existentes[0].id_certificado);
+        }), catchError(e => this.error(e)));
+      }));
+  }
+
+  recuperarReconocimientoActividad(e: EvaluacionPonenteActividad, certificado: number, hash?: string): Observable<DocumentoFirmas> {
+    return this.abrirReconocimientoPonente(e, certificado, hash);
+  }
+
+  recuperarReconocimientoSesion(e: EvaluacionPonenteSesion, certificado: number, hash?: string): Observable<DocumentoFirmas> {
+    const clave = [e.id_origen, e.id_sesion, certificado, hash ?? ''].join(':');
+    const pendiente = this.consultasSesion.get(clave);
+    if (pendiente) return pendiente;
+    const consulta = this.http.get<ApiResponse<DocumentoFirmas & { recuperado: boolean; persistido: boolean }>>(
+      `${this.api}/certificaciones/ponente_sesion/${e.id_origen}/preparar`, {
+        ...this.privado, headers: this.sinCache,
+        params: { accion: 'consultar_preparacion', modalidad_reconocimiento: 'sesion', id_sesion: e.id_sesion },
+      }).pipe(timeout(30000), map(r => {
+        const d = this.datos(r);
+        if (d.recuperado === false && d.persistido === false) {
+          throw { status: 404, mensaje: 'Preparación inexistente.', errores: {}, evaluacion: d };
+        }
+        if (d.recuperado !== true || d.persistido !== true || d.id_certificado !== certificado
+          || d.id_actividad_ponente !== e.id_origen || d.id_sesion !== e.id_sesion || d.id_actividad !== e.id_actividad
+          || d.beneficiario?.id_persona !== e.id_persona || d.id_tipo_certificado !== e.id_tipo_certificado
+          || !Number.isSafeInteger(d.id_certificado_documento) || d.id_certificado_documento < 1
+          || hash && d.hash_pdf !== hash) {
+          throw { status: 409, mensaje: 'Documento incompatible con la sesión.', errores: {} };
+        }
+        return d;
+      }), catchError(error => this.error(error)), finalize(() => this.consultasSesion.delete(clave)),
+      shareReplay({ bufferSize: 1, refCount: true }));
+    this.consultasSesion.set(clave, consulta);
+    return consulta;
+  }
+
+  archivoAdministrativo(url: string, id: number, hash?: string): Observable<ArchivoPdf> {
+    const ruta = `/certificados-documentos/${id}/archivo?flujo=firmas`;
+    if (url !== `${this.api}${ruta}` && url !== `/api${ruta}`) {
+      return throwError(() => ({ status: 409, mensaje: 'Archivo no autorizado.', errores: {} }));
+    }
+    return this.pdf(`${this.api}${ruta}`, true).pipe(
+      switchMap(archivo => hash ? from(this.validarHash(archivo, hash)).pipe(map(() => archivo)) : of(archivo)),
+      catchError(error => this.error(error)));
+  }
+
+  /** Reutiliza un reconocimiento existente solo si coinciden origen, beneficiario, actividad y sesión. */
+  abrirReconocimientoPonente(e: EvaluacionPonente, certificado: number, hash?: string): Observable<DocumentoFirmas> {
+    const modalidad: 'actividad' | 'sesion' = e.origen === 'ponente_actividad' ? 'actividad' : 'sesion';
+    return this.http.get<ApiResponse<DocumentoFirmas & { id_persona: number }>>(`${this.api}/certificados/detail/${certificado}`,
+      { ...this.privado, headers: this.sinCache }).pipe(timeout(30000), map(r => this.datos(r)), switchMap(c => {
+        const mismaSesion = modalidad === 'sesion' ? Number(c.id_sesion) === e.id_sesion : c.id_sesion === null;
+        if (c.id_certificado !== certificado || c.origen !== e.origen || c.modalidad_reconocimiento !== modalidad || !mismaSesion
+          || Number(c.id_actividad) !== Number(e.id_actividad) || c.id_persona !== e.id_persona
+          || c.id_tipo_certificado !== e.id_tipo_certificado || c.id_actividad_ponente !== e.id_origen
+          || !Number.isSafeInteger(c.id_certificado_documento) || c.id_certificado_documento < 1
+          || hash && c.hash_pdf !== hash) throw new Error('No se pudo confirmar la identidad del reconocimiento existente.');
+        return this.detalleFirmas(c.id_certificado_documento).pipe(map(d => {
+          const detalleSesion = modalidad === 'sesion' ? Number(d.id_sesion) === e.id_sesion : d.id_sesion == null;
+          if (d.id_certificado !== certificado || d.beneficiario?.id_persona !== e.id_persona || d.id_tipo_certificado !== e.id_tipo_certificado
+            || !detalleSesion || d.hash_pdf !== c.hash_pdf) {
+            throw new Error('No se pudo confirmar el PDF del reconocimiento.');
+          }
+          // El detalle administrativo conserva el origen municipal; el catálogo aporta el contexto aprobado.
+          return { ...d, origen: c.origen, modalidad_reconocimiento: c.modalidad_reconocimiento,
+            id_actividad: c.id_actividad, actividad: c.actividad, id_sesion: c.id_sesion,
+            id_actividad_ponente: c.id_actividad_ponente, id_reconocimiento: c.id_reconocimiento };
+        }));
+      }), catchError(err => this.error(err)));
+  }
+
+  /** Consulta el estado vigente del vínculo antes de reutilizar un guardado incierto. */
+  private recuperarPonenteVigente(e: EvaluacionPonente): Observable<EvaluacionPonente> {
+    if (e.origen === 'ponente_sesion') {
+      return this.http.get<ApiResponse<PonentesCertificacion>>(`${this.api}/activity-session/${e.id_sesion}/ponentes-certificacion`,
+        { ...this.privado, headers: this.sinCache }).pipe(timeout(30000), map(r => this.datos(r)), switchMap(d => {
+        if (Number(d.id_sesion) !== e.id_sesion || d.relacion_ponente_sesion_disponible !== true || !Array.isArray(d.ponentes_sesion)
+          || Number(d.id_actividad) !== Number(e.id_actividad)) return throwError(() => new Error('No se pudo confirmar la sesión del reconocimiento.'));
+        const vigente = d.ponentes_sesion.find(p => p.id_actividad_ponente === e.id_origen)?.reconocimiento;
+        if (!vigente || vigente.origen !== 'ponente_sesion' || Number(vigente.id_sesion) !== e.id_sesion
+          || vigente.id_persona !== e.id_persona || Number(vigente.id_actividad) !== Number(e.id_actividad)) {
+          return throwError(() => new Error('No se pudo confirmar el vínculo vigente del ponente con esta sesión.'));
+        }
+        return of(vigente);
+      }));
+    }
+    return this.http.get<ApiResponse<PonentesActividadCertificacion>>(`${this.api}/activity/${e.id_actividad}/ponentes-certificacion`,
+      { ...this.privado, headers: this.sinCache }).pipe(timeout(30000), map(r => this.datos(r)), switchMap(d => {
+      const vigente = d.ponentes?.find(p => p.id_actividad_ponente === e.id_origen)?.reconocimiento;
+      if (d.id_actividad !== e.id_actividad || d.id_sesion !== null || d.modalidad_reconocimiento !== 'actividad'
+        || !vigente || vigente.id_persona !== e.id_persona) {
+        return throwError(() => new Error('No se pudo confirmar el vínculo vigente del ponente.'));
+      }
+      return of(vigente);
+    }));
+  }
+
+  private operacionOrigen<T>(origen: OrigenDocumental | OrigenPonente, id: number, body: object): Observable<T> {
+    return this.http.post<ApiResponse<T>>(`${this.api}/certificaciones/${origen}/${id}/preparar`, body, this.privado)
+      .pipe(timeout(90000), map(r => this.datos(r)), catchError(e => this.error(e)));
+  }
 
   vistaPrevia(sesion: number, participacion: number, tipo: number, mensaje: string): Observable<{ archivo: ArchivoPdf; datos: Omit<VistaPreviaSesion, 'vista_previa_pdf'> }> {
     return this.http.post<ApiResponse<VistaPreviaSesion>>(`${this.api}/activity-session/${sesion}/preparar-certificados`,
@@ -116,19 +320,27 @@ export class DocumentosDigitalesService {
     );
   }
 
+  archivoRrhh(id: number, hash?: string): Observable<ArchivoPdf> {
+    return this.pdf(`${this.api}/rrhh/certificados/${id}/pdf`, true).pipe(
+      switchMap(archivo => hash ? from(this.validarHash(archivo, hash)).pipe(map(() => archivo)) : of(archivo)),
+      catchError(e => this.error(e)),
+    );
+  }
+
   pendientesFirma(page: number) {
     return this.http.get<ApiResponse<{ data: DocumentoFirmas[]; current_page: number; last_page: number }>>(
-      `${this.api}/certificados-documentos/list`, { ...this.privado, params: { bandeja: 'por_firmar', page } },
+      `${this.api}/certificados-documentos/list`, { ...this.privado, headers: this.sinCache, params: { bandeja: 'por_firmar', page } },
     ).pipe(map(r => this.datos(r)), catchError(e => this.error(e)));
   }
 
   detalleFirmas(id: number): Observable<DocumentoFirmas> {
     return this.http.get<ApiResponse<DocumentoFirmas>>(`${this.api}/certificados-documentos/detail/${id}`,
-      { ...this.privado, headers: this.sinCache, params: { flujo: 'firmas' } }).pipe(map(r => {
+      { ...this.privado, headers: this.sinCache, params: { flujo: 'firmas' } }).pipe(timeout(30000), map(r => {
         const d = this.datos(r);
         if (d.id_certificado_documento !== id) throw new Error('Laravel devolvió otro documento.');
         return d;
-      }), catchError(e => this.error(e)));
+      }), catchError(e => this.error(e).pipe(catchError(error => throwError(() => ({ ...error,
+        errores: { ...error.errores, endpoint: [`/api/certificados-documentos/detail/${id}?flujo=firmas`] } }))))));
   }
 
   revisarPreparacion(sesion: number, participacion: number, tipo: number, mensaje: string, modalidad: 'Paralela' | 'Secuencial') {
@@ -140,8 +352,30 @@ export class DocumentosDigitalesService {
       }), catchError(e => this.error(e)));
   }
 
-  guardarPreparacion(sesion: number, token: string, contexto?: ContextoPreparacion, hash?: string) {
-    return this.preparacion<DocumentoFirmas>(sesion, { accion: 'confirmar_preparacion', token_revision: token, confirmar: true }).pipe(
+  private readonly preparacionesInciertas = new Set<string>();
+
+  private buscarPreparacion(contexto: ContextoPreparacion): Observable<DocumentoFirmas | null> {
+    if (!contexto.participacion) return of(null);
+    return this.http.get<ApiResponse<{ data: { id_participacion: number; id_tipo_certificado: number; id_sesion: number; id_certificado_documento?: number }[] }>>(
+      `${this.api}/certificados/list`, { ...this.privado, headers: this.sinCache,
+        params: { id_participacion: contexto.participacion, id_sesion: contexto.sesion, id_tipo_certificado: contexto.tipo, per_page: 100 } }).pipe(timeout(30000),
+      switchMap(r => {
+        const filas = this.datos(r).data.filter(b => b.id_participacion === contexto.participacion
+          && b.id_sesion === contexto.sesion && b.id_tipo_certificado === contexto.tipo);
+        if (filas.length > 1) throw new Error('No se pudo determinar el documento vigente.');
+        return filas[0]?.id_certificado_documento ? this.detalleFirmas(filas[0].id_certificado_documento) : of(null);
+      }), catchError(() => throwError(() => ({ status: 408, mensaje: '', errores: {} }))));
+  }
+
+  guardarPreparacion(sesion: number, token: string, contexto?: ContextoPreparacion, hash?: string): Observable<DocumentoFirmas> {
+    const escribir = () => this.preparacion<DocumentoFirmas>(sesion, { accion: 'confirmar_preparacion', token_revision: token, confirmar: true });
+    return defer(() => this.preparacionesInciertas.has(token) && contexto
+      ? this.buscarPreparacion(contexto).pipe(switchMap(doc => doc ? of(doc) : escribir())) : escribir()).pipe(
+      catchError(error => {
+        if (![408, 0, 409].includes(error.status) || !contexto?.participacion) return throwError(() => error);
+        this.preparacionesInciertas.add(token);
+        return this.buscarPreparacion(contexto).pipe(switchMap(doc => doc ? of(doc) : throwError(() => error)));
+      }),
       switchMap(d => {
         const id = d.id_certificado_documento;
         if (!Number.isSafeInteger(id) || id < 1) throw new Error('Laravel no devolvió un documento guardado.');
@@ -149,6 +383,7 @@ export class DocumentosDigitalesService {
         return this.detalleFirmas(id).pipe(map(detalle => {
           this.validarPreparado(detalle, contexto, hash);
           if (detalle.id_certificado !== d.id_certificado) throw new Error('Laravel devolvió otro certificado.');
+          this.preparacionesInciertas.delete(token);
           return detalle;
         }));
       }), catchError(e => this.error(e)));
@@ -166,7 +401,20 @@ export class DocumentosDigitalesService {
     }), catchError(e => this.error(e)));
   }
 
-  confirmarEnvio(id: number, token: string, hash?: string) {
+  private readonly enviosInciertos = new Map<number, string>();
+
+  confirmarEnvio(id: number, token: string, hash?: string): Observable<DocumentoFirmas> {
+    if (this.enviosInciertos.has(id)) {
+      return this.detalleFirmas(id).pipe(switchMap(doc => {
+        if (doc.estado_certificado === 'PENDIENTE_FIRMA' && (!hash || doc.hash_pdf === hash)) {
+          this.enviosInciertos.delete(id); return of(doc);
+        }
+        if (doc.estado_certificado !== 'PREPARADO' || hash && doc.hash_pdf !== hash) return throwError(() => ({ status: 408, mensaje: '', errores: {} }));
+        // Recuperar un resultado incierto solo consulta. Otro envío exige otra acción explícita.
+        this.enviosInciertos.delete(id);
+        return of(doc);
+      }));
+    }
     return this.enviarGerencia(id, token, true).pipe(switchMap(r => {
       const d = this.datos(r as ApiResponse<{ enviado: boolean; estado_flujo: string }>);
       if (d.enviado !== true || d.estado_flujo !== 'PENDIENTE_FIRMA') throw new Error('Laravel no confirmó el envío.');
@@ -174,12 +422,23 @@ export class DocumentosDigitalesService {
         if (doc.estado_certificado !== 'PENDIENTE_FIRMA' || hash && doc.hash_pdf !== hash) throw new Error('Laravel no confirmó el estado actualizado y el PDF aprobado.');
         return doc;
       }));
-    }), catchError(e => this.error(e)));
+    }), catchError(error => {
+      if (![408, 0, 409].includes(error.status)) return this.error(error);
+      this.enviosInciertos.set(id, token);
+      return this.detalleFirmas(id).pipe(switchMap(doc => {
+        if (doc.estado_certificado === 'PENDIENTE_FIRMA' && (!hash || doc.hash_pdf === hash)) {
+          this.enviosInciertos.delete(id); return of(doc);
+        }
+        if (error.status === 409 && doc.estado_certificado === 'PREPARADO') this.enviosInciertos.delete(id);
+        return throwError(() => error);
+      }), catchError(e => this.error(e === error || [401, 403, 404].includes(e?.status)
+        ? e : { status: 408, mensaje: '', errores: {} })));
+    }));
   }
 
   private preparacion<T>(sesion: number, body: object): Observable<T> {
     return this.http.post<ApiResponse<T>>(`${this.api}/activity-session/${sesion}/preparar-certificados`, body, this.privado)
-      .pipe(map(r => this.datos(r)), catchError(e => this.error(e)));
+      .pipe(timeout(90000), map(r => this.datos(r)), catchError(e => this.error(e)));
   }
 
   private async validarHash(archivo: ArchivoPdf, hash: string): Promise<void> {
@@ -195,7 +454,9 @@ export class DocumentosDigitalesService {
   }
 
   private validarPreparado(doc: DocumentoFirmas, contexto?: ContextoPreparacion, hash?: string): void {
-    if (!Number.isSafeInteger(doc.id_certificado) || doc.id_certificado! < 1 || doc.estado_certificado !== 'PREPARADO'
+    const estadoPersistido = doc.estado_certificado === 'PREPARADO'
+      || !!contexto && ['PENDIENTE_FIRMA', 'FIRMADO', 'EMITIDO'].includes(doc.estado_certificado);
+    if (!Number.isSafeInteger(doc.id_certificado) || doc.id_certificado! < 1 || !estadoPersistido
       || hash && doc.hash_pdf !== hash) throw new Error('Laravel no confirmó el certificado preparado y su PDF aprobado.');
     if (contexto && (doc.id_sesion !== contexto.sesion || doc.id_tipo_certificado !== contexto.tipo
       || doc.id_actividad !== contexto.actividad || doc.beneficiario?.id_persona !== contexto.persona)) {
@@ -224,7 +485,7 @@ export class DocumentosDigitalesService {
       return throwError(() => ({ status: 422, mensaje: 'Se requiere el identificador del documento registrado.', errores: {} }));
     }
     return this.http.post<unknown>(`${this.api}/certificados-documentos/${id}/${accion}`, body, this.privado)
-      .pipe(catchError(e => this.error(e)));
+      .pipe(timeout(90000), catchError(e => this.error(e)));
   }
 
   archivoPublico(url: string, codigo: string): Observable<ArchivoPdf> {
@@ -238,7 +499,7 @@ export class DocumentosDigitalesService {
 
   private pdf(url: string, privado: boolean): Observable<ArchivoPdf> {
     return this.http.get(url, { ...(privado ? { ...this.privado, headers: this.sinCache } : { withCredentials: false }), observe: 'response', responseType: 'blob' }).pipe(
-      switchMap(r => from(this.validarPdf(r))), catchError(e => this.error(e)),
+      timeout(60000), switchMap(r => from(this.validarPdf(r))), catchError(e => this.error(e)),
     );
   }
 
@@ -246,10 +507,14 @@ export class DocumentosDigitalesService {
     const blob = respuesta.body;
     if (!blob || !/^(application\/pdf|application\/octet-stream)(;|$)/i.test(respuesta.headers.get('Content-Type') ?? blob.type)
       || await blob.slice(0, 5).text() !== '%PDF-') throw new Error('Archivo PDF no disponible: Laravel no devolvió un PDF válido.');
-    return { blob: new Blob([blob], { type: 'application/pdf' }), nombre: 'certificado.pdf' };
+    const archivo = { blob: new Blob([blob], { type: 'application/pdf' }), nombre: 'certificado.pdf' };
+    const hash = respuesta.headers.get('X-Document-SHA256');
+    if (hash) await this.validarHash(archivo, hash);
+    return archivo;
   }
 
   private error(error: unknown): Observable<never> {
+    if (error instanceof TimeoutError) return throwError(() => ({ status: 408, mensaje: 'No se pudo confirmar el resultado. Actualiza el estado antes de reintentar', errores: {} }));
     if (error && typeof error === 'object' && 'mensaje' in error && 'status' in error && 'errores' in error) return throwError(() => error);
     if (error instanceof HttpErrorResponse && error.error instanceof Blob) {
       return from(error.error.text()).pipe(switchMap(texto => {

@@ -7,32 +7,34 @@ import { ErrorApi } from '../../../core/interfaces/api/api-response.interface';
 import { ArchivoPdf } from '../../../core/interfaces/emision-certificados/documento-digital.interface';
 import { Observable, of } from 'rxjs';
 
-/** Solo representa bytes PDF recuperados de Laravel; nunca convierte HTML a PDF. */
-@Component({
-  selector: 'app-visor-pdf', standalone: true, imports: [PdfContinuoComponent],
-  template: `
-    <section [attr.aria-label]="archivoPrevio() && !persistido() ? 'Vista previa PDF no emitida' : 'PDF almacenado en Laravel'" [attr.aria-busy]="cargando()">
-      @if (cargando()) { <p role="status">Recuperando PDF de Laravel…</p> }
+export const PLANTILLA_VISOR_PDF = `
+    <section [attr.aria-label]="archivoPrevio() && !persistido() ? 'Vista previa PDF no emitida' : 'PDF del certificado'" [attr.aria-busy]="cargando()">
+      @if (cargando()) { <p role="status">Cargando certificado...</p> }
       @if (error()) { <p role="alert">{{ error() }}</p><button type="button" class="btn" (click)="revision.update(siguiente)">Reintentar PDF</button> }
-      @if (integrado()) { <app-pdf-continuo [archivo]="archivoIntegrado()" [textosEsperados]="textosEsperados()" [zoom]="zoom()" (listo)="archivoVisualizado.emit($event)" (fallo)="errorVisualizacion.emit($event)" /> }
+      @if (integrado()) { <app-pdf-continuo [archivo]="archivoIntegrado()" [ajustarAncho]="ajustarAncho()" [textosEsperados]="textosEsperados()" [zoom]="zoom()" (listo)="archivoVisualizado.emit($event)" (fallo)="errorVisualizacion.emit($event)" /> }
       @if (urlSegura(); as src) {
         <div class="acciones"><a class="btn" [href]="url()" [download]="archivoPrevio()?.nombre || 'certificado.pdf'">{{ archivoPrevio() && !persistido() ? 'Descargar vista previa' : 'Descargar PDF' }}</a>@if (!compacto()) { <button type="button" class="btn" (click)="imprimir()">Imprimir PDF</button><a class="btn" [href]="url()" target="_blank" rel="noopener">Abrir PDF</a> }</div>
         @if (controlesZoom()) { <label>Zoom del PDF <select aria-label="Zoom del PDF" [value]="zoom()" (change)="cambiarZoom($any($event.target).value)"><option value="75">75 %</option><option value="100">100 %</option><option value="125">125 %</option><option value="150">150 %</option><option value="200">200 %</option></select></label> }
         @if (!integrado()) { @for (recurso of recursos(); track recurso.url) {
-          <iframe #marco [src]="recurso.src" (load)="marcoCargado($event)" (error)="marcoFallido($event)" title="PDF auténtico recuperado del backend"></iframe>
+          <iframe #marco [src]="recurso.src" (load)="marcoCargado($event)" (error)="marcoFallido($event)" title="PDF del certificado"></iframe>
         }
         }
         @if (mostrarDescripcion()) {
           @if (archivoPrevio() && !persistido()) { <p role="status">Borrador pendiente de emisión.</p> }
-          @else { <p>El PDF almacenado contiene el QR y el código asignados por Laravel. Su disponibilidad no acredita una firma digital.</p> }
         }
         @if (aviso()) { <p role="status">{{ aviso() }}</p> }
       }
-    </section>`,
+    </section>`;
+
+/** Solo representa bytes PDF recuperados de Laravel; nunca convierte HTML a PDF. */
+@Component({
+  selector: 'app-visor-pdf', standalone: true, imports: [PdfContinuoComponent],
+  template: PLANTILLA_VISOR_PDF,
   styles: `:host { display:block; min-width:0 } iframe { width:100%; height:72vh; min-height:24rem; border:1px solid #d5dee8; border-radius:.5rem; background:#fff } .acciones { display:flex; flex-wrap:wrap; gap:.5rem; margin-block:1rem } p { overflow-wrap:anywhere } @media(max-width:600px) { iframe { height:65vh; min-height:18rem } }`,
 })
 export class VisorPdfComponent {
   readonly integrado = input(false);
+  readonly ajustarAncho = input(false);
   private readonly archivoDescargado = signal<ArchivoPdf | null>(null);
   // La entrada temporal gobierna directamente PDF.js; nunca pasa por la caché del vigente.
   protected readonly archivoIntegrado = computed(() => this.archivoPrevio() ?? this.archivoDescargado());
@@ -41,6 +43,7 @@ export class VisorPdfComponent {
   readonly archivoVisualizado = output<ArchivoPdf>();
   readonly errorVisualizacion = output<string>();
   readonly flujoFirmas = input(false);
+  readonly consultaRrhh = input(false);
   readonly hashEsperado = input<string | undefined>();
   readonly persistido = input(false);
   readonly compacto = input(false);
@@ -49,6 +52,7 @@ export class VisorPdfComponent {
   protected readonly zoom = signal(100);
   readonly archivoPrevio = input<ArchivoPdf | null>(null);
   readonly documentoId = input<number | null>(null);
+  readonly urlAdministrativa = input<string | null>(null);
   readonly urlPublica = input<string | null>(null);
   readonly codigo = input('');
   protected readonly cargando = signal(false);
@@ -69,12 +73,22 @@ export class VisorPdfComponent {
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private archivoActual: ArchivoPdf | null = null;
   private objetoIntegrado: string | null = null;
+  private identidadIntegrada = '';
+  private impresion: HTMLIFrameElement | null = null;
   constructor() {
-    inject(DestroyRef).onDestroy(() => { if (this.objetoIntegrado) URL.revokeObjectURL(this.objetoIntegrado); });
+    inject(DestroyRef).onDestroy(() => { this.impresion?.remove(); if (this.objetoIntegrado) URL.revokeObjectURL(this.objetoIntegrado); });
     effect(onCleanup => {
+      const administrativa = this.urlAdministrativa();
       const id = this.documentoId(); const publico = this.urlPublica(); const codigo = this.codigo(); this.revision();
-      const previo = this.archivoPrevio(); const flujoFirmas = this.flujoFirmas(); const hash = this.hashEsperado();
+      const previo = this.archivoPrevio(); const flujoFirmas = this.flujoFirmas(); const hash = this.hashEsperado(); const rrhh = this.consultaRrhh();
       const integrado = this.integrado();
+      const identidad = `${id}|${administrativa}|${publico}|${flujoFirmas}|${rrhh}`;
+      if (integrado && identidad !== this.identidadIntegrada) {
+        this.identidadIntegrada = identidad; this.archivoActual = null; this.archivoDescargado.set(null);
+        this.url.set(null); this.urlSegura.set(null);
+        if (this.objetoIntegrado) URL.revokeObjectURL(this.objetoIntegrado);
+        this.objetoIntegrado = null;
+      }
       if (integrado) { this.error.set(null); this.aviso.set(null); }
       if (!integrado) {
       this.archivoActual = null;
@@ -86,6 +100,8 @@ export class VisorPdfComponent {
       let objeto: string | null = null;
       let consulta: Observable<ArchivoPdf>;
       if (previo) consulta = of(previo);
+      else if (id !== null && administrativa) consulta = this.api.archivoAdministrativo(administrativa, id, hash);
+      else if (id !== null && rrhh) consulta = this.api.archivoRrhh(id, hash);
       else if (id !== null && (flujoFirmas || hash)) consulta = this.api.archivo(id, flujoFirmas, hash);
       else if (id !== null) consulta = this.api.archivo(id);
       else consulta = this.api.archivoPublico(publico!, codigo);
@@ -103,6 +119,7 @@ export class VisorPdfComponent {
           this.urlSegura.set(this.sanitizer.bypassSecurityTrustResourceUrl(objeto)); this.cargando.set(false);
           if (!previo) this.archivoCargado.emit(archivo);
         }, error: (e: ErrorApi) => {
+          if (integrado && !previo) { this.archivoDescargado.set(null); this.url.set(null); this.urlSegura.set(null); }
           const mensaje = flujoFirmas ? mensajeEtapaA(e) : mensajeDocumento(e);
           this.error.set(mensaje); this.errorVisualizacion.emit(mensaje); this.cargando.set(false);
         },
@@ -124,7 +141,16 @@ export class VisorPdfComponent {
   }
   protected imprimir(): void {
     if (this.integrado()) {
-      this.aviso.set('Abre el PDF para imprimirlo con las opciones de tu navegador.');
+      const url = this.url();
+      if (!url) return;
+      this.impresion?.remove();
+      const marco = document.createElement('iframe');
+      this.impresion = marco;
+      marco.style.cssText = 'position:fixed;width:0;height:0;border:0';
+      marco.title = 'Imprimir certificado'; marco.src = url;
+      marco.onload = () => { marco.contentWindow?.focus(); marco.contentWindow?.print(); };
+      marco.addEventListener('load', () => marco.contentWindow?.addEventListener('afterprint', () => marco.remove(), { once: true }), { once: true });
+      document.body.append(marco);
       return;
     }
     try { const marco = this.marco()?.nativeElement.contentWindow; if (!marco) return; marco.focus(); marco.print(); }

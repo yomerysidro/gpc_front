@@ -1,5 +1,5 @@
 import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, inject, input, output, signal, untracked, viewChild } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { EmisionCertificadosService } from '../../../core/services/emision-certificados/emision-certificados.service';
 import { RegistroEmision } from '../../../core/interfaces/emision-certificados/emision-certificados.interface';
@@ -10,15 +10,14 @@ import { PersonService } from '../../../core/services/person/person.service';
 import { CatalogoParticipantes, DetalleActividadService, ParticipanteDetalle } from './detalle-actividad.service';
 import { DialogoComponent } from '../../../shared/components/dialogo/dialogo.component';
 import { FormularioEmisionComponent } from '../../emision-certificados/compartidos/formulario-emision.component';
-import { EstadoNavegacionListado, ListadoEmisionComponent } from '../../emision-certificados/compartidos/listado-emision.component';
-import { DatosAsistenciaContextual, FILTROS_SESIONES_VACIOS } from '../../emision-certificados/actividades/sesiones-asistencia-listado';
 import { DialogoConfirmacionComponent } from '../../../shared/components/dialogo-confirmacion/dialogo-confirmacion.component';
 import { ListarParticipantesComponent } from '../../participantes/listar-participantes/listar-participantes.component';
 import { SesionCertificacion } from '../../../core/interfaces/emision-certificados/certificacion-sesion.interface';
+import { PonentesSesionActividadComponent } from './ponentes-sesion-actividad.component';
 
 @Component({
   selector: 'app-detalle-actividad', standalone: true,
-  imports: [RouterLink, DialogoComponent, FormularioEmisionComponent, ListadoEmisionComponent, DialogoConfirmacionComponent, ListarParticipantesComponent],
+  imports: [PonentesSesionActividadComponent, RouterLink, DialogoComponent, FormularioEmisionComponent, DialogoConfirmacionComponent, ListarParticipantesComponent],
   templateUrl: './detalle-actividad.component.html', styleUrl: './detalle-actividad.component.scss',
 })
 export class DetalleActividadComponent {
@@ -28,7 +27,6 @@ export class DetalleActividadComponent {
   readonly solicitudRuta = input<string | null>(null);
   readonly operando = input(false);
   readonly volver = output<void>();
-  readonly gestionarPonentes = output<Actividad>();
   readonly editarActividad = output<Actividad>();
   readonly cerrarActividad = output<Actividad>();
   protected readonly capacidadesSesiones = signal<ReadonlyMap<number, SesionCertificacion>>(new Map());
@@ -85,53 +83,27 @@ export class DetalleActividadComponent {
       this.detallesSesiones.delete(id);
     }, error: error => { this.finalizandoSesion.set(null); this.erroresCertificacion.update(e => ({ ...e, [id]: [error.status ? `HTTP ${error.status}.` : '', error.mensaje || error.message, ...Object.values(error.errores ?? {}).flat()].join(' ') })); this.capacidadesSesiones.update(m => { const nuevo = new Map(m); nuevo.delete(id); return nuevo; }); } }));
   }
-  protected asistenciaGuardada(): void {
-    const sesion = this.sesionActiva();
-    if (sesion && this.capacidadSesion(sesion['id_actividad_sesion'])) this.cargarCapacidades(sesion);
-  }
+  private readonly router = inject(Router);
   protected readonly sesionActiva = signal<RegistroEmision | null>(null);
-  protected readonly asistenciaAbierta = signal(false);
+  protected readonly sesionPonentes = signal<RegistroEmision | null>(null);
+  private readonly modalPonentesSesion = viewChild.required<DialogoComponent>('modalPonentesSesion');
   protected readonly contextoInscripcion = signal<{ actividad: { id_actividad: number; nombre: string }; sesion: { id: number; nombre: string } } | null>(null);
   protected readonly avisoInscripcion = signal<string | null>(null);
-  private readonly modalAsistencia = viewChild.required<DialogoComponent>('modalAsistencia');
   private readonly modalDetalle = viewChild.required<DialogoComponent>('modalDetalle');
-  private readonly confirmarDescartar = viewChild.required<DialogoConfirmacionComponent>('confirmarDescartar');
-  private confirmandoCierre = false;
-  protected readonly asistenciaIniciada = signal(false);
-  private readonly sesionAsistencia = signal('');
-  protected readonly estadoAsistencia = computed<EstadoNavegacionListado>(() => ({ campo: '', valor: '', pagina: 1,
-    filtrosSesiones: { ...FILTROS_SESIONES_VACIOS, actividad: String(this.actividadId()), sesion: this.sesionAsistencia() } }));
-  protected readonly datosAsistencia = computed<DatosAsistenciaContextual | null>(() => {
-    const actividad = this.actividadContexto();
-    if (!actividad || this.cargandoParticipantes() || this.errorParticipantes() || this.cargandoSesiones() || this.errorSesiones() || this.cargandoResumen() || this.errorResumen()) return null;
-    return { actividad, sesiones: this.sesiones(), participantes: this.participantes(), asistencias: this.asistencias() };
-  });
-  protected readonly contextoAsistenciaConfirmado = signal<DatosAsistenciaContextual | null>(null);
-  private readonly matrizAsistencia = viewChild(ListadoEmisionComponent);
-  protected panelOcupado(): boolean { return this.matrizAsistencia()?.estaGuardando() ?? false; }
+  protected panelOcupado(): boolean { return false; }
   protected abrirPanel(panel: 'detalle' | 'ponentes' | 'asistencia', sesion: RegistroEmision): void {
     if (this.panelOcupado() || !this.sesiones().includes(sesion)) return;
     if (panel === 'ponentes' && !this.auth?.tienePermiso('ponentes-firmantes.ver') || panel === 'asistencia' && !this.auth?.tienePermiso('participantes.ver')) return;
     this.sesionActiva.set(sesion);
     if (panel === 'detalle') { this.verSesion(sesion); this.modalDetalle().abrir(); }
-    if (panel === 'ponentes') this.gestionarPonentes.emit(this.actividad()!);
-    if (panel === 'asistencia') { this.sesionAsistencia.set(String(sesion['id_actividad_sesion'])); this.asistenciaIniciada.set(true); this.asistenciaAbierta.set(true); this.modalAsistencia().abrir(); }
-  }
-  protected async cerrarAsistencia(): Promise<void> {
-    if (this.panelOcupado() || this.confirmandoCierre) return;
-    if (this.matrizAsistencia()?.cambiosPendientes()) {
-      this.confirmandoCierre = true;
-      const descartar = await this.confirmarDescartar().abrir();
-      this.confirmandoCierre = false;
-      if (!descartar) return;
-      this.matrizAsistencia()?.descartarCambios();
+    if (panel === 'ponentes') {
+      // La asignación se realiza exclusivamente sobre la sesión real seleccionada.
+      this.sesionPonentes.set(sesion);
+      this.modalPonentesSesion().abrir();
     }
-    this.modalAsistencia().cerrar(); this.asistenciaAbierta.set(false);
+    if (panel === 'asistencia') void this.router.navigate(['/certificaciones/actividades', this.actividadId(), 'sesiones', sesion['id_actividad_sesion'], 'asistencia']);
   }
-  protected guardarAsistencia(): void { this.matrizAsistencia()?.guardarAsistencia(); }
-  protected puedeGuardarAsistencia(): boolean {
-    return this.capacidadSesion(this.sesionActiva()?.['id_actividad_sesion'])?.puede_editar_asistencia !== false && this.sesionActiva()?.['estado'] !== 'Finalizada' && !this.cargandoParticipantes() && !this.errorParticipantes() && !this.cargandoResumen() && !this.errorResumen() && (this.matrizAsistencia()?.puedeGuardarAsistencia() ?? false);
-  }
+  protected cerrarPonentesSesion(): void { this.sesionPonentes.set(null); }
   protected abrirInscripcion(sesion: RegistroEmision): void {
     const actividad = this.actividadContexto();
     if (!actividad || !this.auth?.tienePermiso('participantes.crear') || !this.sesiones().includes(sesion) || Number(sesion['id_actividad']) !== actividad.id_actividad) return;
@@ -235,10 +207,6 @@ export class DetalleActividadComponent {
   private fuentePersonas?: Observable<readonly PersonaActividad[]>;
   private consultaParticipantes?: Subscription;
   constructor() {
-    effect(() => {
-      const datos = this.datosAsistencia();
-      if (datos) this.contextoAsistenciaConfirmado.set(datos);
-    }, { allowSignalWrites: true });
     this.destroyRef.onDestroy(() => this.solicitudes.unsubscribe());
     afterNextRender(() => {
       this.listo.set(true);
@@ -272,10 +240,10 @@ export class DetalleActividadComponent {
     this.participantes.set([]); this.formularioSesion.set(false);
     this.detalleSesion.set(null); this.errorDetalleSesion.set(null); this.cargandoDetalleSesion.set(false);
     this.detallesSesiones.clear(); this.consultandoSesion = null;
-    this.modalAsistencia().cerrar(); this.modalDetalle().cerrar(); this.asistenciaAbierta.set(false);
+    this.modalDetalle().cerrar();
+    this.modalPonentesSesion().cerrar(); this.sesionPonentes.set(null);
     this.contextoInscripcion.set(null); this.avisoInscripcion.set(null);
-    this.sesionActiva.set(null); this.asistenciaIniciada.set(false); this.sesionAsistencia.set('');
-    this.contextoAsistenciaConfirmado.set(null);
+    this.sesionActiva.set(null);
     this.capacidadesSesiones.set(new Map()); this.erroresCertificacion.set({}); this.cargandoCapacidades.set([]); this.finalizandoSesion.set(null);
     this.sesiones.set([]); this.errorSesiones.set(null); this.cargandoSesiones.set(false);
     this.asistencias.set([]); this.errorResumen.set(null);
@@ -327,14 +295,14 @@ export class DetalleActividadComponent {
         this.sesiones.set(sesiones);
         this.capacidadesSesiones.update(actual => {
           const mapa = new Map(actual);
-          for (const sesion of sesiones) if (typeof sesion['puede_finalizarse'] === 'boolean') mapa.set(Number(sesion['id_actividad_sesion']), sesion as unknown as SesionCertificacion);
+          for (const sesion of sesiones) if (typeof sesion['puede_finalizarse'] === 'boolean' || sesion['contadores']) mapa.set(Number(sesion['id_actividad_sesion']), sesion as unknown as SesionCertificacion);
           return mapa;
         });
         const seleccionada = this.sesionActiva();
         if (seleccionada) {
           const actual = sesiones.find(s => Number(s['id_actividad_sesion']) === Number(seleccionada['id_actividad_sesion']));
           this.sesionActiva.set(actual ?? null);
-          if (!actual) { this.modalAsistencia().cerrar(); this.modalDetalle().cerrar(); this.asistenciaIniciada.set(false); }
+          if (!actual) { this.modalDetalle().cerrar(); }
         }
         this.cargandoSesiones.set(false);
       },

@@ -80,7 +80,7 @@ describe('Adaptación del contrato a las cinco pantallas existentes', () => {
     const segunda = http.expectOne(r => r.params.get('page') === '2'); segunda.flush({ success: true, data: { data: [{ ...fila, id_solicitud_actividad: 5, nombre: 'Coincidente' }], total: 2, current_page: 2, last_page: 2, per_page: 100 } });
     expect(pagina?.total).toBe(1); expect(pagina?.registros[0].id).toBe('5');
   });
-  it('usa el listado real para pendientes de Gerencia y no integra documentos por firmar', () => {
+  it('usa el listado real para pendientes de Gerencia y no integra certificados por firmar', () => {
     iniciar(); gateway.listar('gerencia', { ...filtro, estado: 'Pendiente de aprobación' }).subscribe(); const req = http.expectOne(r => r.url === base);
     expect(req.request.params.get('estado')).toBe('Pendiente de aprobación'); req.flush({ success: true, data: { data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 } });
     gateway.documentos(1).subscribe({ error: error => expect(error.message).toContain('no forma parte') }); http.expectNone(() => true);

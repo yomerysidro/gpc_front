@@ -11,6 +11,13 @@ export function bloqueoEstructural(b: BeneficiarioCertificacion, r: EvaluacionCe
 }
 export function estadoBeneficiario(b: BeneficiarioCertificacion, r: EvaluacionCertificacion): string {
   if (!mismoContexto(b, r)) return 'Estado no confirmado';
+  if (b.id_certificado) {
+    if (b.disponible_rrhh === true) return 'Listo para entrega';
+    if (b.pdf_confirmado === true) return 'Revisión confirmada';
+    if (b.estado_documento === 'PENDIENTE_FIRMA') return 'Enviado a Gerencia';
+    if (b.estado_documento === 'PREPARADO') return 'Pendiente de envío';
+    if (b.estado_generacion !== 'Emitido') return 'Certificado preparado';
+  }
   if (bloqueoEstructural(b, r)) return 'Preparación no disponible';
   const identidad = r.origen !== 'sesion' || r.identidad_sesion_disponible === true;
   if (identidad && b.estado_generacion === 'Emitido' && Number(b.id_certificado) > 0 && Number(b.id_certificado_documento) > 0) return 'Emitido';

@@ -1,0 +1,81 @@
+<div class="portal">
+  <header class="cabecera">
+    <div class="marca"><img src="/marca/escudo-160.webp" alt="Escudo municipal" width="64" height="72" /><span>Municipalidad Distrital de Morales<small>Servicio de consulta ciudadana</small></span></div>
+    <span class="acceso"><span class="material-symbols-outlined" aria-hidden="true">verified</span> Acceso público</span>
+  </header>
+  <main id="contenido-portal">
+    <div class="presentacion"><p class="antetitulo">MUNICIPALIDAD DISTRITAL DE MORALES</p><h1>Portal Público de Certificados</h1><p>Consulta y verifica tus certificados</p></div>
+
+      <section class="tarjeta consulta" aria-labelledby="titulo-busqueda">
+        <h2 id="titulo-busqueda">Encuentra tu certificado</h2>
+        <div class="selector" role="group" aria-label="Forma de búsqueda">
+          <button type="button" [attr.aria-pressed]="modo() === 'dni'" (click)="cambiarModo('dni')">Buscar por DNI</button>
+          <button type="button" [attr.aria-pressed]="modo() === 'codigo'" (click)="cambiarModo('codigo')">Buscar por código</button>
+        </div>
+        <form (submit)="$event.preventDefault(); buscar()" [attr.aria-busy]="cargando()" novalidate>
+          @if (modo() === 'dni') {
+            <label for="dni-publico">DNI</label>
+            <p id="dni-ayuda" class="ayuda">Ingresa los 8 dígitos de tu DNI peruano. No necesitas un código adicional.</p>
+            <input id="dni-publico" class="input" type="text" inputmode="numeric" maxlength="8" autocomplete="off" [formControl]="dni" aria-describedby="dni-ayuda dni-error" [attr.aria-invalid]="dni.touched && dni.invalid" />
+            <p id="dni-error" class="validacion">@if (dni.touched && dni.invalid) { El DNI debe contener 8 dígitos numéricos. }</p>
+          } @else {
+            <label for="codigo-portal">Código de verificación</label>
+            <p id="codigo-ayuda" class="ayuda">Pega el código de 30 caracteres de tu certificado. No necesitas ingresar tu DNI.</p>
+            <input id="codigo-portal" class="input" type="text" maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false" [formControl]="codigo" aria-describedby="codigo-ayuda codigo-error" [attr.aria-invalid]="codigo.touched && codigo.invalid" />
+            <p id="codigo-error" class="validacion">@if (codigo.touched && codigo.invalid) { Ingresa el código de 30 caracteres, con números y letras de la a a la f en minúscula. }</p>
+          }
+          <button class="btn principal" type="submit" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">search</span>{{ cargando() ? 'Consultando…' : 'Consultar' }}</button>
+        </form>
+        @if (cargando()) { <p role="status">Consultando el certificado…</p> }
+        @if (mensaje()) { <p class="aviso" role="status">{{ mensaje() }}</p> }
+      </section>
+      @if (resultadosDni()?.length === 0) { <p role="status">No hay certificados disponibles para esta consulta.</p> }
+      @for (r of tarjetas(); track claveTarjeta(r)) {
+        <section class="tarjeta resultados" aria-label="Resultado de la consulta" aria-live="polite">
+          @switch (r.estado) {
+            @case ('disponible') {
+              <div class="resultado-cabecera">
+                <div class="resultado-identidad"><span class="material-symbols-outlined insignia" aria-hidden="true">workspace_premium</span><div><span class="etiqueta">CERTIFICADO</span><h2>{{ r.tipo || 'Certificado' }}</h2></div></div>
+                <span class="estado">{{ r.verificado ? r.estadoPublico : 'Disponible' }}</span>
+              </div>
+              @if (r.actividad) { <p class="actividad-certificado">{{ r.actividad }}</p> }
+              @if (r.sesion) { <p>{{ r.sesion }}</p> }
+              @if (r.verificado) { <p>Este documento consta en los registros de la Municipalidad Distrital de Morales.</p><p>Estado del documento: Vigente · Integridad: Verificada</p> }
+              @else { <p class="estado-publico">{{ r.estadoPublico }}</p> }
+              <p class="codigo">Código de verificación: {{ r.codigo }}</p>
+              @if (r.fecha) { <p>{{ r.fechaEtiqueta || 'Fecha del documento' }}: {{ r.fecha | date:'dd/MM/yyyy' }}</p> }
+              @if (r.urlPdf) { <button type="button" class="btn principal" (click)="verCertificado(r)">Ver certificado</button> <a class="btn descargar" [href]="r.urlPdf + '&descargar=1'">Descargar PDF</a> }
+              @else { <p>El archivo no está disponible para visualización pública.</p> }
+            }
+            @case ('anulado') { <h2>Documento anulado o revocado</h2><p>Este documento no está disponible para visualización ni descarga.</p> }
+            @case ('no-encontrado') { <h2>No se encontró un certificado con ese código.</h2><p>Verifica que esté escrito correctamente.</p> }
+            @case ('integridad-no-verificada') { <h2>Integridad del archivo no confirmada</h2><p>No se pudo verificar el archivo de este documento.</p> }
+            @default { <h2>Registro encontrado</h2><p>El documento no está disponible para visualización pública.</p> }
+          }
+          @if (r.estado !== 'disponible' && r.estado !== 'no-encontrado') {
+            @if (r.tipo) { <p>{{ r.tipo }}</p> }
+            @if (r.actividad) { <p>{{ r.actividad }}</p> }
+            @if (r.sesion) { <p>{{ r.sesion }}</p> }
+            @if (r.fecha) { <p>{{ r.fechaEtiqueta || 'Fecha del documento' }}: {{ r.fecha | date:'dd/MM/yyyy' }}</p> }
+            <p class="codigo">Código de verificación: {{ r.codigo }}</p>
+          }
+        </section>
+      }
+    @if (detalle()) {
+      <section class="tarjeta documento" aria-labelledby="titulo-documento">
+        <button type="button" class="btn" (click)="volver()"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Regresar</button>
+        <h2 id="titulo-documento">{{ resultado()?.tipo || 'Certificado' }}</h2>
+        @if (resultado()?.actividad) { <p class="actividad-certificado">{{ resultado()?.actividad }}</p> }
+        <p class="estado">{{ resultado()?.estadoPublico }}</p>
+        <p class="codigo">Código de verificación: {{ resultado()?.codigo }}</p>
+        @if (cargandoPdf()) { <p role="status">Cargando el documento…</p> }
+        @if (errorPdf()) { <p role="alert">{{ errorPdf() }}</p> }
+        @if (archivo(); as pdf) { <app-pdf-continuo [archivo]="pdf" [ajustarAncho]="true" (fallo)="falloVisor()" /> }
+        @if (urlDescarga(); as url) { <a class="btn principal descargar" [href]="resultado()?.urlPdf + '&descargar=1'" download="certificado.pdf">Descargar PDF</a> }
+        @if (errorPdf() && !archivo() && resultado()?.urlPdf) { <button type="button" class="btn" (click)="verCertificado()">Reintentar PDF</button> }
+      </section>
+    }
+    @if (mensaje() || resultado() || resultadosDni() !== null || detalle()) { <button type="button" class="btn nueva" (click)="nuevaConsulta()">Nueva consulta</button> }
+  </main>
+  <footer>Municipalidad Distrital de Morales<span>Portal Público de Certificados · Servicio institucional</span></footer>
+</div>

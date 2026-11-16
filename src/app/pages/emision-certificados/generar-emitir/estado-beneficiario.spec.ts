@@ -23,4 +23,7 @@ describe('Estados de beneficiarios según evidencia de Laravel', () => {
     expect(motivoEmision(b, { ...r, identidad_sesion_disponible: false })).toContain('estructura de datos');
     expect(motivoEmision(b, { ...r, puede_generar_pdf: true, puede_emitir: true })).toContain('API actual');
   });
+  it('no anuncia entrega cuando la disponibilidad persistida está denegada', () => {
+    expect(estadoBeneficiario({ ...b, id_certificado: 9, estado_preparacion: 'PREPARADO_ENTREGA', disponible_rrhh: false }, r)).not.toBe('Listo para entrega');
+  });
 });

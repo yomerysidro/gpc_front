@@ -80,3 +80,36 @@ describe('API real de documentos digitales', () => {
   });
 
 });
+
+// La consulta administrativa reutiliza el mismo documento y verifica sus bytes.
+describe('PDF privado de RR. HH.', () => {
+  let http: HttpTestingController; let api: DocumentosDigitalesService;
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    http = TestBed.inject(HttpTestingController); api = TestBed.inject(DocumentosDigitalesService);
+  });
+  afterEach(() => http.verify());
+  it('solicita el ID de documento y comprueba el hash del catálogo y de la cabecera', async () => {
+    const blob = new Blob(['%PDF-1.4\nPDF privado confirmado'], { type: 'application/pdf' });
+    const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())), b => b.toString(16).padStart(2, '0')).join('');
+    const promesa = firstValueFrom(api.archivoRrhh(31, hash));
+    const req = http.expectOne('/api/rrhh/certificados/31/pdf');
+    expect(req.request.withCredentials).toBeTrue(); expect(req.request.responseType).toBe('blob');
+    req.flush(blob, { headers: { 'Content-Type': 'application/pdf', 'X-Document-SHA256': hash } });
+    expect(await (await promesa).blob.text()).toBe(await blob.text());
+  });
+  it('rechaza una revisión diferente aunque la cabecera corresponda a los bytes recibidos', async () => {
+    const blob = new Blob(['%PDF-1.4\nOtra revisión'], { type: 'application/pdf' });
+    const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())), b => b.toString(16).padStart(2, '0')).join('');
+    const promesa = firstValueFrom(api.archivoRrhh(31, '0'.repeat(64)));
+    http.expectOne('/api/rrhh/certificados/31/pdf').flush(blob, { headers: { 'X-Document-SHA256': hash } });
+    await expectAsync(promesa).toBeRejectedWith(jasmine.objectContaining({ mensaje: jasmine.stringMatching('huella') }));
+  });
+  for (const status of [401, 403, 404, 409]) {
+    it('conserva el error JSON HTTP ' + status + ' sin intentar un PDF alternativo', async () => {
+      const promesa = firstValueFrom(api.archivoRrhh(31)).catch(e => e);
+      http.expectOne('/api/rrhh/certificados/31/pdf').flush(new Blob([JSON.stringify({ message: 'Documento no autorizado' })], { type: 'application/json' }), { status, statusText: 'Error' });
+      expect(await promesa).toEqual(jasmine.objectContaining({ status })); http.expectNone(() => true);
+    });
+  }
+});

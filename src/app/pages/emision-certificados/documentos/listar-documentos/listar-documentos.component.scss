@@ -1,3 +1,8 @@
 .filtros-documentos { display: flex; gap: 1rem; align-items: end; flex-wrap: wrap; margin-bottom: 1rem; }
-.form-field { flex: 1 1 12rem; }.tabla-documentos { max-width: 100%; overflow-x: auto; }.table { min-width: 50rem; }
+.form-field { flex: 1 1 10rem; }.tabla-documentos { max-width: 100%; overflow-x: auto; }.table { min-width: 50rem; }
+.opcion-rrhh { display: block; width: 100%; margin-block: .5rem; text-align: left; }
+.disponible { color: #075a39; font-weight: 600; }
 code, dd { overflow-wrap: anywhere; }dd { margin: .3rem 0 .8rem; }.vacio { text-align: center; }
+
+.estado-catalogo { display: inline-block; border-radius: 1rem; padding: .2rem .6rem; background: #eef3f8; color: #234765; font-size: .85rem; }
+.estado-catalogo.listo { background: #e8f5ec; color: #21643b; }

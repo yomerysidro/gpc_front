@@ -127,7 +127,7 @@
     @if (aviso(); as mensaje) { <p role="status" class="alert" [class.alert-exito]="mensaje.tipo === 'exito'" [class.alert-error]="mensaje.tipo === 'error'">{{ mensaje.texto }}</p> }
     @if (actividadDetalle(); as id) {
       <app-detalle-actividad [actividadId]="id" [revision]="revisionDetalle()" [solicitudRuta]="rutaSolicitud()" [operando]="cambiandoEstado() || enviando()"
-        (volver)="volverAlListado()" (gestionarPonentes)="mostrarPonentesContextuales($event)" (editarActividad)="ejecutar('editar', $event)" (cerrarActividad)="ejecutar('cerrar', $event)" />
+        (volver)="volverAlListado()" (editarActividad)="ejecutar('editar', $event)" (cerrarActividad)="ejecutar('cerrar', $event)" />
     } @else {
       <p>Selecciona una actividad para ver sus detalles.</p>
     }
@@ -151,15 +151,15 @@
       } @else {
         <button class="tarjeta-accion" type="button" disabled title="Requiere participantes.ver"><span class="material-symbols-outlined" aria-hidden="true">groups</span><span>Participantes</span></button>
       }
-      <button type="button" class="tarjeta-accion" title="Gestionar ponentes de esta actividad" [disabled]="!permitido('ponentes-firmantes.ver')" (click)="ejecutar('ponentes', actividad)">
+      <button type="button" class="tarjeta-accion" title="Consultar ponentes de la actividad" [disabled]="!permitido('ponentes-firmantes.ver')" (click)="ejecutar('ponentes', actividad)">
         <span class="material-symbols-outlined" aria-hidden="true">co_present</span><span>Ponentes</span>
       </button>
       @if (permitido('actividades.ver')) {
-        <a class="tarjeta-accion" routerLink="/certificaciones/sesiones-asistencia" [queryParams]="{ id_actividad: actividad.id_actividad }" (click)="dialogoAcciones.cerrar()">
-          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><span>Sesiones y asistencia</span>
+        <a class="tarjeta-accion" routerLink="/certificaciones/actividades" [queryParams]="{ id_actividad: actividad.id_actividad }" (click)="dialogoAcciones.cerrar()">
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><span>Sesiones de la actividad</span>
         </a>
       } @else {
-        <button class="tarjeta-accion" type="button" disabled title="Requiere actividades.ver"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><span>Sesiones y asistencia</span></button>
+        <button class="tarjeta-accion" type="button" disabled title="Requiere actividades.ver"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><span>Sesiones de la actividad</span></button>
       }
       <button type="button" class="tarjeta-accion tarjeta-cerrar" title="Cerrar actividad" [disabled]="actividad.estado !== 'Activa' || !permitido('actividades.editar') || cambiandoEstado()" (click)="ejecutar('cerrar', actividad)">
         <span class="material-symbols-outlined" aria-hidden="true">lock</span><span>Cerrar actividad</span>
@@ -173,7 +173,7 @@
 <app-dialogo #dialogoPonentes class="modal-ponentes" titulo="Ponentes de la actividad" [mostrarCerrar]="true" [cierreControlado]="true" (cierreSolicitado)="!guardandoPonente() && dialogoPonentes.cerrar()" (cerrado)="cerrarDetalle()" (keydown.escape)="bloquearEscapePonentes($event)">
   @if (actividadPonentes(); as actividad) {
     <p class="contexto-actividad">Actividad: <strong>{{ actividad.nombre }}</strong> · #{{ actividad.id_actividad }}</p>
-    <p class="form-ayuda">Vincular un ponente no emite certificados. La certificación depende de la participación y los requisitos acreditados.</p>
+    <p class="form-ayuda">Aquí se conservan los vínculos históricos de la actividad. La asignación de ponentes se realiza desde cada sesión, en «Sesiones de la actividad».</p>
     @if (avisoPonentes()) { <p role="status">{{ avisoPonentes() }}</p> }
     @if (cargandoPonentes()) { <p role="status">Consultando asignaciones…</p> }
     @else if (errorPonentes()) {
@@ -188,21 +188,6 @@
         } @empty { <li>No hay ponentes asignados a esta actividad.</li> }
       </ul>
     }
-    @if (cargandoCatalogoPonentes()) { <p role="status">Consultando catálogo de RR. HH.…</p> }
-    @if (errorCatalogoPonentes()) {
-      <p class="error-text" role="alert">{{ errorCatalogoPonentes() }}</p><button class="btn" type="button" (click)="cargarCatalogoPonentes()">Reintentar catálogo</button>
-    }
-    <form *appHasPermission="'ponentes-firmantes.crear'" class="formulario" [formGroup]="formPonente" (ngSubmit)="vincularPonente()">
-      <div class="form-field"><label for="actividad-ponente">Ponente registrado *</label>
-        <select id="actividad-ponente" class="input" formControlName="id_persona_ponente" [attr.aria-invalid]="formPonente.controls.id_persona_ponente.touched && formPonente.invalid">
-          <option value="">Selecciona un ponente</option>
-          @for (ponente of opcionesPonentes(); track ponente.id_persona_ponente) { <option [value]="ponente.id_persona_ponente" [disabled]="ponenteAsociado(ponente.id_persona_ponente)">{{ ponente.nombre }}{{ ponenteAsociado(ponente.id_persona_ponente) ? ' · Ya asociado' : '' }}</option> }
-        </select>
-        @if (formPonente.controls.id_persona_ponente.touched && formPonente.invalid) { <p class="error-text">Selecciona un ponente del catálogo.</p> }
-      </div>
-      @if (!cargandoCatalogoPonentes() && !errorCatalogoPonentes() && !opcionesPonentes().length) { <p role="status">No hay ponentes registrados disponibles en el catálogo autorizado.</p> }
-      <button class="btn btn-primary" type="submit" [disabled]="guardandoPonente() || cargandoCatalogoPonentes() || cargandoPonentes() || !!errorCatalogoPonentes() || !!errorPonentes() || !opcionesPonentes().length">{{ guardandoPonente() ? 'Procesando…' : 'Asociar ponente' }}</button>
-    </form>
     <div class="dialogo-acciones"><button class="btn" type="button" [disabled]="guardandoPonente()" (click)="dialogoPonentes.cerrar()">Cerrar</button></div>
   }
 </app-dialogo>

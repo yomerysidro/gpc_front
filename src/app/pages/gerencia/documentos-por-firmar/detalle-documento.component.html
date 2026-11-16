@@ -1,11 +1,14 @@
 <header class="titulo-detalle">
-  <a class="btn regreso" routerLink="/pendientes/documentos-firmar" [queryParams]="{ page: paginaRegreso() }" title="Volver a documentos por firmar" aria-label="Volver a documentos por firmar"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span></a>
+  <a class="btn regreso" routerLink="/pendientes/documentos-firmar" [queryParams]="{ page: paginaRegreso() }" title="Volver a certificados por firmar" aria-label="Volver a certificados por firmar"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span></a>
   <h1>Revisar certificado</h1>
-  @if (documento(); as doc) { <span class="estado">{{ nombreEstado(doc.estado_certificado) }}</span> }
+  @if (documento(); as doc) { <span class="estado">{{ disponibleRrhh() ? 'Listo para entrega' : 'Pendiente de firma' }}</span> }
 </header>
 @if (cargas().has('documento')) { <p role="status">Consultando documento…</p> }
 @if (errores()['documento']) { <p role="alert">{{ errores()['documento'] }}</p><button type="button" class="btn" (click)="cargarDocumento()">Reintentar documento</button> }
 @if (documento(); as doc) {
+  @if (doc.origen === 'practica' || doc.origen === 'reconocimiento') {
+    <p>{{ doc.beneficiario?.nombre }} · {{ doc.tipo_certificado }} · {{ doc.origen === 'practica' ? 'Registro de prácticas' : 'Reconocimiento municipal' }}</p>
+  }
   <div class="detalle-documental">
     <section class="pdf" aria-label="PDF del certificado">
       <div class="estado-previa" aria-live="polite">
@@ -25,42 +28,68 @@
     </section>
     <aside aria-label="Información y acciones del certificado">
       <section class="panel-firmas" aria-labelledby="titulo-firmas">
-        <h2 id="titulo-firmas">Firmas del certificado</h2>
-        <p class="estado">{{ nombreEstado(doc.estado_certificado) }}</p>
-        @if (doc.estado_certificado === 'PENDIENTE_FIRMA' && progreso()?.pdf_revisado_disponible) { <p role="status">Documento preparado. Firmas digitales pendientes</p> }
-<button type="button" class="btn" [disabled]="!puedeAsignar() || ocupada()" (click)="abrirSeleccion()">Seleccionar firmantes</button>
-@if (aviso()) { <p role="status">{{ aviso() }}</p> }
-@if (seleccionando()) {
-<section aria-label="Seleccionar responsables"><h3>Funcionarios del certificado</h3>
-@if (cargas().has('disponibles')) { <p role="status">Consultando funcionarios…</p> }
-<label>Buscar<input class="input" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" /></label>
-<div class="funcionarios">@for (t of filtrados(); track t.id_persona_trabajador) { <label class="firmante"><span><input type="checkbox" [checked]="marcado(t)" [disabled]="ocupada()" (change)="alternar(t)" /> {{ t.nombre }}</span><span>{{ t.cargo }}</span><small>{{ t.area || 'Área no informada' }}</small></label> }</div>
-<label>Modalidad<select class="input" [ngModel]="modalidad()" (ngModelChange)="cambiarModalidad($event)" [disabled]="ocupada()"><option value="PARALELA">Paralela</option><option value="SECUENCIAL">Secuencial</option></select></label>
-<ol>@for (t of seleccion(); track t.id_persona_trabajador; let i = $index) { <li>{{ t.nombre }}<button type="button" [disabled]="i === 0 || ocupada()" (click)="mover(i,-1)" aria-label="Subir firmante">↑</button><button type="button" [disabled]="i === seleccion().length - 1 || ocupada()" (click)="mover(i,1)" aria-label="Bajar firmante">↓</button></li> }</ol>
-<p>El plan guardado no se reemplaza automáticamente. Puede seleccionar hasta 8 responsables.</p>
-@if (!listaParaGuardar() && !previaCargando() && seleccion().length) { <button type="button" class="btn" [disabled]="ocupada()" (click)="actualizarPrevia()">Actualizar vista previa</button> }
-<button type="button" class="btn" [disabled]="!listaParaGuardar() || ocupada()" (click)="guardar()">Guardar y confirmar certificado</button><button type="button" class="btn" [disabled]="ocupada()" (click)="cancelar()">Cancelar selección</button></section>
-}
-@if (ocupada()) { <p role="status">Procesando solicitud…</p> }
-@for (clave of ['disponibles', 'guardar', 'cancelar', 'recuperacion']; track clave) { @if (errores()[clave]) { <p role="alert">{{ errores()[clave] }}</p> } }
-
-        @if (cargas().has('progreso')) { <p role="status">Consultando firmas…</p> }
-        @if (errores()['progreso']) { <p role="alert">{{ errores()['progreso'] }}</p> }
-        @if (errores()['integridad'] || integridad()?.integridad_verificada === false) { <p role="alert">No se pudo verificar el documento.</p> }
-        @for (f of firmantesOrdenados(); track $index) {
-          <div class="firmante">
-            <strong>{{ f.nombre || f.nombre_aprobado }}</strong>
-            <span>{{ f.cargo || f.cargo_aprobado }}</span>
-            @if (f.orden_firma) { <small>Orden {{ f.orden_firma }}</small> }
-            @if (f.estado || f.estado_firma) { <small>{{ f.estado || f.estado_firma }}</small> }
+        <header class="cabecera-firmas">
+          <h2 id="titulo-firmas">Firmas del certificado</h2>
+          <span class="estado" [class.estado-listo]="disponibleRrhh()">{{ disponibleRrhh() ? 'Listo para entrega' : 'Pendiente de firma' }}</span>
+        </header>
+        @if (preparado() && !disponibleRrhh()) { <p role="status">Documento confirmado</p> }
+        @if (!preparado() && !seleccionando()) { <button type="button" class="btn abrir-seleccion" [disabled]="!puedeAsignar() || ocupada()" (click)="abrirSeleccion()">Seleccionar firmantes</button> }
+        @if (aviso()) { <p role="status">{{ aviso() }}</p> }
+        @if (seleccionando() && !preparado()) {
+          <section class="bloque-panel" aria-labelledby="titulo-responsables">
+            <h3 id="titulo-responsables">Responsables</h3>
+            @if (cargas().has('disponibles')) { <p role="status">Consultando funcionarios…</p> }
+            <div class="funcionarios">
+              @for (t of disponibles(); track t.id_persona_trabajador) {
+                <label class="firmante opcion-firmante" [class.seleccionado]="marcado(t)">
+                  <input type="checkbox" [checked]="marcado(t)" [disabled]="ocupada() || requiereActualizar()" (change)="alternar(t)" />
+                  <span class="datos-firmante"><strong>{{ t.nombre }}</strong><span>{{ t.cargo }}</span><small>{{ t.area || 'Área no informada' }}</small></span>
+                </label>
+              } @empty { @if (!cargas().has('disponibles') && !errores()['disponibles']) { <p>No hay funcionarios habilitados para este certificado</p> } }
+            </div>
+          </section>
+          <section class="bloque-panel" aria-labelledby="titulo-modalidad">
+            <h3 id="titulo-modalidad"><label for="modalidad-firma">Modalidad de firma</label></h3>
+            <select id="modalidad-firma" class="input" [ngModel]="modalidad()" (ngModelChange)="cambiarModalidad($event)" [disabled]="ocupada() || requiereActualizar()"><option value="PARALELA">Paralela</option><option value="SECUENCIAL">Secuencial</option></select>
+          </section>
+          @if (seleccion().length) {
+            <section class="bloque-panel" aria-labelledby="titulo-orden">
+              <h3 id="titulo-orden">Orden de responsables</h3>
+              <ol class="orden-responsables">
+                @for (t of seleccion(); track t.id_persona_trabajador; let i = $index) {
+                  <li><span class="numero-orden" aria-hidden="true">{{ i + 1 }}</span><span class="nombre-orden">{{ t.nombre }}</span><span class="controles-orden">
+                    <button type="button" [disabled]="i === 0 || ocupada() || requiereActualizar()" (click)="mover(i,-1)" aria-label="Subir firmante"><span class="material-symbols-outlined subir" aria-hidden="true">chevron_right</span></button>
+                    <button type="button" [disabled]="i === seleccion().length - 1 || ocupada() || requiereActualizar()" (click)="mover(i,1)" aria-label="Bajar firmante"><span class="material-symbols-outlined bajar" aria-hidden="true">chevron_right</span></button>
+                  </span></li>
+                }
+              </ol>
+            </section>
+          }
+          <div class="acciones-panel">
+            @if (!listaParaGuardar() && !previaCargando() && seleccion().length) { <button type="button" class="btn" [disabled]="ocupada() || requiereActualizar()" (click)="actualizarPrevia()">Actualizar vista previa</button> }
+            <button type="button" class="btn btn-primario" [disabled]="(!requiereActualizar() && !listaParaGuardar()) || ocupada()" (click)="guardar()">{{ requiereActualizar() ? 'Actualizar estado' : 'Guardar y poner a disposición' }}</button>
+            <button type="button" class="btn cancelar-seleccion" [disabled]="ocupada() || requiereActualizar()" (click)="cancelar()">Cancelar selección</button>
           </div>
-        } @empty { <p>Firmantes pendientes de asignación</p> }
-        <div class="acciones-oficiales">
-          <button class="btn accion-firmar" type="button" disabled aria-describedby="motivo-firma" title="Firma digital no disponible: Laravel aún no dispone del motor auténtico.">Firmar digitalmente</button>
-          <small id="motivo-firma">Firma digital no disponible.</small>
-          <button class="btn accion-emitir" type="button" disabled aria-describedby="motivo-emision" title="Emisión bloqueada hasta completar y verificar las firmas auténticas y disponer de emisión autorizada.">Emitir certificado</button>
-          <small id="motivo-emision">Requiere firmas auténticas verificadas y emisión autorizada.</small>
-        </div>
+        } @else {
+          <section class="bloque-panel" aria-labelledby="titulo-asignados">
+            <h3 id="titulo-asignados">Responsables</h3>
+            @for (f of firmantesOrdenados(); track $index) {
+              <div class="firmante asignado"><strong>{{ f.nombre || f.nombre_aprobado }}</strong><span>{{ f.cargo || f.cargo_aprobado }}</span>@if (f.area) { <small>{{ f.area }}</small> }</div>
+            } @empty { <p>Firmantes pendientes de asignación</p> }
+          </section>
+          @if (modalidadAplicada(); as aplicada) {
+            <section class="bloque-panel" aria-labelledby="titulo-modalidad-aplicada"><h3 id="titulo-modalidad-aplicada">Modalidad de firma</h3><p class="modalidad-aplicada">{{ aplicada === 'SECUENCIAL' ? 'Secuencial' : 'Paralela' }}</p></section>
+          }
+          @if (firmantesOrdenados().length) {
+            <section class="bloque-panel" aria-labelledby="titulo-orden-final"><h3 id="titulo-orden-final">Orden de responsables</h3><ol class="orden-responsables">@for (f of firmantesOrdenados(); track $index; let i = $index) { <li><span class="numero-orden" aria-hidden="true">{{ f.orden_firma || i + 1 }}</span><span class="nombre-orden">{{ f.nombre || f.nombre_aprobado }}</span></li> }</ol></section>
+          }
+        }
+        @if (ocupada()) { <p role="status">{{ cargas().has('guardar') ? 'Guardando certificado...' : 'Cargando certificado...' }}</p> }
+        @for (clave of ['disponibles', 'guardar', 'cancelar', 'recuperacion']; track clave) { @if (errores()[clave]) { <p role="alert">{{ errores()[clave] }}</p> } }
+        @if (cargas().has('progreso')) { <p role="status">Consultando firmas…</p> }
+        @if (errores()['progreso'] || progreso()?.integridad_verificada === false) { <p role="alert">{{ errores()['progreso'] || 'No se pudo verificar el documento.' }}</p><button type="button" class="btn" [disabled]="cargas().has('progreso') || ocupada()" (click)="actualizarProgreso()">Reintentar consulta del documento</button> }
+        @if (errores()['integridad']) { <p role="alert">{{ errores()['integridad'] }}</p><button type="button" class="btn" [disabled]="cargas().has('integridad') || ocupada()" (click)="verificarIntegridad()">Reintentar verificación</button> }
+        @else if (integridad()?.integridad_verificada === false) { <p role="alert">No se pudo verificar el documento.</p><button type="button" class="btn" [disabled]="cargas().has('integridad') || ocupada()" (click)="verificarIntegridad()">Reintentar verificación</button> }
       </section>
     </aside>
   </div>

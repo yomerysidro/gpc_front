@@ -61,6 +61,7 @@ export class BandejaSolicitudesComponent implements OnInit {
   protected readonly pagina = signal<PaginaSolicitudes<Solicitud> | null>(null);
   protected readonly cargando = signal(false);
   protected readonly ocupado = signal(false);
+  protected readonly pestanaGerencia = signal<'pendientes' | 'aprobadas'>('pendientes');
   protected readonly error = signal<string | null>(null);
   protected readonly aviso = signal<string | null>(null);
   protected readonly detalle = signal<Solicitud | null>(null);
@@ -82,7 +83,16 @@ export class BandejaSolicitudesComponent implements OnInit {
       }
     });
     if (this.bandeja() === 'revision') this.filtros.controls.estado.setValue('Enviada');
-    if (this.bandeja() === 'gerencia') this.filtros.controls.estado.setValue('Pendiente de aprobación');
+    if (this.bandeja() === 'gerencia') {
+      this.route?.queryParamMap.pipe(
+        map(params => params.get('pestana') === 'aprobadas' ? 'aprobadas' as const : 'pendientes' as const),
+        distinctUntilChanged(), takeUntilDestroyed(this.destroyRef),
+      ).subscribe(pestana => {
+        this.pestanaGerencia.set(pestana);
+        this.filtros.controls.estado.setValue(pestana === 'aprobadas' ? 'Aprobada' : 'Pendiente de aprobación');
+        this.cargar();
+      });
+    }
     if (this.bandeja() === 'propias') {
       // Un cambio de estado cancela la espera de búsqueda y consulta ambos valores actuales.
       merge(
@@ -95,7 +105,7 @@ export class BandejaSolicitudesComponent implements OnInit {
     if (this.bandeja() === 'propias' && estado?.['solicitudEnviada']) {
       this.aviso.set('Solicitud enviada y confirmada por Laravel.');
     }
-    this.cargar();
+    if (this.bandeja() !== 'gerencia' || !this.route) this.cargar();
     if (this.bandeja() === 'propias' && this.api.integrado) this.api.contexto().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: contexto => this.puedeCrear.set(contexto.puedeCrear), error: error => this.error.set(mensajeSolicitudes(error)),
     });
@@ -103,6 +113,7 @@ export class BandejaSolicitudesComponent implements OnInit {
   protected cargar(numero = 1): void {
     if (!this.api.integrado) { this.pagina.set(null); this.cargando.set(false); this.error.set(null); return; }
     const filtros = this.filtros.getRawValue();
+    if (this.bandeja() === 'gerencia') filtros.estado = this.pestanaGerencia() === 'aprobadas' ? 'Aprobada' : 'Pendiente de aprobación';
     if (filtros.desde && filtros.hasta && filtros.hasta < filtros.desde) { this.error.set('La fecha final del filtro no puede preceder a la inicial.'); return; }
     this.carga?.unsubscribe(); this.cargando.set(true); this.error.set(null);
     if (this.bandeja() !== 'propias') this.pagina.set(null);
@@ -114,10 +125,11 @@ export class BandejaSolicitudesComponent implements OnInit {
   protected limpiar(): void {
     this.filtros.reset();
     if (this.bandeja() === 'revision') this.filtros.controls.estado.setValue('Enviada');
-    if (this.bandeja() === 'gerencia') this.filtros.controls.estado.setValue('Pendiente de aprobación');
+    if (this.bandeja() === 'gerencia') this.filtros.controls.estado.setValue(this.pestanaGerencia() === 'aprobadas' ? 'Aprobada' : 'Pendiente de aprobación');
     this.cargar();
   }
   protected acciones(fila: Solicitud): readonly AccionSolicitud[] {
+    if (this.bandeja() === 'gerencia' && (this.pestanaGerencia() === 'aprobadas' || fila.estado !== 'Pendiente de aprobación')) return [];
     const permitidas: readonly AccionSolicitud[] = this.bandeja() === 'propias' ? ['Enviar'] : this.bandeja() === 'revision'
       ? ['Iniciar revisión', 'Observar', 'Derivar'] : ['Aprobar', 'Rechazar'];
     return this.api.accionesPermitidas(fila).filter(accion => permitidas.includes(accion));
@@ -125,6 +137,19 @@ export class BandejaSolicitudesComponent implements OnInit {
   protected ver(fila: Solicitud): void {
     if (fila.puedeVerDetalle === false) return;
     this.abrirDetalle(fila.id);
+  }
+  protected cambiarPestanaGerencia(pestana: 'pendientes' | 'aprobadas'): void {
+    if (this.ocupado() || this.pestanaGerencia() === pestana) return;
+    if (this.detalle() || this.cargandoDetalle()) this.dialogo().cerrar();
+    this.aviso.set(null);
+    void this.router.navigate([], { relativeTo: this.route!, queryParams: { pestana: pestana === 'aprobadas' ? pestana : null }, queryParamsHandling: 'merge' });
+  }
+  protected teclearPestanasGerencia(evento: KeyboardEvent): void {
+    if (this.ocupado() || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(evento.key)) return;
+    evento.preventDefault();
+    const destino = evento.key === 'Home' ? 'pendientes' : evento.key === 'End' ? 'aprobadas' : this.pestanaGerencia() === 'pendientes' ? 'aprobadas' : 'pendientes';
+    this.cambiarPestanaGerencia(destino);
+    (evento.currentTarget as HTMLElement).querySelector<HTMLButtonElement>('#gerencia-' + destino)?.focus();
   }
   private abrirDetalle(id: string): void {
     this.cargaDetalle?.unsubscribe(); this.detalle.set(null); this.errorDetalle.set(null); this.cargandoDetalle.set(true); this.dialogo().abrir();
@@ -141,6 +166,7 @@ export class BandejaSolicitudesComponent implements OnInit {
     this.api.decidir(confirmacion.registro.id, confirmacion.registro.version, confirmacion.accion, confirmacion.motivo).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: fila => {
         this.ocupado.set(false); this.modal().cerrar(); this.aviso.set(`Operación confirmada por el servidor. Estado: ${fila.estado}.`);
+        if (this.bandeja() === 'gerencia' && this.detalle()) { this.dialogo().cerrar(); this.cerrarDetalle(); }
         // Mantener visible la etapa de revisión para poder derivar después del POST /review.
         if (this.bandeja() === 'revision' && confirmacion.accion === 'Iniciar revisión') this.filtros.controls.estado.setValue('En revisión');
         this.cargar(pagina);

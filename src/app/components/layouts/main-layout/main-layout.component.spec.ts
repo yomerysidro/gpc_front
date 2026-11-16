@@ -37,12 +37,13 @@ describe('Layout compartido con scroll independiente', () => {
     expect(marco!.contentDocument!.documentElement.scrollWidth).toBeLessThanOrEqual(1024);
   });
 
-  it('el Sidebar no tiene scroll propio y mantiene accesibles los diálogos nativos', () => {
+  it('el Sidebar permite alcanzar todas las opciones y mantiene accesibles los diálogos nativos', () => {
     const sidebar = elemento<HTMLElement>('app-sidebar'), principal = elemento<HTMLElement>('main');
     for (const boton of Array.from(sidebar.querySelectorAll<HTMLButtonElement>('button.modulo'))) if (boton.getAttribute('aria-expanded') !== 'true') boton.click();
     fixture.detectChanges();
-    expect(getComputedStyle(sidebar).overflowY).toBe('clip');
-    sidebar.scrollTop = 150; expect(sidebar.scrollTop).toBe(0); expect(principal.scrollTop).toBe(0);
+    expect(getComputedStyle(sidebar).overflowY).toBe('auto');
+    if (sidebar.scrollHeight > sidebar.clientHeight) { sidebar.scrollTop = 150; expect(sidebar.scrollTop).toBeGreaterThan(0); }
+    expect(principal.scrollTop).toBe(0);
     const dialogo = document.createElement('dialog'); dialogo.textContent = 'Verificación modal'; principal.append(dialogo); dialogo.showModal();
     expect(dialogo.matches(':modal')).toBeTrue(); expect(dialogo.getBoundingClientRect().height).toBeGreaterThan(0);
     dialogo.close(); dialogo.remove();

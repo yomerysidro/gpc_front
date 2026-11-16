@@ -27,6 +27,7 @@ export interface CertificadoParticipacion {
   id_certificado: number; id_participacion: number; id_tipo_certificado: number; estado: string; fecha_emision: string | null;
 }
 export interface BeneficiarioCertificacion {
+  disponible_rrhh?: boolean; pdf_confirmado?: boolean;
   id_participacion: number; id_persona: number; nombre_completo: string; id_actividad: number; id_sesion: number | null;
   id_actividad_sesion?: number | null;
   estado_asistencia?: string | null; documento_identidad?: string; id_preparacion?: number | null;

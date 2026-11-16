@@ -11,6 +11,7 @@ import { AuthService } from '../../core/services/autenticacion/auth.service';
 import { EmisionCertificadosService } from '../../core/services/emision-certificados/emision-certificados.service';
 import { DASHBOARD_SIDEBAR, resolverGruposSidebar, SIDEBAR_CONFIG } from './modulos-navegacion';
 import { SidebarComponent } from './sidebar.component';
+import { ICONOS_DISPONIBLES } from '../../shared/utils/iconos-disponibles';
 
 @Component({ standalone: true, template: '' })
 class DestinoPruebaComponent {}
@@ -19,6 +20,10 @@ const permisosLectura = ['participantes.ver', 'solicitudes.revisar', DASHBOARD_S
   .filter((clave): clave is string => clave !== undefined);
 
 describe('Configuración única del Sidebar institucional', () => {
+  it('asigna a todos los grupos y opciones un icono de la fuente local', () => {
+    const entradas = [DASHBOARD_SIDEBAR, ...SIDEBAR_CONFIG, ...SIDEBAR_CONFIG.flatMap(g => g.hijos)];
+    for (const entrada of entradas) expect(ICONOS_DISPONIBLES.has(entrada.icon)).withContext(entrada.label + ': ' + entrada.icon).toBeTrue();
+  });
   it('conserva el orden funcional y no activa procesos inexistentes', () => {
     expect(SIDEBAR_CONFIG.map(grupo => grupo.id)).toEqual([
       'seguridad', 'recursos-humanos', 'solicitudes', 'actividades', 'emision', 'gerencia', 'reportes', 'configuracion',
@@ -30,7 +35,7 @@ describe('Configuración única del Sidebar institucional', () => {
     }
     expect(entradas.find(hijo => hijo.id === 'documentos-firmar')?.habilitado).toBeTrue();
     expect(SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos).find(hijo => hijo.id === 'generar-emitir')?.path).toBe('/certificaciones/generar-emitir');
-    expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'emision')!.hijos.map(hijo => hijo.label)).toEqual(['Generar y emitir', 'Certificados emitidos', 'Firmas digitales']);
+    expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'emision')!.hijos.map(hijo => hijo.label)).toEqual(['Generar y emitir', 'Certificados emitidos']);
     expect(SIDEBAR_CONFIG.find(grupo => grupo.id === 'actividades')!.hijos.map(hijo => hijo.id)).toEqual(['actividades']);
   });
 
@@ -56,8 +61,8 @@ describe('Configuración única del Sidebar institucional', () => {
     const seguridad = SIDEBAR_CONFIG.find(grupo => grupo.id === 'seguridad')!;
     expect(seguridad.hijos.map(hijo => hijo.id)).toEqual(['usuarios', 'roles']);
     const configuracion = SIDEBAR_CONFIG.find(grupo => grupo.id === 'configuracion')!;
-    expect(configuracion.hijos.map(hijo => hijo.id)).toEqual(['gestion-institucional', 'tipos-clasificaciones']);
-    expect(configuracion.hijos.every(hijo => hijo.catalogos?.length === 3)).toBeTrue();
+    expect(configuracion.hijos.map(hijo => hijo.id)).toEqual(['firmantes-municipales', 'gestion-institucional', 'tipos-clasificaciones']);
+    expect(configuracion.hijos.filter(hijo => hijo.catalogos).every(hijo => hijo.catalogos?.length === 3)).toBeTrue();
     const personas = SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos).find(hijo => hijo.id === 'personas')!;
     expect(personas.path).toBe('/gestion/personas');
     expect(SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos).some(hijo => hijo.path?.includes('verificacion'))).toBeFalse();
@@ -87,6 +92,17 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
   });
   const vista = () => fixture.nativeElement as HTMLElement;
 
+  it('renderiza las ligaduras como iconos locales de tamaño uniforme, incluidos los de Configuración', async () => {
+    await document.fonts.load('300 24px "Material Symbols Outlined"');
+    const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d')!;
+    ctx.font = '300 24px "Material Symbols Outlined"';
+    for (const entrada of [DASHBOARD_SIDEBAR, ...SIDEBAR_CONFIG, ...SIDEBAR_CONFIG.flatMap(g => g.hijos)]) {
+      expect(ctx.measureText(entrada.icon).width).withContext(entrada.label).toBeCloseTo(24, 0);
+    }
+    const icono = vista().querySelector<HTMLElement>('.modulo .material-symbols-outlined')!;
+    expect(getComputedStyle(icono).width).toBe('24px'); expect(getComputedStyle(icono).color).toBe('rgb(255, 255, 255)');
+  });
+
   it('muestra una sola navegación para el administrador con las capacidades asignadas', () => {
     const grupos = Array.from(vista().querySelectorAll('button.modulo'), boton => boton.textContent?.replace('expand_more', '').trim());
     expect(grupos.length).toBe(8);
@@ -113,7 +129,7 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
 
   it('un consultor con lectura de Dashboard y Reportes obtiene sus cuatro consultas', () => {
     permisos.set(['dashboard.ver', 'reportes.ver']); fixture.detectChanges();
-    expect(vista().querySelectorAll('a').length).toBe(5);
+    expect(vista().querySelectorAll('a').length).toBe(6);
     expect(vista().querySelector('a')?.getAttribute('href')).toBe('/inicio');
     expect(vista().querySelector('#submenu-reportes')?.querySelectorAll('a').length).toBe(4);
     expect(vista().querySelector('#submenu-seguridad')).toBeNull();
@@ -123,7 +139,8 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
     permisos.set([]);
     fixture.componentRef.setInput('items', [{ label: 'Administrador', path: '/usuarios' }, { label: 'Gerencia', path: '/gerencia' }]);
     fixture.detectChanges();
-    expect(vista().querySelectorAll('a').length).toBe(0);
+    expect(vista().querySelectorAll('a').length).toBe(1);
+    expect(vista().querySelector('a')?.getAttribute('href')).toBe('/portal-certificados');
     expect(vista().textContent).toContain('No hay opciones habilitadas');
   });
 
@@ -140,9 +157,16 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
     for (const [url, grupo, texto] of [
       ['/certificaciones/reconocimientos/17/editar', 'recursos-humanos', 'Reconocimientos'],
       ['/certificaciones/certificados/9/documentos/11/visor', 'emision', 'Certificados emitidos'],
-      ['/certificaciones/firmas/asignar-firmantes', 'emision', 'Firmas digitales'],
+      ['/certificaciones/generar-emitir', 'emision', 'Generar y emitir'],
+      ['/certificaciones/certificados/documentos', 'emision', 'Certificados emitidos'],
+      ['/certificaciones/certificados/documentos?consulta=rrhh', 'emision', 'Certificados emitidos'],
+      ['/certificaciones/certificados/9', 'emision', 'Certificados emitidos'],
+      ['/gestion/firmantes-municipales', 'configuracion', 'Firmantes municipales'],
+      ['/certificaciones/firmas/aplicadas', 'configuracion', 'Firmantes municipales'],
+      ['/pendientes/documentos-firmar', 'gerencia', 'Certificados por firmar'],
       ['/gestion/tipos-clasificaciones?pestana=tipos-actividad', 'configuracion', 'Tipos y clasificaciones'],
       ['/certificaciones/actividades', 'actividades', 'Actividades'],
+      ['/certificaciones/actividades/7/sesiones/15/asistencia', 'actividades', 'Actividades'],
       ['/certificaciones/participantes?id_actividad=7', 'actividades', 'Actividades'],
       ['/certificaciones/sesiones-asistencia?id_actividad=7&pestana=asistencias', 'actividades', 'Actividades'],
     ]) {
@@ -202,10 +226,12 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
     TestBed.configureTestingModule({ providers: [
       provideRouter(routes), provideHttpClient(), provideHttpClientTesting(),
       { provide: AuthService, useValue: {
+        isAuthenticated: () => autenticado,
         cargarSesion: () => of(autenticado), capacidadesSolicitudes: computed(() => permisos().includes('solicitudes.consultar') ? CAPACIDADES_ADMIN_SOLICITUDES_TEST : SIN_CAPACIDADES_SOLICITUDES_TEST), tienePermiso: (clave: string) => permisos().includes(clave),
         usuario: signal(null), modulos: signal([]),
       } },
       { provide: EmisionCertificadosService, useValue: {
+        catalogoAutorizado: () => of([]),
         listar: () => of({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }),
         pendientesCertificacion: () => of({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }), listarTodos: () => of([]), trabajadores: () => of([]), relacionRegistros: () => of([]),
         documentosIdentidad: () => of({}), relaciones: () => of([]),
@@ -218,7 +244,7 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
   function resolverLecturas(): void {
     for (const request of http.match(() => true)) {
       expect(request.request.method).toBe('GET');
-      request.flush({ success: true, message: '', data: request.request.url.endsWith('/funcionarios-firmantes/trabajadores') ? { funcionarios: [] } : request.request.url.endsWith('/certificados-documentos/list') ? {data:[],current_page:1,last_page:1} : [] });
+      request.flush({ success: true, message: '', data: request.request.url.includes('/funcionarios-firmantes') ? { funcionarios: [] } : request.request.url.endsWith('/certificados-documentos/list') ? {data:[],current_page:1,last_page:1} : [] });
     }
   }
 
@@ -235,10 +261,12 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
     ['/certificaciones/reconocimientos', 'app-listar-reconocimientos'],
     ['/certificaciones/actividades', 'app-listar-actividades'],
     ['/certificaciones/participantes', 'app-listar-participantes'],
-    ['/certificaciones/sesiones-asistencia', 'app-actividades'],
+    ['/certificaciones/sesiones-asistencia', 'app-listar-actividades'],
     ['/certificaciones/generar-emitir', 'app-generar-emitir'],
     ['/certificaciones/certificados/documentos', 'app-listar-documentos'],
     ['/certificaciones/firmas', 'app-listar-firmas'],
+    ['/gestion/firmantes-municipales', 'app-listar-firmas'],
+    ['/firmas', 'app-listar-firmas'],
     ['/gestion/configuracion?pestana=areas', 'app-area'],
     ['/gestion/configuracion?pestana=instituciones', 'app-institution'],
     ['/gestion/configuracion?pestana=tipos-documento', 'app-document-type'],
@@ -250,6 +278,9 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
     it('reutiliza el componente existente de ' + url, async () => {
       const harness = await RouterTestingHarness.create(url); resolverLecturas(); harness.detectChanges();
       const anteriores: Record<string, string> = {
+        '/certificaciones/sesiones-asistencia': '/certificaciones/actividades',
+        '/certificaciones/firmas': '/gestion/firmantes-municipales',
+        '/firmas': '/gestion/firmantes-municipales',
         '/certificaciones/configuracion/tipos-actividad': '/gestion/tipos-clasificaciones?pestana=tipos-actividad',
         '/certificaciones/configuracion/tipos-participacion': '/gestion/tipos-clasificaciones?pestana=tipos-participacion',
         '/certificaciones/configuracion': '/gestion/tipos-clasificaciones?pestana=tipos-certificado',
@@ -293,7 +324,7 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
     autenticado = false; permisos.set([]);
     const harness = await RouterTestingHarness.create('/verificar/CODIGO');
     expect(harness.routeNativeElement!.querySelector('app-sidebar, app-header')).toBeNull();
-    expect(TestBed.inject(Router).url).toBe('/verificar/CODIGO');
+    expect(TestBed.inject(Router).url).toBe('/portal-certificados?codigo=CODIGO');
     await harness.navigateByUrl('/gestion/personas');
     expect(TestBed.inject(Router).url).toBe('/login?returnUrl=%2Fgestion%2Fpersonas');
   });

@@ -1,0 +1,28 @@
+<nav class="regreso" aria-label="Navegación de asistencia"><button type="button" class="boton-volver" title="Volver al detalle de actividad" aria-label="Volver al detalle de actividad" [disabled]="ocupado()" (click)="volver()"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span></button><span>Actividades / Detalle / Asistencia</span></nav>
+<header class="cabecera">
+  <div class="identidad"><h1>Control de asistencia@if (sesion(); as actual) { — {{ actual.nombre }} }</h1>
+    @if (datos(); as contexto) { <p>{{ contexto.actividad.nombre }}</p> }
+    @if (sesion(); as actual) { <p>{{ fecha(actual['fecha']) }} · {{ actual['hora_inicio'] || 'Hora no disponible' }} – {{ actual['hora_fin'] || 'Hora no disponible' }}</p> }
+  </div>
+  @if (sesion(); as actual) { <span class="estado" [class.finalizada]="actual.estado === 'Finalizada'">{{ actual.estado }}</span> }
+  <div class="acciones">
+    <button class="btn" type="button" [disabled]="ocupado() || !datos()" (click)="actualizar()"><span class="material-symbols-outlined" aria-hidden="true">refresh</span>Actualizar asistencia</button>
+    @if (!soloLectura() && listado()?.cambiosPendientes()) { <button class="btn btn-primary" type="button" [disabled]="!listado()?.puedeGuardarAsistencia()" (click)="guardar()">Guardar asistencia</button> }
+  </div>
+</header>
+@if (cargando()) { <p role="status">Consultando asistencia…</p> }
+@if (error()) { <p class="alert alert-error" role="alert">{{ error() }}</p>@if (!datos()) { <button class="btn" type="button" [disabled]="ocupado()" (click)="reintentar()">Reintentar</button> } }
+@if (aviso()) { <p role="status">{{ aviso() }}</p> }
+@if (sesion()?.contadores; as c) {
+  <div class="indicadores" aria-label="Resumen de asistencia" aria-live="polite">
+    <div><span class="material-symbols-outlined" aria-hidden="true">groups</span><strong>{{ c.participantes_sesion }}</strong><span>Participantes</span></div>
+    <div><span class="material-symbols-outlined" aria-hidden="true">co_present</span><strong>{{ c.presentes }}</strong><span>Presentes</span></div>
+    <div><span class="material-symbols-outlined" aria-hidden="true">person_off</span><strong>{{ c.ausentes }}</strong><span>Ausentes</span></div>
+    <div><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span><strong>{{ c.pendientes }}</strong><span>Pendientes</span></div>
+  </div>
+}
+@if (datos(); as contexto) {
+  @if (soloLectura()) { <p class="consulta" role="status">Asistencia de solo lectura.</p> }
+  <app-listado-emision recurso="attendance" [paginaCompleta]="true" [enDetalle]="true" [accionesExternas]="true" [recargarTrasGuardar]="true" [soloLectura]="soloLectura()" [estadoInicial]="estadoInicial()" [actividadContexto]="contexto.actividad" [datosContexto]="contexto" (registroGuardado)="actualizarSesion()" />
+}
+<app-dialogo-confirmacion titulo="Cambios de asistencia pendientes" texto="Hay cambios sin guardar. ¿Deseas descartarlos y salir?" confirmar="Descartar cambios" cancelar="Seguir editando" />

@@ -18,6 +18,28 @@ describe('Contrato HTTP de Emisión con Laravel', () => {
   let http: HttpTestingController;
   const recursos: readonly RecursoEmision[] = ['certificados', 'tipos-certificado', 'reconocimientos',
     'certificados-documentos', 'firmas', 'certificados-firmas', 'consultas-certificado', 'actividades-firmas'];
+
+  for (const sesionCertificado of [15, 16]) {
+    it('sincroniza participación, sesión y tipo sin mezclar sesiones: ' + sesionCertificado, () => {
+      const pagina = (data: unknown[]) => ({ data, current_page: 1, last_page: 1, per_page: 100, total: data.length });
+      let beneficiario: { id_certificado?: number | null; id_certificado_documento?: number | null; disponible_rrhh?: boolean } | undefined;
+      service.beneficiariosCertificacion('sesion', 15, { id_tipo_certificado: 4 }).subscribe(r => beneficiario = r.beneficiarios.data[0]);
+      http.expectOne(r => r.url.endsWith('/activity-session/15/beneficiarios')).flush({ success: true, data: {
+        origen: 'sesion', contexto: { id_actividad: 7, id_sesion: 15 }, beneficiarios: pagina([
+          { id_participacion: 30, id_persona: 40, id_actividad: 7, id_sesion: 15, id_tipo_certificado: 4, id_certificado: null },
+        ]),
+      } });
+      const req = http.expectOne(r => r.url.endsWith('/certificados/list'));
+      expect(req.request.params.get('id_participacion')).toBe('30');
+      expect(req.request.params.get('id_sesion')).toBe('15');
+      expect(req.request.params.get('id_tipo_certificado')).toBe('4');
+      req.flush({ success: true, data: pagina([{ id_certificado: 51, id_certificado_documento: 81, id_participacion: 30,
+        id_persona: 40, id_sesion: sesionCertificado, id_tipo_certificado: 4, estado: 'PENDIENTE_FIRMA', estado_certificado: 'PENDIENTE_FIRMA', disponible_rrhh: true }]) });
+      expect(beneficiario?.id_certificado).toBe(sesionCertificado === 15 ? 51 : null);
+      if (sesionCertificado === 15) { expect(beneficiario?.id_certificado_documento).toBe(81); expect(beneficiario?.disponible_rrhh).toBeTrue(); }
+      http.expectNone(r => r.method !== 'GET');
+    });
+  }
   const payloads: Pick<PayloadEmision, 'certificados' | 'tipos-certificado' | 'reconocimientos' | 'certificados-documentos' | 'firmas' | 'actividades-firmas'> = {
     certificados: { id_persona: 1, id_tipo_certificado: 1, id_reconocimiento: null, id_participacion: 2,
       id_practica: null, fecha_emision: '2026-10-27', estado: true, notificado: false, fecha_notificacion: null },
@@ -37,6 +59,22 @@ describe('Contrato HTTP de Emisión con Laravel', () => {
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
+  it('no elige arbitrariamente entre dos documentos de la misma participación, sesión y tipo', () => {
+    const pagina = (data: unknown[]) => ({ data, current_page: 1, last_page: 1, per_page: 100, total: data.length });
+    let error: ErrorApi | undefined;
+    service.beneficiariosCertificacion('sesion', 16, { id_tipo_certificado: 4 }).subscribe({
+      next: () => fail('La identidad documental es ambigua'), error: e => error = e,
+    });
+    http.expectOne(r => r.url.endsWith('/activity-session/16/beneficiarios')).flush({ success: true, data: {
+      origen: 'sesion', contexto: { id_actividad: 7, id_sesion: 16 }, beneficiarios: pagina([
+        { id_participacion: 30, id_persona: 40, id_actividad: 7, id_sesion: 16, id_tipo_certificado: 4 },
+      ]),
+    } });
+    const fila = { id_certificado: 51, id_certificado_documento: 81, id_participacion: 30, id_persona: 40,
+      id_sesion: 16, id_tipo_certificado: 4, estado: 'PREPARADO', estado_certificado: 'PREPARADO' };
+    http.expectOne(r => r.url.endsWith('/certificados/list')).flush({ success: true, data: pagina([fila, { ...fila, id_certificado: 52, id_certificado_documento: 82 }]) });
+    expect(error?.status).toBe(409); http.expectNone(r => r.method !== 'GET');
+  });
 
   it('diferencia el conflicto de esquema de los permisos y conserva el detalle técnico', () => {
     service.beneficiariosCertificacion('sesion', 15, { id_tipo_certificado: 4 }).subscribe({

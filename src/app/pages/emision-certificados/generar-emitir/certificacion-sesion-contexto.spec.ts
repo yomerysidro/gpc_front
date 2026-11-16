@@ -32,7 +32,7 @@ describe('Generar y emitir: contexto real de sesión sin contratos inventados', 
   async function cargarCertificacion(origen: 'sesion' | 'actividad' = 'sesion', actividadId = 7, sesionId: number | null = 15) {
     const pagina = { data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 };
     responder('/certificaciones/pendientes', pagina);
-    responder('/tipos-certificado/list', { data: [{ id_tipo_certificado: 4, nombre_tipo: 'Asistencia' }], current_page: 1, last_page: 1, total: 1, per_page: 100 });
+    responder('/tipos-certificado/list', { data: [{ id_tipo_certificado: 4, nombre_tipo: 'Asistencia', estado: true }], current_page: 1, last_page: 1, total: 1, per_page: 100 });
     harness.detectChanges();
     const tipo = vista().querySelector('select')!; tipo.value = '4'; tipo.dispatchEvent(new Event('change')); harness.detectChanges();
     responder(origen === 'sesion' ? '/activity-session/' + sesionId + '/beneficiarios' : '/activity/' + actividadId + '/beneficiarios-certificacion', {
@@ -40,6 +40,16 @@ describe('Generar y emitir: contexto real de sesión sin contratos inventados', 
       beneficiarios: pagina, puede_preparar: false, puede_emitir: false, puede_firmar: false, motivos_bloqueo: ['Falta relación persistente con la sesión.'],
     });
     await harness.fixture.whenStable(); harness.detectChanges();
+    if (origen === 'sesion' && sesionId !== null) flushPonentes(actividadId, sesionId);
+  }
+  /** El grupo Ponentes consulta su propio vínculo por sesión. */
+  function flushPonentes(actividadId = 7, sesionId = 15): void {
+    for (const req of http.match(r => r.url === `/api/activity-session/${sesionId}/ponentes-certificacion`)) {
+      if (req.cancelled) continue;
+      req.flush({ success: true, data: { origen: 'ponente_sesion', id_actividad: actividadId, id_sesion: sesionId,
+        ponentes_actividad: [], ponentes_sesion: [], relacion_ponente_sesion_disponible: true,
+        puede_preparar: false, motivos_bloqueo: [] } });
+    }
   }
   async function cargarGenerales() {
     for (const recurso of ['certificados', 'tipos-certificado']) responder('/' + recurso + '/list', { data: [], total: 0, current_page: 1, last_page: 1, per_page: 100 });
@@ -54,14 +64,23 @@ describe('Generar y emitir: contexto real de sesión sin contratos inventados', 
     ] });
     http = TestBed.inject(HttpTestingController);
   });
-  afterEach(() => { harness?.fixture.destroy(); http.verify(); });
+  afterEach(() => {
+    // La consulta independiente de ponentes puede quedar en curso al destruir el contexto.
+    for (const req of http.match(r => /\/activity-session\/\d+\/ponentes-certificacion$/.test(r.url))) {
+      if (!req.cancelled) req.flush({ success: true, data: { origen: 'ponente_sesion', id_actividad: 7, id_sesion: 15,
+        ponentes_actividad: [], ponentes_sesion: [], relacion_ponente_sesion_disponible: true,
+        puede_preparar: false, motivos_bloqueo: [] } });
+    }
+    harness?.fixture.destroy();
+    http.verify({ ignoreCancelled: true });
+  });
 
   it('verifica ambos IDs y permite consultar una sesión con la actividad Activa sin calcular elegibilidad', async () => {
-    await iniciar(); expect(vista().textContent).toContain('Verificando actividad y sesión');
+    await iniciar(); expect(vista().textContent).toContain('Cargando certificado...');
     await cargarContexto();
     expect(vista().textContent).toContain('Actividad autorizada'); expect(vista().textContent).toContain('Jornada registrada');
     expect(vista().textContent).toContain('La actividad puede continuar activa si la política institucional lo permite');
-    expect(vista().querySelector('#emision-tab-pendientes')?.getAttribute('aria-selected')).toBe('true');
+    expect(vista().querySelector('#emision-pendientes')).not.toBeNull();
     expect(vista().textContent).toContain('Falta relación persistente con la sesión.');
     expect(vista().querySelector('app-formulario-certificado, app-listar-certificados')).toBeNull();
     expect(vista().querySelector('a[href="/certificaciones/actividades?id_actividad=7"]')).not.toBeNull();
@@ -69,10 +88,36 @@ describe('Generar y emitir: contexto real de sesión sin contratos inventados', 
     http.expectNone(() => true);
   });
 
+  it('restaura actividad y sesión al volver de un reconocimiento con origen ponente_sesion', async () => {
+    await iniciar('?id_actividad=7&id_sesion=15&origen=ponente_sesion&modalidad=sesion');
+    await cargarContexto();
+    expect(vista().textContent).toContain('Actividad autorizada');
+    expect(vista().textContent).not.toContain('El contexto de certificación no es válido');
+    expect(vista().querySelector('app-ponentes-sesion')).not.toBeNull();
+    http.expectNone(r => r.method !== 'GET');
+  });
+  it('restaura el tipo real y carga Beneficiarios automáticamente al regresar del asistente', async () => {
+    await iniciar('?id_actividad=7&id_sesion=15&origen=ponente_sesion&modalidad=sesion&id_tipo_certificado=47');
+    responder('/activity/7', actividad); responder('/activity-session/15', sesion);
+    await harness.fixture.whenStable(); harness.detectChanges();
+    const pendientes = http.expectOne(r => r.url === '/api/certificaciones/pendientes');
+    expect(pendientes.request.params.get('id_tipo_certificado')).toBe('47');
+    pendientes.flush({ success: true, data: { data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 } });
+    responder('/tipos-certificado/list', { data: [{ id_tipo_certificado: 47, nombre_tipo: 'Reconocimiento', estado: true }], current_page: 1, last_page: 1 });
+    const beneficiarios = http.expectOne(r => r.url === '/api/activity-session/15/beneficiarios');
+    expect(beneficiarios.request.params.get('id_tipo_certificado')).toBe('47');
+    beneficiarios.flush({ success: true, data: { origen: 'sesion', contexto: { id_actividad: 7, id_sesion: 15 },
+      beneficiarios: { data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }, motivos_bloqueo: [] } });
+    harness.detectChanges();
+    expect((vista().querySelector('select') as HTMLSelectElement).value).toBe('47');
+    expect(vista().querySelector('app-ponentes-sesion')).not.toBeNull();
+    http.expectNone(r => r.method !== 'GET');
+  });
+
   it('rechaza una sesión ajena aunque sus identificadores sean números válidos', async () => {
     await iniciar(); responder('/activity/7', actividad); responder('/activity-session/15', { ...sesion, id_actividad: 8, nombre: 'Nombre ajeno' });
     await harness.fixture.whenStable(); harness.detectChanges();
-    expect(vista().textContent).toContain('no confirmó la correspondencia'); expect(vista().textContent).not.toContain('Nombre ajeno');
+    expect(vista().textContent).toContain('No se pudo confirmar la actividad y sesión seleccionadas'); expect(vista().textContent).not.toContain('Nombre ajeno');
     expect(vista().querySelector('app-formulario-certificado, app-listar-certificados')).toBeNull(); http.expectNone(() => true);
   });
 
@@ -81,7 +126,7 @@ describe('Generar y emitir: contexto real de sesión sin contratos inventados', 
       await iniciar(); responder('/activity/7', actividad); responder('/activity-session/15', sesion);
       await harness.fixture.whenStable(); harness.detectChanges();
       responder('/certificaciones/pendientes', { data: [], current_page: 1, last_page: 1, total: 0, per_page: 20 });
-      responder('/tipos-certificado/list', { data: [{ id_tipo_certificado: 4, nombre_tipo: 'Asistencia' }], current_page: 1, last_page: 1, total: 1, per_page: 100 });
+      responder('/tipos-certificado/list', { data: [{ id_tipo_certificado: 4, nombre_tipo: 'Asistencia', estado: true }], current_page: 1, last_page: 1, total: 1, per_page: 100 });
     harness.detectChanges();
     const tipo = vista().querySelector('select')!; tipo.value = '4'; tipo.dispatchEvent(new Event('change')); harness.detectChanges();
       const consulta = http.expectOne(r => r.url === '/api/activity-session/15/beneficiarios');
@@ -96,6 +141,7 @@ describe('Generar y emitir: contexto real de sesión sin contratos inventados', 
           current_page: 1, last_page: 1, total: 1, per_page: 20 },
         puede_preparar: false, puede_emitir: false, puede_firmar: false, motivos_bloqueo: ['Falta relación persistente con la sesión.'] } });
       await harness.fixture.whenStable(); harness.detectChanges();
+      flushPonentes(7, 15);
       if (sesionBeneficiario === 15) {
         expect(vista().textContent).toContain('Beneficiario confirmado');
         expect(vista().textContent).toContain('Falta política de elegibilidad.');
@@ -121,8 +167,9 @@ describe('Generar y emitir: contexto real de sesión sin contratos inventados', 
       await iniciar(); responder('/activity-session/15', sesion);
       http.expectOne('/api/activity/7').flush({ message: 'Consulta rechazada por Laravel' }, { status, statusText: 'Error' });
       await harness.fixture.whenStable(); harness.detectChanges();
-      expect(vista().querySelector('[role="alert"]')?.textContent).toContain('HTTP ' + status);
-      expect(vista().querySelector('[role="alert"]')?.textContent).toContain('Consulta rechazada');
+      expect(vista().querySelector('[role="alert"]')?.textContent?.trim()).toBeTruthy();
+      expect(vista().querySelector('[role="alert"]')?.textContent).not.toContain('HTTP ' + status);
+      expect(vista().querySelector('[role="alert"]')?.textContent).not.toContain('Consulta rechazada por Laravel');
       expect(vista().querySelector('app-listar-certificados')).toBeNull(); http.expectNone(() => true);
     });
   }
@@ -131,8 +178,8 @@ describe('Generar y emitir: contexto real de sesión sin contratos inventados', 
     await iniciar(parametros + '&nuevo=1&editar=9'); await cargarContexto();
     expect(vista().querySelector('app-formulario-certificado')).toBeNull();
     expect(vista().querySelector('li.actual')).toBeNull();
-    (vista().querySelector('#emision-tab-preparaciones') as HTMLButtonElement).click(); harness.detectChanges();
-    expect(vista().textContent).toContain('La vista previa temporal por sesión no es un documento registrado');
+    expect(vista().querySelector('#emision-tab-preparaciones')).toBeNull();
+    expect(vista().querySelector('#emision-pendientes')).not.toBeNull();
     expect(vista().querySelector('app-listar-certificados')).toBeNull(); http.expectNone(() => true);
   });
 
@@ -146,20 +193,19 @@ describe('Generar y emitir: contexto real de sesión sin contratos inventados', 
     expect(vista().textContent).toContain('Otra jornada'); expect(vista().textContent).not.toContain('Jornada registrada'); http.expectNone(() => true);
   });
 
-  it('el ingreso general limpia el contexto y las pestañas conservan la única lista de preparaciones sin repetir consultas', async () => {
+  it('el ingreso general limpia el contexto y conserva una sola bandeja sin repetir consultas', async () => {
     await iniciar(); await cargarContexto();
     await harness.navigateByUrl(ruta); harness.detectChanges(); await harness.fixture.whenStable(); harness.detectChanges();
     responder('/certificaciones/pendientes', { data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 });
     responder('/activity-session', []); responder('/activity', []); responder('/tipos-certificado/list', { data: [], total: 0, current_page: 1, last_page: 1, per_page: 100 });
-    (vista().querySelector('#emision-tab-preparaciones') as HTMLButtonElement).click(); harness.detectChanges(); await harness.fixture.whenStable(); await cargarGenerales();
+    harness.detectChanges(); await harness.fixture.whenStable();
     expect(vista().querySelector('.contexto-certificacion')).toBeNull();
-    const lista = vista().querySelector('app-listar-certificados'); expect(lista).not.toBeNull();
-    (vista().querySelector('#emision-tab-pendientes') as HTMLButtonElement).click(); harness.detectChanges();
+    const lista = vista().querySelector('#emision-pendientes'); expect(lista).not.toBeNull();
+    harness.detectChanges();
     await harness.fixture.whenStable(); harness.detectChanges();
-    expect(vista().querySelector('#emision-tab-pendientes')?.getAttribute('aria-selected')).toBe('true');
-    expect(vista().querySelector('app-listar-certificados')).toBe(lista);
-    (vista().querySelector('#emision-tab-preparaciones') as HTMLButtonElement).click(); harness.detectChanges();
-    expect(vista().querySelector('app-listar-certificados')).toBe(lista); http.expectNone(() => true);
+    expect(vista().querySelectorAll('[role="tab"]').length).toBe(3);
+    expect(vista().querySelector('#emision-pendientes')).toBe(lista);
+    expect(vista().querySelector('app-listar-certificados')).toBeNull(); http.expectNone(() => true);
   });
 
   it('distingue la modalidad global de actividad sin reutilizar la sesión anterior', async () => {

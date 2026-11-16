@@ -1,4 +1,4 @@
-@if (recurso() === 'attendance' && soloLecturaSesion()) { <p role="status">Consulta de asistencia en modo lectura. Una sesión finalizada requiere un procedimiento autorizado de regularización.</p> }
+@if (recurso() === 'attendance' && soloLecturaSesion() && !paginaCompleta()) { <p role="status">Asistencia de solo lectura.</p> }
 @if (mostrarModal() && !enDetalle()) {
   <div class="encabezado encabezado-registro">
     <h2>{{ tituloEncabezado() || config().titulo }}</h2>
@@ -115,7 +115,7 @@
       <p role="status">Esta actividad todavía no tiene sesiones registradas. Registra una sesión para comenzar a controlar la asistencia</p>
       @if (puedeCrearSesion()) { <button class="btn btn-primary" type="button" (click)="registrarSesion($event)">Registrar sesión</button> }
     }
-    @if (recurso() === 'attendance' && filtrosSesiones.controls.actividad.value && filtrosSesiones.controls.sesion.value) {
+    @if (recurso() === 'attendance' && !paginaCompleta() && filtrosSesiones.controls.actividad.value && filtrosSesiones.controls.sesion.value) {
       @if (resumenAsistencia(); as resumen) {
         <dl class="resumen-asistencia" aria-label="Resumen de la sesión" aria-live="polite">
           <div><dt>Inscritos</dt><dd>{{ resumen.inscritos }}</dd></div><div><dt>Presentes</dt><dd>{{ resumen.presentes }}</dd></div><div><dt>Ausentes</dt><dd>{{ resumen.ausentes }}</dd></div><div><dt>Pendientes</dt><dd>{{ resumen.pendientes }}</dd></div>
@@ -126,8 +126,7 @@
     @if (!paginaActual.data.length) { <p class="card">{{ recurso() === 'attendance' && (!filtrosSesiones.controls.actividad.value || !filtrosSesiones.controls.sesion.value) ? 'Selecciona una actividad y una sesión para controlar su asistencia.' : 'No hay registros para esta consulta.' }}</p> }
     @else if (recurso() === 'attendance') {
       @if (catalogosSesiones.errorPersonas) { <p role="alert">{{ catalogosSesiones.errorPersonas }}</p> }
-      <p class="nota">Presente y Ausente proceden del estado de asistencia guardado, no de la inscripción ni de las horas. En el modal puedes corregir el estado con los iconos; usa Regularizar para revisar las horas.</p>
-      <button class="btn" type="button" [disabled]="guardandoMarca() !== null" (click)="actualizarAsistencia()">Actualizar asistencia</button>
+      @if (!paginaCompleta()) { <button class="btn" type="button" [disabled]="guardandoMarca() !== null" (click)="actualizarAsistencia()">Actualizar asistencia</button> }
       @if (enDetalle() && !soloLecturaSesion() && (permitido('crear') || permitido('editar'))) {
         <div class="acciones guardado-asistencia" role="group" aria-label="Guardar selección de asistencia">
           <span role="status">{{ pendientesSesion().length }} cambios pendientes de esta sesión</span>
@@ -138,7 +137,7 @@
         </div>
       }
       <div class="tabla"><table class="table tabla-presencia"><caption class="sr-only">Asistencia de los inscritos por sesión</caption>
-        <thead><tr><th scope="col">N.º</th><th scope="col">Participante</th><th scope="col">Presente</th><th scope="col">Ausente</th><th scope="col">Resultado</th></tr></thead>
+        <thead><tr><th scope="col">N.º</th><th scope="col">Participante</th><th scope="col">Presente</th><th scope="col">Ausente</th><th scope="col">Resultado</th><th scope="col">Horas / Regularización</th></tr></thead>
         <tbody>@for (fila of paginaActual.data; track fila['id_participacion']; let indice = $index) {
           <tr [attr.aria-busy]="guardandoMarca() === fila['id_participacion']"><td>{{ inicioRango(paginaActual) + indice }}</td><th scope="row">{{ fila['participanteNombre'] }}</th>
             <td><button type="button" class="circulo-asistencia circulo-presente" title="Marcar presente" [attr.aria-label]="'Marcar presente a ' + fila['participanteNombre']" [attr.aria-pressed]="presenciaMostrada(fila) === 'presente'" [class.seleccionado]="presenciaMostrada(fila) === 'presente'" [disabled]="(!enDetalle() && !!fila['id_asistencia']) || !!fila['duplicada'] || guardandoMarca() !== null || requiereActualizar() || soloLecturaSesion() || !permitido(fila['id_asistencia'] ? 'editar' : 'crear')" (click)="marcarPresencia(fila, 'PRESENTE')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></button></td>
@@ -146,6 +145,7 @@
             <td><span role="status">{{ guardandoMarca() === fila['id_participacion'] ? 'Guardando…' : resultadoAsistencia(fila) }}</span>
               @if (fila['hora_entrada'] && !fila['hora_salida']) { <small class="salida-pendiente"> · Salida pendiente</small> }
               @if (errorMarca(fila); as mensaje) { <p class="error-text" role="alert">{{ mensaje }}</p> }
+            </td><td>
               <details class="detalle-asistencia"><summary>Ver horas y regularizar</summary><dl>
                 <dt>Hora de entrada</dt><dd>{{ fila['hora_entrada'] || 'Sin registrar' }}</dd>
                 <dt>Hora de salida</dt><dd>{{ fila['hora_salida'] || 'Sin registrar' }}</dd>

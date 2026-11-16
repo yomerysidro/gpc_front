@@ -1,4 +1,4 @@
-<app-verificacion-publica />
+<app-portal-certificados />
 <button type="button" class="btn" (click)="historial.set(!historial())" [attr.aria-expanded]="historial()" aria-controls="historial-consultas">Historial administrativo de consultas</button>
 @if (historial()) {
   <section id="historial-consultas" class="detalle"><h2>Historial de consultas</h2><app-listado-emision recurso="consultas-certificado" [soloLectura]="true" /></section>

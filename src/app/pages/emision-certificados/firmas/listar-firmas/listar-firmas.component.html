@@ -1,6 +1,36 @@
-<section><header class="encabezado"><div><h1>Gestión de firmantes municipales</h1><p>Responsables administrativos de certificados.</p></div></header>
-<a class="btn" routerLink="/pendientes/documentos-firmar">Seleccionar firmantes para un certificado</a>
-<section class="card"><h2>Funcionarios disponibles</h2><label for="buscar-funcionario">Buscar por nombre, cargo o área</label><input id="buscar-funcionario" type="search" class="input" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" /><button class="btn" [disabled]="cargando()" (click)="cargar()">Actualizar</button>
-@if (cargando()) { <p role="status">Consultando funcionarios…</p> } @if (error()) { <p role="alert">{{ error() }}</p> }
-<div class="tarjetas-firmantes">@for (t of filtrados(); track t.id_persona_trabajador) { <article class="card"><h3>{{ t.nombre }}</h3><p>{{ t.cargo }}</p><p>{{ t.area || 'Área no informada' }}</p><p>{{ t.disponible_asignacion ? 'Disponible para asignación administrativa' : 'No disponible para asignación' }}</p><p>{{ t.habilitado ? 'Con habilitación documental vigente' : 'Sin habilitación documental vigente' }}</p></article> } @empty { @if (!cargando() && !error()) { <p role="status">No hay funcionarios con estos criterios.</p> } }</div></section>
-<section class="card"><h2>Habilitación administrativa</h2><p>Abra un certificado accesible y pulse Seleccionar firmantes para habilitar sus responsables.</p></section><section class="card"><h2>Credenciales digitales</h2><p>La configuración de PFX/P12 estará disponible en un flujo independiente. No se requiere para asignar responsables.</p></section></section>
+<section aria-labelledby="titulo-firmantes">
+  <header class="encabezado">
+    <h1 id="titulo-firmantes">Gestión de firmantes municipales</h1>
+    <button class="btn actualizar" type="button" [disabled]="ocupada()" (click)="cargar()"><span class="material-symbols-outlined" aria-hidden="true">refresh</span>Actualizar</button>
+  </header>
+  @if (confirmarBaja(); as t) {
+    <section class="confirmacion card" role="alertdialog" aria-labelledby="titulo-baja" aria-describedby="descripcion-baja">
+      <h2 id="titulo-baja">Deshabilitar funcionario</h2>
+      <p id="descripcion-baja">¿Deshabilitar a {{ t.nombre }} — {{ t.cargo }} — {{ t.area || 'Área no informada' }} para nuevas asignaciones?</p>
+      <div class="acciones"><button type="button" class="btn confirmar" [disabled]="ocupada()" (click)="deshabilitar()">Confirmar deshabilitación</button><button type="button" class="btn" [disabled]="ocupada()" (click)="cancelarBaja()">Cancelar</button></div>
+    </section>
+  }
+  @if (aviso()) { <p role="status" class="aviso">{{ aviso() }}</p> }
+  @if (error()) { <p role="alert">{{ error() }}</p> }
+  <section class="card" aria-label="Trabajadores municipales" [attr.aria-busy]="ocupada()">
+    <div class="busqueda-firmantes"><label for="buscar-funcionario">Buscar por nombre, cargo o área</label><input id="buscar-funcionario" class="input" type="search" placeholder="Nombre, cargo o área" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" /></div>
+    @if (cargando()) { <p role="status">Consultando trabajadores...</p> }
+    @if (guardando() !== null) { <p role="status">Guardando habilitación...</p> }
+    <table class="table tabla-firmantes">
+      <thead><tr><th scope="col">Nombre completo</th><th scope="col">Cargo</th><th scope="col">Área municipal</th><th scope="col">Estado laboral</th><th scope="col">Habilitación de firma</th><th scope="col">Acciones</th></tr></thead>
+      <tbody>
+        @for (t of filtrados(); track t.id_persona_trabajador) {
+          <tr><td data-label="Nombre completo">{{ t.nombre }}</td><td data-label="Cargo">{{ t.cargo || 'Cargo no informado' }}</td><td data-label="Área municipal">{{ t.area || 'Área no informada' }}</td><td data-label="Estado laboral"><span class="estado" [class.activo]="t.vigente">{{ t.vigente ? 'Activo' : 'Inactivo' }}</span></td><td data-label="Habilitación de firma"><span class="estado" [class.habilitado]="t.habilitado_firma_certificados">{{ t.habilitado_firma_certificados ? 'Habilitado' : 'No habilitado' }}</span></td><td data-label="Acciones">
+            @if (puedeAdministrar()) {
+              @if (t.habilitado_firma_certificados) {
+                <button type="button" class="btn interruptor apagar" [disabled]="ocupada() || !!confirmarBaja()" (click)="solicitarBaja(t)" aria-label="Deshabilitar firmante" title="Deshabilitar firmante"><span class="material-symbols-outlined" aria-hidden="true">toggle_on</span></button>
+              } @else {
+                <button type="button" class="btn interruptor encender" [disabled]="ocupada() || !!confirmarBaja() || !puedeHabilitar(t)" (click)="habilitar(t)" aria-label="Habilitar firmante" title="Habilitar firmante"><span class="material-symbols-outlined" aria-hidden="true">toggle_off</span></button>
+              }
+            } @else { <span class="solo-lectura">Solo lectura</span> }
+          </td></tr>
+        } @empty { @if (!cargando() && !error()) { <tr><td colspan="6">No hay trabajadores con estos criterios.</td></tr> } }
+      </tbody>
+    </table>
+  </section>
+</section>

@@ -14,12 +14,29 @@
 dt { color: var(--neutro-500); font-weight: 600; } dd { margin: .2rem 0 0; overflow-wrap: anywhere; }
 .indicadores { margin: .8rem 0 0; div { display: flex; align-items: baseline; gap: .5rem; background: #eef5fb; border-radius: .5rem; padding: .4rem .7rem; } dt { font-size: .8rem; } dd { font-size: 1.1rem; font-weight: 700; color: #075a9b; } }
 .accion-principal { background: #d6ad4a; color: #192b3c; border-color: #b38a2c; }
-.certificacion-sesion { font-size: .85rem; summary { color: #075a9b; cursor: pointer; } p { margin: .5rem 0; } .acciones { gap: .35rem; } .btn { font-size: .8rem; padding: .35rem; } }
-.consulta-certificacion { display: inline-flex; gap: .3rem; align-items: center; margin-top: .6rem; color: #075a9b; }
-.contenido-asistencia { overflow: auto; min-height: 0; padding: 0 1.25rem 1rem; }
-.contexto-modal { margin: 0 0 .8rem; }
-.pie-asistencia { justify-content: flex-end; flex-shrink: 0; padding: 1rem 1.25rem; border-top: 1px solid var(--neutro-200); background: white; }
-:host ::ng-deep app-dialogo.modal-asistencia > dialog.dialogo { width: min(72rem, calc(100vw - 1.5rem)); max-height: calc(100dvh - 1.5rem); padding: 0; overflow: hidden; &[open] { display: flex; flex-direction: column; } > h2 { flex-shrink: 0; font-size: 1.2rem; padding: 1rem 4rem 1rem 1.25rem; margin: 0; overflow-wrap: anywhere; } }
+.cierre-sesion { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: auto; padding-top: .6rem; .btn { font-size: .8rem; padding: .35rem .5rem; } small { color: #52677b; } }
+.resumen-sesion { color: #52677b; line-height: 1.5; }
+.tarjeta-sesion .badge { font-size: .75rem; border-radius: 1rem; padding: .2rem .6rem; }
+.tarjeta-sesion .badge-exito { background: #e8f5ec; color: #21643b; }
+.acciones-sesion .btn { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; }
 :host ::ng-deep app-dialogo.modal-detalle-sesion > dialog.dialogo { width: min(38rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; > h2 { padding-right: 2.5rem; } }
 @media (max-width: 1200px) { .lista-sesiones { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .lista-sesiones { grid-template-columns: minmax(0, 1fr); } .resumen-actividad .informacion { grid-template-columns: repeat(2, minmax(0, 1fr)); } .contenido-asistencia { padding: 0 .6rem .75rem; } }
+@media (max-width: 600px) { .lista-sesiones { grid-template-columns: minmax(0, 1fr); } .resumen-actividad .informacion { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Detalle institucional compacto. */
+.encabezado { padding-bottom: .8rem; border-bottom: 2px solid #d6ad4a; }
+.identidad { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .8rem; h1 { margin: 0; color: #174567; } }
+.resumen-actividad { border-top: 3px solid #075a9b; }
+.informacion-adicional { margin-top: .8rem; padding-top: .8rem; border-top: 1px solid var(--neutro-200); }
+.sesiones { background: #f7fafd; }
+.sesiones > .titulo-panel { margin-bottom: .9rem; }
+.tarjeta-sesion { border-radius: .65rem; padding: .8rem; gap: .45rem; }
+.tarjeta-sesion .titulo-panel { align-items: flex-start; flex-wrap: nowrap; gap: .5rem; margin-bottom: .15rem; h3 { min-width: 0; font-size: .95rem; } .badge { flex-shrink: 0; max-width: 45%; overflow-wrap: anywhere; } }
+.acciones-sesion { margin-top: .25rem; }
+.acciones-sesion .btn { flex: 0 0 2.4rem; }
+footer { display: flex; justify-content: flex-end; }
+@media (max-width: 420px) { .resumen-actividad .informacion { grid-template-columns: minmax(0, 1fr); } .panel { padding: .8rem; } .indicadores div { flex-wrap: wrap; } }
+
+.identidad-sesion { min-width: 0; }
+:host ::ng-deep app-dialogo.modal-ponentes-sesion > dialog.dialogo { width: min(44rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; overflow-x: hidden; box-sizing: border-box; }
+.numero-sesion { display: block; margin-bottom: .2rem; color: #52677b; font-size: .75rem; }

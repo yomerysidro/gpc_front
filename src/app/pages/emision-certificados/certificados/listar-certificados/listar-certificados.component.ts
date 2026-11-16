@@ -1,3 +1,4 @@
+import { CambiosCertificadosService } from '../../../../core/services/emision-certificados/cambios-certificados.service';
 import { DatePipe } from '@angular/common';
 import { afterNextRender, Component, computed, DestroyRef, inject, input, output, signal } from '@angular/core';
 import { SeleccionCertificado } from '../../../../core/interfaces/emision-certificados/preparacion-documental.interface';
@@ -61,6 +62,7 @@ export class ListarCertificadosComponent {
   protected readonly estadoRegistro = etiquetaEstado;
 
   constructor() {
+    inject(CambiosCertificadosService).cambios$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.cargar());
     afterNextRender(() => this.cargar());
     for (const control of [this.filtroBeneficiario, this.filtroTipo, this.filtroOrigen, this.filtroEstado]) {
       control.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.pagina.set(1));

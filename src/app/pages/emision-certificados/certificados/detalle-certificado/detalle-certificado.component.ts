@@ -1,7 +1,8 @@
 import { afterNextRender, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { catchError, forkJoin, map, Observable, of, Subject, switchMap, takeUntil, tap } from 'rxjs';
+import { catchError, forkJoin, map, merge, Observable, of, Subject, switchMap, takeUntil, tap } from 'rxjs';
+import { CambiosCertificadosService } from '../../../../core/services/emision-certificados/cambios-certificados.service';
 import { ErrorApi } from '../../../../core/interfaces/api/api-response.interface';
 import { CertificadoDocumento, CertificadoFirma, CertificadoRow, ConsultaCertificado, Reconocimiento, RegistroEmision } from '../../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { AuthService } from '../../../../core/services/autenticacion/auth.service';
@@ -20,6 +21,7 @@ export class DetalleCertificadoComponent {
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly cambiosCertificados = inject(CambiosCertificadosService);
   protected readonly certificado = signal<CertificadoRow | null>(null);
   protected readonly documentos = signal<readonly CertificadoDocumento[]>([]);
   protected readonly firmas = signal<ReadonlyMap<number, readonly CertificadoFirma[]>>(new Map());
@@ -48,7 +50,7 @@ export class DetalleCertificadoComponent {
 
   constructor() {
     afterNextRender(() => {
-      this.route.paramMap.pipe(
+      merge(this.route.paramMap, this.cambiosCertificados.cambios$.pipe(map(() => this.route.snapshot.paramMap))).pipe(
         tap(parametros => {
           this.cambio.next();
           this.certificado.set(null); this.documentos.set([]); this.cargando.set(true); this.error.set(null);

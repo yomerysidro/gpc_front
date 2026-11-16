@@ -45,39 +45,39 @@ export const DASHBOARD_SIDEBAR: EntradaSidebar = {
 
 export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
   { id: 'seguridad', label: 'SEGURIDAD Y ACCESO', icon: 'admin_panel_settings', hijos: [
-    { id: 'usuarios', label: 'Gestión de usuarios', icon: 'people', path: '/usuarios', permiso: 'usuarios.ver', habilitado: true },
+    { id: 'usuarios', label: 'Gestión de usuarios', icon: 'group', path: '/usuarios', permiso: 'usuarios.ver', habilitado: true },
     { id: 'roles', label: 'Roles y permisos', icon: 'admin_panel_settings', path: '/roles', permiso: 'roles.ver', aliases: ['/permisos', '/modulos'], habilitado: true },
   ] },
-  { id: 'recursos-humanos', label: 'RECURSOS HUMANOS', icon: 'people', hijos: [
-    { id: 'personas', label: 'Personas y documentos', icon: 'people', path: '/gestion/personas', permiso: 'personas.verpersonas', aliases: ['/personas'], habilitado: true },
+  { id: 'recursos-humanos', label: 'RECURSOS HUMANOS', icon: 'groups', hijos: [
+    { id: 'personas', label: 'Personas y documentos', icon: 'badge', path: '/gestion/personas', permiso: 'personas.verpersonas', aliases: ['/personas'], habilitado: true },
     { id: 'trabajadores', label: 'Trabajadores', icon: 'group', path: '/gestion/trabajadores', permiso: 'trabajadores.ver', aliases: ['/trabajadores'], habilitado: true },
     { id: 'practicas', label: 'Practicantes y prácticas', icon: 'school', path: '/gestion/practicas', permiso: 'practicantes.ver', aliases: ['/practicantes', '/gestion/practicantes'], habilitado: true },
-    { id: 'ponentes', label: 'Ponentes', icon: 'campaign', path: '/gestion/ponentes', permiso: 'ponentes-firmantes.ver', aliases: ['/ponentes-firmantes'], habilitado: true },
+    { id: 'ponentes', label: 'Ponentes', icon: 'co_present', path: '/gestion/ponentes', permiso: 'ponentes-firmantes.ver', aliases: ['/ponentes-firmantes'], habilitado: true },
     { id: 'reconocimientos', label: 'Reconocimientos', icon: 'military_tech', path: '/certificaciones/reconocimientos', permiso: 'reconocimientos.ver', aliases: ['/reconocimientos'], habilitado: true },
-    { id: 'revisar-solicitudes', label: 'Revisión de solicitudes', icon: 'check_circle', habilitado: true, path: '/solicitudes/revision', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_revision' },
+    { id: 'revisar-solicitudes', label: 'Revisión de solicitudes', icon: 'fact_check', habilitado: true, path: '/solicitudes/revision', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_revision' },
   ] },
-  { id: 'solicitudes', label: 'SOLICITUDES', icon: 'forward_to_inbox', hijos: [
-    { id: 'mis-solicitudes', label: 'Mis solicitudes', icon: 'event', habilitado: true, path: '/solicitudes/mis-solicitudes', permiso: 'solicitudes.propias', aliases: ['/solicitudes'], rutasActivas: ['/solicitudes/nueva'] },
+  { id: 'solicitudes', label: 'SOLICITUDES', icon: 'inbox', hijos: [
+    { id: 'mis-solicitudes', label: 'Mis solicitudes', icon: 'description', habilitado: true, path: '/solicitudes/mis-solicitudes', permiso: 'solicitudes.propias', aliases: ['/solicitudes'], rutasActivas: ['/solicitudes/nueva'] },
   ] },
-  { id: 'actividades', label: 'GESTIÓN DE ACTIVIDADES', icon: 'event', hijos: [
-    { id: 'actividades', label: 'Actividades', icon: 'event', path: '/certificaciones/actividades', permiso: 'actividades.ver', aliases: ['/actividades'], rutasActivas: ['/certificaciones/participantes', '/certificaciones/sesiones-asistencia'], habilitado: true },
+  { id: 'actividades', label: 'GESTIÓN DE ACTIVIDADES', icon: 'calendar_month', hijos: [
+    { id: 'actividades', label: 'Actividades', icon: 'calendar_month', path: '/certificaciones/actividades', permiso: 'actividades.ver', aliases: ['/actividades'], rutasActivas: ['/certificaciones/participantes', '/certificaciones/sesiones-asistencia'], habilitado: true },
   ] },
   { id: 'emision', label: 'EMISIÓN DE CERTIFICADOS', icon: 'workspace_premium', hijos: [
-    { id: 'generar-emitir', label: 'Generar y emitir', icon: 'forward_to_inbox', path: '/certificaciones/generar-emitir', permiso: 'emision.ver', aliases: ['/emision', '/certificados', '/certificaciones/certificados'], rutasActivas: ['/certificaciones/certificados/:id'], habilitado: true },
-    { id: 'emitidos', label: 'Certificados emitidos', icon: 'visibility', path: '/certificaciones/certificados/documentos', rutasActivas: ['/certificaciones/certificados/:id/documentos'], permiso: 'emision.ver', habilitado: true },
-    { id: 'firmas', label: 'Firmas digitales', icon: 'edit', path: '/certificaciones/firmas', permiso: 'emision.ver', aliases: ['/firmas', '/ponentes-firmantes'], habilitado: true },
+    { id: 'generar-emitir', label: 'Generar y emitir', icon: 'post_add', path: '/certificaciones/generar-emitir', permiso: 'emision.ver', aliases: ['/emision', '/certificados', '/certificaciones/certificados'], habilitado: true },
+    { id: 'emitidos', label: 'Certificados emitidos', icon: 'verified', path: '/certificaciones/certificados/documentos', rutasActivas: ['/certificaciones/certificados/:id', '/certificaciones/certificados/:id/documentos'], permiso: 'emision.ver', habilitado: true },
   ] },
-  { id: 'gerencia', label: 'GERENCIA', icon: 'check_circle', hijos: [
-    { id: 'pendientes-aprobacion', label: 'Pendientes de aprobación', icon: 'event', habilitado: true, path: '/pendientes/pendientes-aprobacion', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_gerencia' },
-    { id: 'documentos-firmar', label: 'Documentos por firmar', icon: 'edit', habilitado: true, path: '/pendientes/documentos-firmar', permiso: 'emision.ver' },
+  { id: 'gerencia', label: 'GERENCIA', icon: 'account_balance', hijos: [
+    { id: 'pendientes-aprobacion', label: 'Pendientes de aprobación', icon: 'pending_actions', habilitado: true, path: '/pendientes/pendientes-aprobacion', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_gerencia' },
+    { id: 'documentos-firmar', label: 'Certificados por firmar', icon: 'draw', habilitado: true, path: '/pendientes/documentos-firmar', permiso: 'emision.ver' },
   ] },
   { id: 'reportes', label: 'REPORTES', icon: 'bar_chart', hijos: [
-    { id: 'indicadores', label: 'Indicadores generales', icon: 'bar_chart', habilitado: true, path: '/reportes/indicadores', permiso: 'reportes.ver', pendiente: 'Agregados generales y series mensuales pendientes del backend.' },
-    { id: 'reportes-actividades', label: 'Reportes de actividades', icon: 'event', habilitado: true, path: '/reportes/actividades', permiso: 'reportes.ver' },
-    { id: 'reportes-certificados', label: 'Reportes de certificados', icon: 'workspace_premium', habilitado: true, path: '/reportes/certificados', permiso: 'reportes.ver', pendiente: 'Consulta paginada disponible; relaciones y filtros globales pendientes del backend.' },
-    { id: 'reportes-asistencia', label: 'Reportes de asistencia', icon: 'how_to_reg', habilitado: true, path: '/reportes/asistencia', permiso: 'reportes.ver', pendiente: 'Consulta por actividad y sesión pendiente del backend.' },
+    { id: 'indicadores', label: 'Indicadores generales', icon: 'monitoring', habilitado: true, path: '/reportes/indicadores', permiso: 'reportes.ver', pendiente: 'Agregados generales y series mensuales pendientes del backend.' },
+    { id: 'reportes-actividades', label: 'Reportes de actividades', icon: 'event_note', habilitado: true, path: '/reportes/actividades', permiso: 'reportes.ver' },
+    { id: 'reportes-certificados', label: 'Reportes de certificados', icon: 'analytics', habilitado: true, path: '/reportes/certificados', permiso: 'reportes.ver', pendiente: 'Consulta paginada disponible; relaciones y filtros globales pendientes del backend.' },
+    { id: 'reportes-asistencia', label: 'Reportes de asistencia', icon: 'fact_check', habilitado: true, path: '/reportes/asistencia', permiso: 'reportes.ver', pendiente: 'Consulta por actividad y sesión pendiente del backend.' },
   ] },
-  { id: 'configuracion', label: 'CONFIGURACIÓN GENERAL', icon: 'tune', hijos: [
+  { id: 'configuracion', label: 'CONFIGURACIÓN GENERAL', icon: 'settings', hijos: [
+    { id: 'firmantes-municipales', label: 'Firmantes municipales', icon: 'draw', path: '/gestion/firmantes-municipales', permiso: 'emision.ver', permisos: ['ponentes-firmantes.editar'], aliases: ['/certificaciones/firmas', '/firmas'], rutasActivas: ['/certificaciones/firmas/aplicadas'], habilitado: true },
     { id: 'gestion-institucional', label: 'Gestión institucional', icon: 'account_balance', path: '/gestion/configuracion', permiso: 'areas.ver', catalogos: CATALOGOS_INSTITUCIONALES, aliases: ['/areas', '/instituciones', '/documentos', '/tipos-documento'], habilitado: true },
     { id: 'tipos-clasificaciones', label: 'Tipos y clasificaciones', icon: 'category', path: '/gestion/tipos-clasificaciones', permiso: 'actividades.ver', catalogos: CATALOGOS_CLASIFICACIONES, aliases: ['/certificaciones/configuracion'], habilitado: true },
   ] },

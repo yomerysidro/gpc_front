@@ -94,7 +94,7 @@ Si solo hay un área, se selecciona su ID automáticamente y el selector solo co
 
 Al cambiar la sesión se descartan las opciones anteriores y se cancelan consultas en curso. Los valores obsoletos quedan bloqueados antes del siguiente ciclo de renderizado. Un cambio de principal invalida el ID del borrador anterior sin borrar nombre, tipo, fechas, sede, descripción ni justificación. Una recarga de sesión del mismo usuario revalida áreas y conserva el ID ya confirmado. Los códigos de rechazo `SOLICITUD_AREA_NO_AUTORIZADA` y `SOLICITUD_SIN_AREA_VIGENTE` se conservan y provocan una nueva consulta de elegibilidad, sin construir opciones a partir del error.
 
-Mis solicitudes siempre consulta `/mine`, sin sustituir la propiedad con filtrado local. El historial no depende del permiso formal de aprobación. Si falta consultar, su botón de detalle administrativo permanece deshabilitado. No se concede firma digital por nombre de rol; Documentos por firmar continúa fuera de este contrato.
+Mis solicitudes siempre consulta `/mine`, sin sustituir la propiedad con filtrado local. El historial no depende del permiso formal de aprobación. Si falta consultar, su botón de detalle administrativo permanece deshabilitado. No se concede firma digital por nombre de rol; Certificados por firmar continúa fuera de este contrato.
 
 ## Flujo y validación
 

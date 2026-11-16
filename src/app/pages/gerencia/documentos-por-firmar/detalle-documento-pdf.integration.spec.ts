@@ -2,19 +2,21 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter, Router, RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { ArchivoPdf } from '../../../core/interfaces/emision-certificados/documento-digital.interface';
 import { DocumentoFirmas } from '../../../core/services/emision-certificados/documentos-digitales.service';
 import { PdfContinuoComponent } from '../../emision-certificados/compartidos/pdf-continuo.component';
-import { VisorPdfComponent } from '../../emision-certificados/compartidos/visor-pdf.component';
+import { PLANTILLA_VISOR_PDF, VisorPdfComponent } from '../../emision-certificados/compartidos/visor-pdf.component';
 import { FIRMANTES_PDF_PRUEBA, pdfPrueba } from '../../emision-certificados/compartidos/pdf-prueba.fixture';
 import { DetalleDocumentoComponent } from './detalle-documento.component';
 
 describe('Detalle → HTTP → bytes temporales → PDF.js real', () => {
   const base = '/api/certificados-documentos';
-  const funcionarios = FIRMANTES_PDF_PRUEBA.map((f, i) => ({ ...f, id_persona_trabajador: 45 + i, id_persona: 101 + i }));
+  const funcionarios = FIRMANTES_PDF_PRUEBA.map((f, i) => ({ ...f, id_persona_trabajador: 45 + i, id_persona: 101 + i,
+    vigente: true, disponible_asignacion: true, habilitado_firma_certificados: true, habilitado: true, id_firma: null, credencial_registrada: false }));
   let http: HttpTestingController;
   let harness: RouterTestingHarness;
   let c: any;
@@ -22,7 +24,7 @@ describe('Detalle → HTTP → bytes temporales → PDF.js real', () => {
   let original: ArchivoPdf;
   let token = 0;
   const hash = async (archivo: ArchivoPdf) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await archivo.blob.arrayBuffer())), b => b.toString(16).padStart(2, '0')).join('');
-  const progreso = () => ({ documento: doc, facultades: { asignar: true }, modalidad: 'PARALELA', firmantes_asignados: [], asignacion_documental_persistida: true });
+  const progreso = () => ({ documento: doc, facultades: { asignar: true }, modalidad: 'PARALELA', firmantes_asignados: [], asignacion_documental_persistida: false });
   const vista = () => harness.routeNativeElement!;
   const canvas = () => vista().querySelector('canvas')!;
   const boton = (texto: string) => Array.from(vista().querySelectorAll<HTMLButtonElement>('button')).find(b => b.textContent?.trim() === texto)!;
@@ -36,8 +38,10 @@ describe('Detalle → HTTP → bytes temporales → PDF.js real', () => {
       { provide: AuthService, useValue: { tienePermiso: () => true } },
     ] });
     // Forzar el renderizador real aunque otras suites sustituyan las importaciones del visor.
-    TestBed.overrideComponent(VisorPdfComponent, { set: { imports: [PdfContinuoComponent] } });
+    TestBed.overrideComponent(VisorPdfComponent, { set: { imports: [PdfContinuoComponent], template: PLANTILLA_VISOR_PDF } });
+    TestBed.overrideComponent(DetalleDocumentoComponent, { set: { imports: [RouterLink, VisorPdfComponent, FormsModule] } });
     http = TestBed.inject(HttpTestingController);
+    spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
     original = pdfPrueba(); token = 0;
     doc = { id_certificado_documento: 31, id_certificado: 12, hash_pdf: await hash(original), codigo_verificacion: 'ABC123',
       actividad: 'Actividad', sesion: 'Sesión', tipo_certificado: 'Participación',
@@ -103,7 +107,7 @@ describe('Detalle → HTTP → bytes temporales → PDF.js real', () => {
     const contenedor = vista().querySelector<HTMLDivElement>('.lectura')!;
     contenedor.scrollTop = 120; const posicion = contenedor.scrollTop;
     const imagenOriginal = canvas().toDataURL();
-    abrir(); marcar(0); expect(boton('Guardar y confirmar certificado').disabled).toBeTrue();
+    abrir(); marcar(0); expect(boton('Guardar y poner a disposición').disabled).toBeTrue();
     await revisar([0]); const imagenUno = canvas().toDataURL(); expect(imagenUno).not.toBe(imagenOriginal);
     marcar(1); descartar(); await revisar([0, 1]); expect(canvas().toDataURL()).not.toBe(imagenUno);
     expect(contenedor.scrollTop).toBeCloseTo(posicion, 0); expect(zoom.value).toBe('150');
@@ -123,23 +127,23 @@ describe('Detalle → HTTP → bytes temporales → PDF.js real', () => {
     abrir(); marcar(0); marcar(1);
     await revisar([0, 1], 'PARALELA', original, false);
     expect(c.errorPrevia()).toContain('PDF temporal devuelto por Laravel no contiene los nombres o cargos');
-    expect(c.listaParaGuardar()).toBeFalse(); expect(boton('Guardar y confirmar certificado').disabled).toBeTrue();
+    expect(c.listaParaGuardar()).toBeFalse(); expect(boton('Guardar y poner a disposición').disabled).toBeTrue();
     expect(canvas().toDataURL()).toBe(imagenOriginal);
     http.expectNone(base + '/31/firma/asignar');
   }, 15000);
   it('confirma el token visible y muestra los bytes descargados del vigente autorizado', async () => {
     abrir(); marcar(0); marcar(1); const temporal = await revisar([0, 1]);
     const revisada = c.previa(); const revision = c.revision(); const contenedor = vista().querySelector('.lectura');
-    boton('Guardar y confirmar certificado').click();
+    boton('Guardar y poner a disposición').click();
     const asignados = funcionarios.map((f, i) => ({ ...f, orden_firma: i + 1 }));
     const planGuardado = { ...progreso(), firmantes_asignados: asignados, asignacion_documental_persistida: true };
     http.expectOne(base + '/31/firma/asignar').flush({ success: true, data: { ...planGuardado, completada: true, persistido: true } });
     const confirmar = http.expectOne(base + '/31/firma/confirmar-pdf');
     expect(confirmar.request.body.token_revision).toBe(revision.token_revision);
     doc = { ...doc, hash_pdf_original: doc.hash_pdf, hash_pdf: temporal.hashPdf };
-    const confirmado = { ...planGuardado, documento: doc, pdf_revisado_disponible: true };
+    const confirmado = { ...planGuardado, documento: doc, pdf_revisado_disponible: true, disponible_rrhh: true };
     confirmar.flush({ success: true, data: { ...confirmado, completada: true, persistido: true, persistencia: 'archivo_privado_versionado',
-      id_certificado_documento: 31, id_certificado: 12, codigo_verificacion: 'ABC123', revision_pdf: 'r'.repeat(64) } });
+      id_certificado_documento: 31, id_certificado: 12, codigo_verificacion: 'ABC123', revision_pdf: 'r'.repeat(64), hash_pdf: temporal.hashPdf } });
     http.expectOne(base + '/31/firma/firmantes-asignados').flush({ success: true, data: confirmado });
     http.expectOne(base + '/31/firma/pdf-autorizado').flush(temporal.archivo.blob);
     await esperar(() => !c.seleccionando()); verificar();

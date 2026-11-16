@@ -2,29 +2,44 @@
 .titulo-detalle { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; margin-bottom: .75rem; }
 h1, h2 { color: #075a9b; overflow-wrap: anywhere; }
 h1 { font-size: 1.5rem; margin: 0; }
-h2 { font-size: 1.1rem; margin-top: 0; }
+h2 { font-size: 1.1rem; margin: 0 0 .65rem; }
 .regreso { padding: .4rem; }
-.detalle-documental { display: grid; grid-template-columns: minmax(0, 3fr) minmax(14rem, 1fr); gap: 1rem; align-items: start; }
-.pdf { min-width: 0; }
-.panel-firmas { padding: 1rem; border-top: 2px solid var(--dorado-500, #c5a04a); background: #fff; border-radius: .5rem; }
-.firmante { display: grid; gap: .2rem; padding-block: .65rem; border-bottom: 1px solid #edf1f5; overflow-wrap: anywhere; }
-.acciones-oficiales { display: grid; gap: .4rem; margin-top: 1rem; }
-.acciones-oficiales .btn { width: 100%; white-space: normal; }
-.acciones-oficiales small { color: #596777; line-height: 1.5; margin-bottom: .4rem; }
-.acciones-oficiales .accion-firmar { background: #075a9b; border-color: #075a9b; color: #fff; }
-.acciones-oficiales .accion-emitir { background: var(--boton-dorado, #e8ad24); border-color: var(--boton-dorado, #e8ad24); color: #253447; }
-.acciones-oficiales .btn:disabled { opacity: .7; }
-aside { min-width: 0; display: grid; gap: .75rem; }
-p { overflow-wrap: anywhere; }
-small { display: block; }
-.estado { color: #075a9b; font-weight: 600; font-size: .85rem; }
-.titulo-detalle .estado { margin-left: auto; background: #075a9b0d; padding: .35rem .65rem; border-radius: 1rem; }
+.detalle-documental { display: grid; grid-template-columns: minmax(0, 3fr) minmax(19rem, 1.15fr); gap: 1.25rem; align-items: start; }
+.pdf, aside { min-width: 0; }
+aside { position: sticky; top: 1rem; }
+.panel-firmas { padding: 1.25rem; border: 1px solid #e1e8ef; border-top: 3px solid var(--dorado-500, #c5a04a); background: #fff; border-radius: .8rem; max-height: calc(100dvh - 2rem); overflow-y: auto; scrollbar-gutter: stable; }
+.cabecera-firmas { padding-bottom: 1rem; }
+.estado { display: inline-flex; color: #075a9b; background: #eef4fa; padding: .35rem .7rem; border-radius: 2rem; font-weight: 600; font-size: .8rem; line-height: 1.3; }
+.estado-listo { color: #21643b; background: #e8f5ec; }
+.titulo-detalle .estado { margin-left: auto; }
+.bloque-panel { padding-block: 1rem; border-top: 1px solid #edf1f5; }
+h3 { margin: 0 0 .75rem; color: #33475b; font-size: .9rem; font-weight: 600; }
+p { overflow-wrap: anywhere; font-size: .9rem; }
+small { display: block; color: #657587; font-size: .78rem; }
+.firmante { padding: .7rem; border: 1px solid #e1e8ef; border-radius: .55rem; background: #f8fafc; overflow-wrap: anywhere; }
+.funcionarios { display: grid; gap: .5rem; max-height: 18rem; overflow-y: auto; padding: .15rem; }
+.opcion-firmante { display: flex; align-items: flex-start; gap: .65rem; margin: 0; cursor: pointer; }
+.opcion-firmante input { margin: .2rem 0 0; width: 1rem; height: 1rem; flex-shrink: 0; accent-color: #075a9b; }
+.datos-firmante, .asignado { display: grid; gap: .2rem; min-width: 0; font-size: .85rem; }
+.datos-firmante strong, .asignado strong { color: #253e55; font-weight: 600; }
+.asignado + .asignado { margin-top: .5rem; }
+.seleccionado { border-color: #78a8ce; background: #eef5fc; }
+.opcion-firmante:focus-within { outline: 2px solid #075a9b; outline-offset: 1px; }
+select.input { width: 100%; box-sizing: border-box; font-size: .9rem; }
+.orden-responsables { display: grid; gap: .4rem; list-style: none; margin: 0; padding: 0; }
+.orden-responsables li { display: flex; align-items: center; gap: .5rem; padding: .45rem .55rem; background: #f8fafc; border-radius: .45rem; font-size: .85rem; }
+.numero-orden { display: grid; place-items: center; width: 1.5rem; height: 1.5rem; flex-shrink: 0; border-radius: 50%; color: #075a9b; background: #e8eff7; font-size: .75rem; }
+.nombre-orden { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.controles-orden { display: flex; gap: .2rem; }
+.controles-orden button { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; padding: 0; border: 1px solid #d5dee8; border-radius: .35rem; background: #fff; color: #075a9b; cursor: pointer; }
+.subir { transform: rotate(-90deg); }
+.bajar { transform: rotate(90deg); }
+.acciones-panel { display: grid; gap: .6rem; padding-top: 1rem; border-top: 1px solid #edf1f5; }
+.acciones-panel .btn, .abrir-seleccion { width: 100%; white-space: normal; }
+.acciones-panel .btn-primario { background: var(--boton-dorado, #e8ad24); color: #253447; border-color: var(--boton-dorado, #e8ad24); font-weight: 600; }
+.cancelar-seleccion { color: #52677b; background: transparent; border-color: #d5dee8; }
 button:disabled { opacity: .55; cursor: not-allowed; }
-@media (max-width: 900px) { .detalle-documental { grid-template-columns: minmax(0, 1fr); } }
-
-.funcionarios { max-height: 20rem; overflow: auto; } label { display: block; margin-block: .6rem; } input:not([type=checkbox]), select { max-width: 100%; box-sizing: border-box; } li button { margin: .2rem; }
-
-.panel-firmas > .btn { width: 100%; white-space: normal; }
-ol { padding-left: 1.25rem; overflow-wrap: anywhere; }
-
+button:focus-visible, select:focus-visible { outline: 2px solid #075a9b; outline-offset: 2px; }
+.modalidad-aplicada { margin: 0; color: #52677b; }
 .estado-previa { min-height: 3rem; }
+@media (max-width: 900px) { .detalle-documental { grid-template-columns: minmax(0, 1fr); } aside { position: static; } .panel-firmas { max-height: none; } }

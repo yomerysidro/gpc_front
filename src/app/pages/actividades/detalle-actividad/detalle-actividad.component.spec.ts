@@ -213,7 +213,7 @@ describe('Detalle de actividad con las APIs existentes', () => {
     http.expectNone('/api/activity/7'); http.expectNone('/api/participation'); http.expectNone('/api/activity');
   });
 
-  it('presenta cuatro iconos y abre asistencia y detalle en modales sin cambiar de ruta ni repetir consultas', async () => {
+  it('conserva iconos accesibles y abre asistencia con Router mientras el detalle conserva su consulta', async () => {
     ['actividades.ver', 'participantes.ver', 'participantes.crear', 'ponentes-firmantes.ver'].forEach(p => permisos.add(p));
     const sesiones = [{ id_actividad_sesion: 15, id_actividad: 7, nombre: 'Jornada real', fecha: '2026-11-04', hora_inicio: '08:00', hora_fin: '09:00', estado: 'activo' }, { id_actividad_sesion: 17, id_actividad: 7, nombre: 'Segunda' }, { id_actividad_sesion: 16, id_actividad: 8, nombre: 'Sesión ajena' }];
     responder('/activity/7', actividad); catalogos(); responder('/activity-session', sesiones);
@@ -231,21 +231,27 @@ describe('Detalle de actividad con las APIs existentes', () => {
     expect(fixture.nativeElement.querySelector('#panel-sesion')).toBeNull();
     expect(fixture.nativeElement.querySelector('.tarjetas-detalle table')).toBeNull();
     const url = TestBed.inject(Router).url;
-    const ponentes = jasmine.createSpy('ponentes'); fixture.componentInstance.gestionarPonentes.subscribe(ponentes);
-    tarjetas[0].querySelectorAll('button')[1].click(); expect(ponentes).toHaveBeenCalledWith(jasmine.objectContaining({ id_actividad: 7 }));
-    const asistencia = tarjetas[0].querySelectorAll('button')[3]; asistencia.focus(); asistencia.click(); await fixture.whenStable();
-    const dialogo = fixture.nativeElement.querySelector('.modal-asistencia dialog') as HTMLDialogElement;
-    expect(dialogo.open).toBeTrue(); expect(dialogo.textContent).toContain('Control de asistencia — Jornada real');
-    expect(dialogo.textContent).toContain('Jornada municipal'); expect(dialogo.textContent).toContain('Salida pendiente');
-    expect(dialogo.querySelectorAll('tbody tr').length).toBe(2);
-    expect(dialogo.querySelector('form.filtros')).toBeNull();
-    expect(dialogo.querySelector('.circulo-presente')!.getAttribute('aria-pressed')).toBe('true');
-    expect(getComputedStyle(dialogo).overflow).toBe('hidden');
-    (dialogo.querySelector('.pie-asistencia button') as HTMLButtonElement).click(); await fixture.whenStable();
-    expect(dialogo.open).toBeFalse(); expect(document.activeElement).toBe(asistencia);
-    tarjetas[1].querySelectorAll('button')[3].click(); await fixture.whenStable();
-    expect(dialogo.querySelectorAll('.circulo-asistencia[aria-pressed="true"]').length).toBe(0);
-    (dialogo.querySelector('.pie-asistencia button') as HTMLButtonElement).click(); await fixture.whenStable();
+    tarjetas[0].querySelectorAll('button')[1].click(); await fixture.whenStable();
+    const panel = fixture.nativeElement.querySelector('.modal-ponentes-sesion dialog[open]') as HTMLElement;
+    expect(panel).not.toBeNull(); expect(panel.textContent).toContain('Ponentes de la sesión');
+    expect(panel.textContent).toContain('Jornada municipal'); expect(panel.textContent).toContain('Sesión 15');
+    const vinculos = http.expectOne('/api/activity/7/sessions/15/ponentes');
+    expect(vinculos.request.method).toBe('GET'); expect(vinculos.request.withCredentials).toBeTrue();
+    vinculos.flush({ success: true, data: { id_actividad: 7, id_sesion: 15,
+      ponentes_disponibles: [{ id_persona_ponente: 61, id_persona: 31, nombres: 'Maria', apellido_paterno: 'Perez', apellido_materno: null }],
+      vinculos: [{ id_actividad_ponente: 71, id_actividad: 7, id_actividad_sesion: 15, id_persona_ponente: 61 }] } });
+    http.expectOne('/api/person-speakers/list').flush({ success: true, data: [{ id_persona_ponente: 61, id_persona: 31,
+      id_institucion: null, cargo: 'Especialista', especialidad: null }] });
+    http.expectOne('/api/person-documents/list').flush({ success: true, data: [] });
+    http.expectOne('/api/document-types/list').flush({ success: true, data: [] });
+    await fixture.whenStable();
+    expect(panel.textContent).toContain('Maria Perez'); expect(panel.textContent).toContain('Especialista');
+    expect(panel.textContent).toContain('Registro #61');
+    http.expectNone(r => r.method !== 'GET');
+    const navegar = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    tarjetas[0].querySelector<HTMLButtonElement>('button[aria-label="Asistencia de sesión"]')!.click(); await fixture.whenStable();
+    expect(navegar).toHaveBeenCalledWith(['/certificaciones/actividades', 7, 'sesiones', 15, 'asistencia']);
+    expect(fixture.nativeElement.querySelector('.modal-asistencia')).toBeNull();
     tarjetas[0].querySelector('button')!.click(); await fixture.whenStable(); responder('/activity-session/15', sesiones[0]); await fixture.whenStable();
     const detalle = fixture.nativeElement.querySelector('.modal-detalle-sesion dialog') as HTMLDialogElement;
     expect(detalle.open).toBeTrue(); expect(detalle.textContent).toContain('08:00');
@@ -253,6 +259,23 @@ describe('Detalle de actividad con las APIs existentes', () => {
     http.expectNone(req => req.method !== 'GET'); http.expectNone('/api/activity-session'); http.expectNone('/api/participation');
   });
 
+  it('conserva el orden de sesiones 001, 002 y 003 con resumen compacto y sin acciones de certificación', async () => {
+    ['actividades.ver', 'participantes.ver', 'emision.ver'].forEach(p => permisos.add(p));
+    responder('/activity/7', actividad); catalogos(); responder('/participation', []); responder('/attendance/list', []);
+    responder('/activity-session', [1, 2, 3].map((numero, indice) => ({ id_actividad_sesion: 15 + indice, id_actividad: 7, nombre: 'Sesión N.º 00' + numero, estado: 'Finalizada', finalizada: true, puede_finalizarse: false,
+      contadores: { inscritos_actividad_vigentes: 99, participantes_sesion: 3, presentes: 1, ausentes: 2, pendientes: 0, por_regularizar: null } })));
+    await fixture.whenStable();
+    const tarjetas = Array.from(fixture.nativeElement.querySelectorAll('.tarjeta-sesion')) as HTMLElement[];
+    expect(tarjetas.map(t => t.querySelector('h3')!.textContent)).toEqual(['Sesión N.º 001', 'Sesión N.º 002', 'Sesión N.º 003']);
+    for (const tarjeta of tarjetas) {
+      expect(tarjeta.querySelector('.badge-exito')!.textContent).toBe('Finalizada');
+      expect(tarjeta.querySelector('.resumen-sesion')!.textContent).toBe('3 participantes · 1 presente · 2 ausentes');
+      expect(tarjeta.textContent).not.toContain('99'); expect(tarjeta.textContent).not.toContain('No determinable');
+      expect(tarjeta.querySelector('.cierre-sesion')).toBeNull(); expect(tarjeta.querySelector('.certificacion-sesion')).toBeNull();
+      expect(tarjeta.textContent).not.toContain('Certificar participantes'); expect(tarjeta.textContent).not.toContain('Consultar elegibilidad');
+    }
+    http.expectNone(r => r.method !== 'GET');
+  });
   it('rechaza el detalle de una sesion que Laravel devuelve para otra actividad', async () => {
     permisos.add('actividades.ver');
     responder('/activity/7', actividad); catalogos(); responder('/participation', []);
@@ -269,10 +292,11 @@ describe('Detalle de actividad con las APIs existentes', () => {
     responder('/activity-session', [{ id_actividad_sesion: 15, id_actividad: 7, nombre: 'Jornada real', estado: 'culminado' }]); await fixture.whenStable();
     const tarjeta = fixture.nativeElement.querySelector('.tarjeta-sesion') as HTMLElement;
     expect(tarjeta.dataset['actividadId']).toBe('7'); expect(tarjeta.dataset['sesionId']).toBe('15');
-    const acciones = tarjeta.querySelectorAll<HTMLButtonElement>('.certificacion-sesion button');
-    expect(acciones.length).toBe(2); expect(Array.from(acciones).every(b => b.disabled && !!b.title)).toBeTrue();
-    acciones[0].click(); acciones[1].click();
-    expect(tarjeta.querySelector('.consulta-certificacion')?.getAttribute('href')).toBe('/certificaciones/generar-emitir?id_actividad=7&id_sesion=15&origen=sesion&modalidad=sesion');
+    const acciones = tarjeta.querySelectorAll<HTMLButtonElement>('.cierre-sesion button[aria-label]');
+    expect(acciones.length).toBe(1); expect(Array.from(acciones).every(b => b.disabled && !!b.title)).toBeTrue();
+    acciones[0].click();
+    expect(tarjeta.querySelector('.consulta-certificacion')).toBeNull();
+    expect(tarjeta.textContent).not.toContain('Certificar participantes');
     expect(fixture.nativeElement.querySelector('app-dialogo-confirmacion dialog[open]')).toBeNull();
     http.expectNone(req => req.method !== 'GET');
   });
@@ -282,7 +306,7 @@ describe('Detalle de actividad con las APIs existentes', () => {
     responder('/activity/7', actividad); catalogos(); responder('/participation', []); responder('/attendance/list', []);
     const sesion = { id_actividad_sesion: 15, id_actividad: 7, nombre: 'Jornada real', estado: 'Activo' };
     responder('/activity-session', [sesion]); await fixture.whenStable();
-    fixture.debugElement.query(By.css('.certificacion-sesion')).triggerEventHandler('toggle', { target: { open: true } });
+    (fixture.componentInstance as any).cargarCapacidades((fixture.componentInstance as any).sesiones()[0]);
     await fixture.whenStable();
     responder('/activity-session/15', { ...sesion, puede_finalizarse: puedeFinalizar,
       motivos_bloqueo_finalizacion: puedeFinalizar ? [] : ['Falta una política aprobada de cierre, estados de asistencia y regularizaciones.'],
@@ -291,7 +315,7 @@ describe('Detalle de actividad con las APIs existentes', () => {
     return sesion;
   }
   async function confirmarCierre() {
-    fixture.nativeElement.querySelector('.certificacion-sesion button').click(); await fixture.whenStable();
+    fixture.nativeElement.querySelector('.cierre-sesion button[aria-label]').click(); await fixture.whenStable();
     const dialogo = fixture.nativeElement.querySelector('app-dialogo-confirmacion dialog[open]');
     (Array.from(dialogo.querySelectorAll('button')) as HTMLButtonElement[]).find(b => b.textContent?.trim() === 'Finalizar sesión')!.click();
     await fixture.whenStable();
@@ -304,7 +328,7 @@ describe('Detalle de actividad con las APIs existentes', () => {
     await prepararCierre();
     permisos.delete('actividades.editar');
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.certificacion-sesion button').disabled).toBeFalse();
+    expect(fixture.nativeElement.querySelector('.cierre-sesion button[aria-label]').disabled).toBeFalse();
     const post = await confirmarCierre();
     expect(fixture.nativeElement.querySelector('.tarjeta-sesion').textContent).not.toContain('Finalizada');
     post.flush({ success: true, data: { finalizada: true, sesion: { id_actividad_sesion: 15, id_actividad: 7, nombre: 'Jornada real', estado: 'Finalizada' }, motivos_bloqueo: [] } });
@@ -313,14 +337,14 @@ describe('Detalle de actividad con las APIs existentes', () => {
       contadores: { inscritos_actividad_total: 2, inscritos_actividad_vigentes: 2, participantes_sesion: 2, presentes: 2, ausentes: 0, pendientes: 0, por_regularizar: null } });
     await fixture.whenStable(); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.tarjeta-sesion').textContent).toContain('2 presentes');
-    expect(fixture.nativeElement.querySelector('.tarjeta-sesion').textContent).toContain('No determinable');
+    expect(fixture.nativeElement.querySelector('.tarjeta-sesion').textContent).not.toContain('No determinable');
     expect(texto()).toContain('Activa');
     http.expectNone(req => req.method !== 'GET');
   });
   it('muestra el bloqueo institucional sin habilitar cierre ni certificación por los permisos del usuario', async () => {
     await prepararCierre(false);
-    expect(texto()).toContain('Falta una política aprobada de cierre, estados de asistencia y regularizaciones.');
-    expect(Array.from(fixture.nativeElement.querySelectorAll('.certificacion-sesion button') as NodeListOf<HTMLButtonElement>).every(b => b.disabled)).toBeTrue();
+    expect(texto()).toContain('Finalizaci\u00f3n no disponible para esta sesi\u00f3n.');
+    expect(Array.from(fixture.nativeElement.querySelectorAll('.cierre-sesion button[aria-label]') as NodeListOf<HTMLButtonElement>).every(b => b.disabled)).toBeTrue();
     http.expectNone(req => req.method !== 'GET');
   });
   it('finaliza solo la sesión, consulta capacidades y conserva la actividad Activa', async () => {
@@ -331,7 +355,7 @@ describe('Detalle de actividad con las APIs existentes', () => {
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('.tarjeta-sesion').textContent).toContain('Finalizada');
     expect(texto()).toContain('Activa');
-    expect(Array.from(fixture.nativeElement.querySelectorAll('.certificacion-sesion button') as NodeListOf<HTMLButtonElement>).every(b => b.disabled)).toBeTrue();
+    expect(Array.from(fixture.nativeElement.querySelectorAll('.cierre-sesion button[aria-label]') as NodeListOf<HTMLButtonElement>).every(b => b.disabled)).toBeTrue();
     http.expectNone(req => req.method !== 'GET');
   });
   it('conserva Finalizada si falla la recarga de capacidades después de un cierre confirmado', async () => {
@@ -353,54 +377,25 @@ describe('Detalle de actividad con las APIs existentes', () => {
     http.expectNone(req => req.method !== 'GET');
   });
 
-  async function prepararModalAsistencia(): Promise<HTMLDialogElement> {
-    ['actividades.ver', 'participantes.ver', 'participantes.crear'].forEach(p => permisos.add(p));
-    responder('/activity/7', actividad); catalogos();
-    responder('/activity-session', [{ id_actividad_sesion: 15, id_actividad: 7, nombre: 'Jornada real', fecha: '2026-11-04', hora_inicio: '08:00', hora_fin: '09:00' }]);
-    responder('/attendance/list', []);
-    responder('/participation', [{ id_participacion: 30, id_actividad: 7, id_persona: 41 }]);
-    responder('/persons/list', [{ id_persona: 41, nombres: 'Ana', apellido_paterno: 'Pérez' }]); responder('/participation-type', []);
-    await fixture.whenStable();
-    fixture.nativeElement.querySelector('button[aria-label="Asistencia de sesión"]').click(); await fixture.whenStable();
-    return fixture.nativeElement.querySelector('.modal-asistencia dialog');
-  }
-
-  it('selecciona localmente, guarda con Laravel y recarga asistencia actualizando la tarjeta sin recargar actividad', async () => {
-    const modal = await prepararModalAsistencia();
-    (modal.querySelector('.circulo-presente') as HTMLButtonElement).click(); await fixture.whenStable();
-    expect(modal.textContent).toContain('Sin guardar'); http.expectNone(req => req.method !== 'GET');
-    const guardar = modal.querySelector('.pie-asistencia .accion-principal') as HTMLButtonElement;
-    expect(guardar.disabled).toBeFalse(); guardar.click(); guardar.click();
-    const post = http.expectOne('/api/attendance/create');
-    expect(post.request.body).toEqual({ id_participacion: 30, id_actividad_sesion: 15, estado: 'PRESENTE' });
-    modal.dispatchEvent(new Event('cancel', { cancelable: true }));
-    (modal.querySelector('.dialogo-cerrar') as HTMLButtonElement).click(); await fixture.whenStable();
-    expect(modal.open).toBeTrue();
-    expect(fixture.nativeElement.querySelector('app-dialogo-confirmacion dialog[open]')).toBeNull();
-    post.flush({ success: true, data: { ID_ASISTENCIA: 80 } });
-    const marca = { ID_ASISTENCIA: 80, ID_PARTICIPACION: 30, ID_ACTIVIDAD_SESION: 15, ESTADO: 'PRESENTE' };
-    responder('/attendance/80', marca);
-    responder('/attendance/list', [marca]); await fixture.whenStable();
-    expect(modal.open).toBeTrue(); expect(modal.textContent).toContain('1 marcas confirmadas por Laravel');
-    expect(modal.textContent).not.toContain('Sin guardar');
-    expect(fixture.nativeElement.querySelector('.tarjeta-sesion').textContent).not.toContain('1 presentes');
-    expect(guardar.disabled).toBeTrue();
-    http.expectNone('/api/activity/7'); http.expectNone('/api/participation'); http.expectNone('/api/activity-session');
+  it('abre la asistencia de cada sesión con sus identificadores independientes', async () => {
+    ['actividades.ver', 'participantes.ver'].forEach(p => permisos.add(p));
+    responder('/activity/7', actividad); catalogos(); responder('/participation', []); responder('/attendance/list', []);
+    responder('/activity-session', [{ id_actividad_sesion: 15, id_actividad: 7, nombre: 'Primera' }, { id_actividad_sesion: 16, id_actividad: 7, nombre: 'Segunda' }]); await fixture.whenStable();
+    const navegar = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    const botones = fixture.nativeElement.querySelectorAll('button[aria-label="Asistencia de sesión"]');
+    botones[0].click(); botones[1].click();
+    expect(navegar.calls.allArgs()).toEqual([[['/certificaciones/actividades', 7, 'sesiones', 15, 'asistencia']], [['/certificaciones/actividades', 7, 'sesiones', 16, 'asistencia']]]);
+    http.expectNone(req => req.method !== 'GET');
   });
-
-  it('avisa al cerrar con Escape o X y conserva los cambios si se elige seguir editando', async () => {
-    const modal = await prepararModalAsistencia();
-    (modal.querySelector('.circulo-ausente') as HTMLButtonElement).click(); await fixture.whenStable();
-    const evento = new Event('cancel', { cancelable: true }); modal.dispatchEvent(evento); await fixture.whenStable();
-    expect(evento.defaultPrevented).toBeTrue(); expect(modal.open).toBeTrue();
-    let confirmacion = fixture.nativeElement.querySelector('app-dialogo-confirmacion dialog[open]') as HTMLDialogElement;
-    expect(confirmacion).not.toBeNull();
-    (Array.from(confirmacion.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Seguir editando')!).click(); await fixture.whenStable();
-    expect(modal.open).toBeTrue(); expect(modal.textContent).toContain('Ausente · Sin guardar');
-    (modal.querySelector('.dialogo-cerrar') as HTMLButtonElement).click(); await fixture.whenStable();
-    confirmacion = fixture.nativeElement.querySelector('app-dialogo-confirmacion dialog[open]');
-    (Array.from(confirmacion.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Descartar cambios')!).click(); await fixture.whenStable();
-    expect(modal.open).toBeFalse(); http.expectNone(req => req.method !== 'GET');
+  it('retira el modal de asistencia y conserva el acceso a participantes sin duplicar tablas', async () => {
+    ['actividades.ver', 'participantes.ver'].forEach(p => permisos.add(p));
+    responder('/activity/7', actividad); catalogos(); responder('/participation', []); responder('/attendance/list', []);
+    responder('/activity-session', [{ id_actividad_sesion: 15, id_actividad: 7, nombre: 'Primera' }]); await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.modal-asistencia')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[aria-label="Consultar participantes"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.asistencia-principal')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.tarjetas-detalle table')).toBeNull();
+    http.expectNone(req => req.method !== 'GET');
   });
 
   it('inscribe desde la tarjeta con el formulario existente, actividad protegida y sesión solo contextual', async () => {

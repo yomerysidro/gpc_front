@@ -213,7 +213,7 @@ describe('Pantalla de Actividades', () => {
     expect($('app-dialogo .detalle').textContent).toContain('Solicitud #12');
     await abrirPanel();
     expect($('a[href="/certificaciones/participantes?id_actividad=7"]')).not.toBeNull();
-    expect($('a[href="/certificaciones/sesiones-asistencia?id_actividad=7"]')).not.toBeNull();
+    expect($('a[href="/certificaciones/actividades?id_actividad=7"]')).not.toBeNull();
     expect(servicio.crear).not.toHaveBeenCalled();
   });
   it('resuelve los nombres reales y busca sin distinguir tildes; no crea Header ni Sidebar', async () => {
@@ -371,10 +371,10 @@ describe('Pantalla de Actividades', () => {
     expect($('.modal-acciones h2').textContent).toBe('Acciones de la actividad');
     const tarjetas = Array.from(fixture.nativeElement.querySelectorAll('.tarjeta-accion') as NodeListOf<HTMLElement>);
     expect(tarjetas.map(t => t.lastElementChild?.textContent?.trim())).toEqual([
-      'Ver detalle', 'Editar', 'Participantes', 'Ponentes', 'Sesiones y asistencia', 'Cerrar actividad',
+      'Ver detalle', 'Editar', 'Participantes', 'Ponentes', 'Sesiones de la actividad', 'Cerrar actividad',
     ]);
     expect(tarjetas[2].getAttribute('href')).toBe('/certificaciones/participantes?id_actividad=7');
-    expect(tarjetas[4].getAttribute('href')).toBe('/certificaciones/sesiones-asistencia?id_actividad=7');
+    expect(tarjetas[4].getAttribute('href')).toBe('/certificaciones/actividades?id_actividad=7');
     expect($<HTMLDialogElement>('.modal-acciones dialog').open).toBeTrue();
   });
 
@@ -407,42 +407,39 @@ describe('Pantalla de Actividades', () => {
     expect(servicio.actualizar).toHaveBeenCalledWith(7, jasmine.objectContaining({ id_area: 2, sede: 'Sede operativa' }));
   });
 
-  it('gestiona ponentes desde la actividad y espera confirmación real antes de refrescar', async () => {
-    const respuesta = new Subject<ApiResponse<{ id_actividad_ponente: number; id_actividad: number; id_persona_ponente: number }>>();
-    servicio.vincularPonente.and.returnValue(respuesta);
-    await accion('Gestionar ponentes de esta actividad');
+  it('consulta los vínculos históricos de la actividad sin ofrecer el formulario de vinculación', async () => {
+    servicio.consultarPonentes.and.returnValue(of([{ id_actividad_ponente: 21, id_actividad: 7, id_persona_ponente: 8, nombre: 'Ana Pérez', errorNombre: null }]));
+    await accion('Consultar ponentes de la actividad');
     expect(servicio.consultarPonentes).toHaveBeenCalledWith(7);
-    expect(servicio.listarCatalogoPonentes).toHaveBeenCalledTimes(1);
-    await escribir('#actividad-ponente', '8');
-    $('.modal-ponentes form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); await fixture.whenStable();
-    expect(servicio.vincularPonente).toHaveBeenCalledOnceWith(7, 8);
-    expect(servicio.consultarPonentes).toHaveBeenCalledTimes(1);
-    respuesta.next({ success: true, message: 'Vinculado por Laravel', data: { id_actividad_ponente: 21, id_actividad: 7, id_persona_ponente: 8 } }); respuesta.complete();
-    await fixture.whenStable();
-    expect(servicio.consultarPonentes).toHaveBeenCalledTimes(2);
-    expect($('.modal-ponentes').textContent).toContain('Vinculado por Laravel');
+    expect(servicio.listarCatalogoPonentes).not.toHaveBeenCalled();
+    expect(servicio.vincularPonente).not.toHaveBeenCalled();
+    expect($('.modal-ponentes form')).toBeNull();
+    expect($('.modal-ponentes #actividad-ponente')).toBeNull();
+    expect($('.modal-ponentes').textContent).toContain('Ana Pérez');
+    expect($('.modal-ponentes').textContent).toContain('se realiza desde cada sesión');
     expect(servicio.crear).not.toHaveBeenCalled();
   });
 
-  it('no inventa asignaciones cuando Laravel rechaza la vinculación', async () => {
-    servicio.vincularPonente.and.returnValue(throwError(() => ({ status: 409, mensaje: 'El ponente ya está asignado.', errores: {} })));
-    await accion('Gestionar ponentes de esta actividad'); await escribir('#actividad-ponente', '8');
-    $('.modal-ponentes form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); await fixture.whenStable();
-    expect($('.modal-ponentes').textContent).toContain('El ponente ya está asignado.');
+  it('no inventa asignaciones cuando Laravel rechaza la consulta de vínculos', async () => {
+    servicio.consultarPonentes.and.returnValue(throwError(() => ({ status: 409, mensaje: 'La consulta no está disponible.', errores: {} })));
+    await accion('Consultar ponentes de la actividad');
+    expect($('.modal-ponentes').textContent).toContain('La consulta no está disponible.');
+    expect($('.modal-ponentes form')).toBeNull();
+    expect(servicio.vincularPonente).not.toHaveBeenCalled();
     expect(servicio.consultarPonentes).toHaveBeenCalledTimes(1);
   });
 
   it('confirma la desvinculación y envía el ID de asignación, conservando el catálogo de RR. HH.', async () => {
     servicio.consultarPonentes.and.returnValue(of([{ id_actividad_ponente: 21, id_actividad: 7, id_persona_ponente: 8, nombre: 'Ana Pérez', errorNombre: null }]));
     servicio.desvincularPonente.and.returnValue(of({ success: true, message: 'Desvinculado', data: null }));
-    await accion('Gestionar ponentes de esta actividad');
+    await accion('Consultar ponentes de la actividad');
     boton('Desvincular').click(); await fixture.whenStable();
     expect(servicio.desvincularPonente).not.toHaveBeenCalled();
     const confirmacion = Array.from(fixture.nativeElement.querySelectorAll('app-dialogo-confirmacion dialog[open] button') as NodeListOf<HTMLButtonElement>)
       .find(b => b.textContent?.trim() === 'Desvincular')!;
     confirmacion.click(); await fixture.whenStable();
     expect(servicio.desvincularPonente).toHaveBeenCalledOnceWith(21);
-    expect(servicio.listarCatalogoPonentes).toHaveBeenCalledTimes(1);
+    expect(servicio.listarCatalogoPonentes).not.toHaveBeenCalled();
     expect(servicio.consultarPonentes).toHaveBeenCalledTimes(2);
   });
 
@@ -464,24 +461,23 @@ describe('Pantalla de Actividades', () => {
 
   it('Ponentes conserva el contexto y no presenta enlaces ni formularios del catálogo maestro', async () => {
     const ruta = TestBed.inject(Router).url;
-    await accion('Gestionar ponentes de esta actividad');
+    await accion('Consultar ponentes de la actividad');
     expect(TestBed.inject(Router).url).toBe(ruta);
     expect($('.modal-ponentes .contexto-actividad').textContent).toContain(ACTIVIDAD.nombre);
     expect($('.modal-ponentes a')).toBeNull();
-    expect($('.modal-ponentes').textContent).toContain('Asociar ponente');
-    expect($<HTMLSelectElement>('#actividad-ponente').options[1].value).toBe('8');
+    expect($('.modal-ponentes').textContent).toContain('se realiza desde cada sesión');
+    expect($<HTMLSelectElement>('#actividad-ponente')).toBeNull();
     expect(servicio.vincularPonente).not.toHaveBeenCalled();
   });
 
-  it('deshabilita ponentes asociados y protege contra duplicados incluso si se fuerza el control', async () => {
+  it('muestra los vínculos históricos del servidor sin crear datos locales', async () => {
     servicio.consultarPonentes.and.returnValue(of([{ id_actividad_ponente: 21, id_actividad: 7, id_persona_ponente: 8, nombre: 'Ana Pérez', errorNombre: null }]));
-    await accion('Gestionar ponentes de esta actividad');
-    expect($<HTMLSelectElement>('#actividad-ponente').options[1].disabled).toBeTrue();
-    const modelo = fixture.componentInstance as unknown as { formPonente: FormGroup };
-    modelo.formPonente.controls['id_persona_ponente'].setValue('8');
-    $('.modal-ponentes form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); await fixture.whenStable();
+    await accion('Consultar ponentes de la actividad');
+    expect($('.modal-ponentes').textContent).toContain('Ana Pérez');
+    expect($('.modal-ponentes form')).toBeNull();
     expect(servicio.vincularPonente).not.toHaveBeenCalled();
-    expect($('.modal-ponentes').textContent).toContain('ya está asociado');
+    expect(servicio.crear).not.toHaveBeenCalled();
+    expect(servicio.consultarPonentes).toHaveBeenCalledTimes(1);
   });
 
 });
