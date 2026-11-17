@@ -6,13 +6,15 @@ import { Params, RouterLink } from '@angular/router';
 import { Observable, Subscription, catchError, finalize, forkJoin, map, of, switchMap, throwError, timeout, timer } from 'rxjs';
 import { ArchivoPdf } from '../../../core/interfaces/emision-certificados/documento-digital.interface';
 import { ErrorApi } from '../../../core/interfaces/api/api-response.interface';
-import { DatosOrigen, EvaluacionDocumental, EvaluacionPonente, EvaluacionPonenteActividad, OrigenDocumental } from '../../../core/interfaces/emision-certificados/origenes-certificado.interface';
+import { DatosOrigen, EvaluacionOrigen, EvaluacionDocumental, EvaluacionPonente, EvaluacionPonenteActividad, EvaluacionPonenteSesion, OrigenDocumental, puedeDescargarDocumentoAdministrativo } from '../../../core/interfaces/emision-certificados/origenes-certificado.interface';
 import { TipoCertificado } from '../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { EmisionCertificadosService } from '../../../core/services/emision-certificados/emision-certificados.service';
 import { DocumentoFirmas, DocumentosDigitalesService, RevisionDocumental, mensajeEtapaA } from '../../../core/services/emision-certificados/documentos-digitales.service';
 import { CambiosCertificadosService } from '../../../core/services/emision-certificados/cambios-certificados.service';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { VisorPdfComponent } from '../compartidos/visor-pdf.component';
+import { recuperarMunicipal } from './municipales-individuales.component';
+import { estadoDocumentalPractica } from '../../../core/interfaces/emision-certificados/catalogo-certificados.interface';
 
 type OperacionReconocimiento = 'informacion' | 'recuperacion' | 'vista_previa' | 'confirmacion' | 'envio';
 
@@ -22,31 +24,92 @@ type OperacionReconocimiento = 'informacion' | 'recuperacion' | 'vista_previa' |
 })
 export class PreparacionOrigenComponent {
   readonly origen = input.required<OrigenDocumental>();
+  readonly municipal = input<EvaluacionOrigen | null>(null);
+  protected get esMunicipal(): boolean { return !!this.municipal(); }
+  protected get cuatroPasos(): boolean { return this.porSesion || this.esMunicipal; }
   readonly ponente = input<EvaluacionPonente | null>(null);
   readonly asistente = input(false);
   readonly retorno = input<Params>({});
+  readonly consultaExterna = input(false);
+  readonly consultaPendiente = input(false);
+  readonly evaluacionVigente = input<EvaluacionPonenteSesion | null>(null);
+  readonly documentoRecuperado = input<DocumentoFirmas | null>(null);
   protected readonly pasoReconocimiento = signal(1);
   protected readonly pdfReconocimientoRevisado = signal<ArchivoPdf | null>(null);
   protected get porSesion(): boolean { return this.ponente()?.origen === 'ponente_sesion'; }
   protected get pasoMensaje(): number { return 2; }
   protected get pasoPdf(): number { return 3; }
   protected get pasoConfirmacion(): number { return 4; }
-  protected get pasoEnvio(): number { return this.porSesion ? 4 : 5; }
+  protected get pasoEnvio(): number { return this.cuatroPasos ? 4 : 5; }
   protected get pasosReconocimiento(): string[] {
-    return this.porSesion
-      ? ['Información', 'Texto del reconocimiento', 'Previsualización y confirmación', 'Enviar a Gerencia']
+    if (this.esMunicipal) return ['Información', 'Mensaje', 'Previsualización', 'Enviar a Gerencia'];
+    return this.cuatroPasos
+      ? ['Información', 'Mensaje', 'Previsualización', 'Enviar a Gerencia']
       : ['Datos', 'Mensaje', 'Previsualizar PDF', 'Guardar y continuar', 'Enviar a Gerencia'];
   }
   readonly cerrado = output<void>();
   protected readonly mensajeCertificado = inject(NonNullableFormBuilder).control('', validarMensajeCertificado);
   protected readonly motivoCertificado = inject(NonNullableFormBuilder).control('', c => validarMensajeCertificado(c) || (Array.from(c.value).length > 500 ? { longitudUnicode: true } : null));
   protected textosValidos(): boolean { return this.mensajeCertificado.valid && this.motivoCertificado.valid; }
+  protected caracteresMensaje(): number { return Array.from(this.mensajeCertificado.value).length; }
+  protected readonly descargaMunicipalPermitida = puedeDescargarDocumentoAdministrativo;
   private readonly api = inject(EmisionCertificadosService);
   private readonly documentos = inject(DocumentosDigitalesService);
   private readonly cambios = inject(CambiosCertificadosService);
   private readonly auth = inject(AuthService);
   private readonly destroy = inject(DestroyRef);
   private consulta?: Subscription;
+  private consultaMensajeMunicipal?: Subscription;
+  private contextoMunicipalId: number | null = null;
+  private mensajeMunicipalConsultado: number | null = null;
+  private documentoPersistido(d: DocumentoFirmas | null): d is DocumentoFirmas {
+    return !!d && d.persistido !== false && Number.isSafeInteger(d.id_certificado_documento) && d.id_certificado_documento > 0;
+  }
+  protected mensajeMunicipalEditable(): boolean {
+    const e = this.evaluacion();
+    return this.esMunicipal && e?.origen === 'reconocimiento' && !this.documentoPersistido(this.documento())
+      && !e.certificados_existentes.length && !e.documento_existente && e.texto_editable !== false
+      && e.puede_preparar === true && e.puede_generar_pdf === true && e.estado_elegibilidad === 'Elegible';
+  }
+  private iniciarMunicipal(e: EvaluacionOrigen): void {
+    if (this.contextoMunicipalId !== e.id_origen) {
+      this.consulta?.unsubscribe(); this.consultaMensajeMunicipal?.unsubscribe();
+      this.limpiar(); this.pasoReconocimiento.set(1); this.contextoMunicipalId = e.id_origen;
+      this.mensajeMunicipalConsultado = null;
+      this.mensajeCertificado.reset('', { emitEvent: false });
+    }
+    this.evaluacion.set(e);
+    const d = this.documentoRecuperado();
+    if (this.documentoPersistido(d)) this.documento.set(d);
+    if (this.documentoPersistido(this.documento())) return;
+    this.mensajeCertificado.enable({ emitEvent: false });
+    const mensaje = e.mensaje ?? e.mensaje_predeterminado;
+    if (typeof mensaje === 'string' && !this.mensajeCertificado.dirty) this.mensajeCertificado.setValue(mensaje, { emitEvent: false });
+    if (!e.certificados_existentes.length && !e.documento_existente
+      && (typeof mensaje !== 'string' || typeof e.texto_editable !== 'boolean') && this.mensajeMunicipalConsultado !== e.id_origen) {
+      this.mensajeMunicipalConsultado = e.id_origen;
+      // Lectura ligera independiente: no bloquea el editor ni utiliza la operación de PDF.
+      this.consultaMensajeMunicipal = this.documentos.consultarReconocimiento(e.id_origen).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+        next: resultado => {
+          if (this.contextoMunicipalId !== e.id_origen) return;
+          const guardado = resultado as DocumentoFirmas;
+          if (this.documentoPersistido(guardado)) {
+            if (guardado.origen !== 'reconocimiento' || guardado.beneficiario?.id_persona !== e.id_persona
+              || guardado.id_tipo_certificado !== e.id_tipo_certificado) { this.error.set('No se pudo confirmar el beneficiario del documento.'); return; }
+            this.consulta?.unsubscribe(); this.documento.set(guardado); this.revision.set(null); return;
+          }
+          if (this.documentoPersistido(this.documento())) return;
+          const vigente = resultado as EvaluacionOrigen;
+          if (vigente.origen !== 'reconocimiento' || vigente.id_origen !== e.id_origen || vigente.id_persona !== e.id_persona) {
+            this.error.set('No se pudo confirmar el reconocimiento consultado.'); return;
+          }
+          this.evaluacion.set(vigente);
+          const texto = vigente.mensaje ?? vigente.mensaje_predeterminado;
+          if (typeof texto === 'string' && !this.mensajeCertificado.dirty) this.mensajeCertificado.setValue(texto, { emitEvent: false });
+        }, error: err => this.error.set(mensajeEtapaA(err)),
+      });
+    }
+  }
   private readonly revisionCaducada = signal(false);
   protected readonly registros = signal<readonly { id: number; nombre: string; estado: string }[]>([]);
   protected readonly evaluacion = signal<EvaluacionDocumental | null>(null);
@@ -73,6 +136,14 @@ export class PreparacionOrigenComponent {
   protected readonly falloConsultaExistente = signal(false);
   private readonly tiposVigentes = signal<readonly TipoCertificado[]>([]);
   constructor() {
+    effect(() => {
+      const documento = this.documentoRecuperado();
+      if (documento && (!this.esMunicipal || this.documentoPersistido(documento))) untracked(() => this.documento.set(documento));
+    }, { allowSignalWrites: true });
+    effect(() => {
+      const vigente = this.evaluacionVigente();
+      if (vigente) untracked(() => this.evaluacion.set(vigente));
+    }, { allowSignalWrites: true });
     effect(onCleanup => {
       const r = this.revision();
       this.revisionCaducada.set(false);
@@ -84,7 +155,7 @@ export class PreparacionOrigenComponent {
     }, { allowSignalWrites: true });
     effect(() => {
       const d = this.documento();
-      if (!this.porSesion || !d) return;
+      if (!this.cuatroPasos || !d || this.esMunicipal && !this.documentoPersistido(d)) return;
       untracked(() => {
         this.mensajeCertificado.setValue(d.mensaje_aprobado ?? d.mensaje ?? '', { emitEvent: false });
         this.motivoCertificado.setValue(d.motivo ?? '', { emitEvent: false });
@@ -95,30 +166,40 @@ export class PreparacionOrigenComponent {
     }, { allowSignalWrites: true });
     for (const control of [this.mensajeCertificado, this.motivoCertificado]) {
       control.valueChanges.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => {
-        if (this.porSesion && !this.documento()) { this.revision.set(null); this.pdfReconocimientoRevisado.set(null); this.envio.set(null); }
+        if (this.cuatroPasos && !this.documento()) { this.revision.set(null); this.pdfReconocimientoRevisado.set(null); this.envio.set(null); }
       });
     }
-    effect(() => { const origen = this.origen(); const ponente = this.ponente(); const asistente = this.asistente(); untracked(() => {
+    effect(() => { const origen = this.origen(); const ponente = this.municipal() ?? this.ponente(); const asistente = this.asistente(); untracked(() => {
       if (!ponente) { this.cargar(origen); return; }
+      if (this.municipal()) { this.iniciarMunicipal(this.municipal()!); return; }
       this.consulta?.unsubscribe();
-      this.limpiar(); this.pasoReconocimiento.set(1); this.evaluacion.set(ponente);
+      this.limpiar(); this.pasoReconocimiento.set(1); this.evaluacion.set(this.evaluacionVigente() ?? ponente); this.documento.set(this.documentoRecuperado());
       this.mensajeCertificado.enable({ emitEvent: false }); this.motivoCertificado.enable({ emitEvent: false });
       if (ponente.origen === 'ponente_sesion') {
         this.motivoCertificado.setValue(`Participación como ponente en ${ponente.sesion ?? ''}`.slice(0, 500));
         this.mensajeCertificado.setValue(`Por su valiosa participación como ponente en la sesión ${ponente.sesion ?? ''} de la actividad ${ponente.actividad ?? ''}, compartiendo sus conocimientos y contribuyendo al desarrollo de sus participantes.`.slice(0, 1200));
       }
       const existentes = ponente.certificados_existentes ?? [];
-      if (ponente.puede_consultar_certificado_existente && existentes.length === 1) this.abrirExistente(existentes[0].id_certificado);
+      if (!this.consultaExterna() && ponente.puede_consultar_certificado_existente && existentes.length === 1) this.abrirExistente(existentes[0].id_certificado);
       else if (!asistente && this.puedePreparar()) this.revisar();
     }); }, { allowSignalWrites: true });
     effect(() => {
-      if (!this.asistente() || this.porSesion) return;
+      if (!this.asistente() || this.cuatroPasos) return;
       const documento = this.documento(); const envio = this.envio();
-      if (documento) this.pasoReconocimiento.set(this.porSesion || envio || documento.estado_certificado !== 'PREPARADO' ? this.pasoEnvio : this.pasoConfirmacion);
+      if (documento) this.pasoReconocimiento.set(this.cuatroPasos || envio || documento.estado_certificado !== 'PREPARADO' ? this.pasoEnvio : this.pasoConfirmacion);
     }, { allowSignalWrites: true });
   }
   protected siguienteReconocimiento(): void {
-    if (this.porSesion && this.documento()) {
+    if (this.esMunicipal) {
+      if (!this.puedeAvanzar()) return;
+      if (this.pasoReconocimiento() === 1 || this.documento()) { this.pasoReconocimiento.update(p => Math.min(4, p + 1)); return; }
+      if (this.pasoReconocimiento() === 2) {
+        this.pasoReconocimiento.set(3);
+        if (!this.revisionVigente()) this.revisar();
+      }
+      return;
+    }
+    if (this.cuatroPasos && this.documento()) {
       if (!this.operando()) this.pasoReconocimiento.update(p => Math.min(p + 1, this.pasoEnvio));
       return;
     }
@@ -135,15 +216,26 @@ export class PreparacionOrigenComponent {
     } else if (this.pasoReconocimiento() === this.pasoMensaje && this.revision()) this.pasoReconocimiento.set(this.pasoPdf);
   }
   protected anteriorReconocimiento(): void {
-    if (!this.operando() && (!this.documento() || this.porSesion) && this.pasoReconocimiento() > 1) this.pasoReconocimiento.update(p => p - 1);
+    if (this.esMunicipal && this.pasoReconocimiento() === 3 && !this.documento() && this.operacionActual() === 'vista_previa') {
+      this.consulta?.unsubscribe(); this.operando.set(false); this.pasoReconocimiento.set(2); return;
+    }
+    if (!this.operando() && (!this.documento() || this.cuatroPasos) && this.pasoReconocimiento() > 1) this.pasoReconocimiento.update(p => p - 1);
   }
   protected puedeGuardarReconocimiento(): boolean {
     return this.pasoReconocimiento() === this.pasoPdf && this.puedePreparar() && !!this.revision()
-      && (!this.porSesion || this.contextoSesionValido() && this.revisionVigente())
+      && (!this.cuatroPasos || this.revisionVigente()) && (!this.porSesion || this.contextoSesionValido())
       && this.pdfReconocimientoRevisado() === this.revision()?.archivo;
   }
   protected puedeAvanzar(): boolean {
-    if (this.porSesion && this.documento()) return !this.operando();
+    if (this.esMunicipal) {
+      if (this.pasoReconocimiento() === 1) return !!this.evaluacion();
+      if (this.operando() || this.consultaPendiente() || this.falloConsultaExistente()) return false;
+      if (this.documento()) return this.pasoReconocimiento() < 4;
+      return this.puedePreparar() && (this.pasoReconocimiento() === 1
+        || this.pasoReconocimiento() === 2 && this.mensajeMunicipalEditable() && this.mensajeCertificado.valid);
+    }
+    if (this.cuatroPasos && this.documento()) return !this.operando();
+    if (this.porSesion && this.pasoReconocimiento() === 1 && this.consultaPendiente()) return this.contextoSesionValido();
     if (this.falloConsultaExistente() || !this.puedePreparar()) return false;
     if (!this.porSesion) return this.pasoReconocimiento() === 1 || !!this.revision();
     switch (this.pasoReconocimiento()) {
@@ -167,11 +259,12 @@ export class PreparacionOrigenComponent {
   protected revisionVigente(): boolean {
     const r = this.revision();
     return !this.revisionCaducada() && !!r?.mensaje.trim() && Date.parse(r.expiresAt) > Date.now()
+      && (!this.esMunicipal || r.mensaje === this.mensajeCertificado.value)
       && (!this.porSesion || r.mensaje === this.mensajeCertificado.value && r.motivo === this.motivoCertificado.value);
   }
   protected volverRegistros(): void { if (this.ponente()) this.cerrado.emit(); else this.cargar(); }
   protected cargar(origen = this.origen()): void {
-    if (this.ponente()) { this.cerrado.emit(); return; }
+    if (this.ponente() || this.municipal()) { this.cerrado.emit(); return; }
     this.consulta?.unsubscribe(); this.limpiar(); this.registros.set([]); this.tiposVigentes.set([]); this.cargando.set(true);
     const permiso = origen === 'practica' ? 'practicantes.ver' : 'reconocimientos.ver';
     if (!this.auth.tienePermiso(permiso)) { this.error.set('No tienes permiso para consultar estos registros.'); this.cargando.set(false); return; }
@@ -240,14 +333,15 @@ export class PreparacionOrigenComponent {
   }
   protected puedePreparar(): boolean {
     const e = this.evaluacion();
-    return !!e && e.puede_preparar === true && e.puede_generar_pdf === true
+    return !this.consultaPendiente() && !!e && e.puede_preparar === true && e.puede_generar_pdf === true
       && e.estado_elegibilidad === 'Elegible' && !(e.certificados_existentes ?? []).some(c => c.id_tipo_certificado === e.id_tipo_certificado)
-      && !this.documento() && !this.operando();
+      && !this.documento() && !this.operando() && (!this.esMunicipal || !this.falloConsultaExistente());
   }
   protected revisar(): void {
     const e = this.evaluacion(); if (!e || !this.puedePreparar()) return;
     if (this.porSesion && (!this.contextoSesionValido() || this.pasoReconocimiento() !== this.pasoMensaje)) return;
     if (this.porSesion && !this.textosValidos()) return;
+    if (this.esMunicipal && (this.mensajeCertificado.invalid || !this.mensajeMunicipalEditable() || this.pasoReconocimiento() !== 3)) return;
     this.revision.set(null);
     this.pdfReconocimientoRevisado.set(null);
     this.envio.set(null);
@@ -255,6 +349,7 @@ export class PreparacionOrigenComponent {
     const motivoSolicitado = this.motivoCertificado.value;
     const solicitud = e.origen === 'ponente_sesion'
       ? this.documentos.revisarOrigen(e.origen, e.id_origen, { modalidad_reconocimiento: 'sesion', id_sesion: e.id_sesion, mensaje: this.mensajeCertificado.value, motivo: this.motivoCertificado.value })
+      : this.esMunicipal ? this.documentos.revisarOrigen('reconocimiento', e.id_origen, undefined, mensajeSolicitado)
       : this.documentos.revisarOrigen(e.origen, e.id_origen);
     this.ejecutar(solicitud.pipe(catchError(error => {
       if (!this.esPonente(e) || ![0, 408, 409].includes(error?.status)) return throwError(() => error);
@@ -266,19 +361,28 @@ export class PreparacionOrigenComponent {
       }));
     })), r => {
       if (r?.documento) { this.documento.set(r.documento); if (this.porSesion) this.pasoReconocimiento.set(this.pasoPdf); return; }
-      if (this.porSesion && (this.mensajeCertificado.value !== mensajeSolicitado || this.motivoCertificado.value !== motivoSolicitado)) {
+      if ((this.porSesion || this.esMunicipal) && (this.mensajeCertificado.value !== mensajeSolicitado || this.porSesion && this.motivoCertificado.value !== motivoSolicitado)) {
         this.error.set('Los textos cambiaron durante la revisión. Genera una nueva vista previa.'); return;
       }
       this.revision.set(r);
-      if (this.porSesion && r) this.pasoReconocimiento.set(this.pasoPdf);
+      if (this.cuatroPasos && r) this.pasoReconocimiento.set(this.pasoPdf);
     }, undefined, 'vista_previa');
   }
   protected guardar(): void {
     const e = this.evaluacion(); const r = this.revision();
     if (!e || !r || !this.puedePreparar() || this.asistente() && !this.puedeGuardarReconocimiento()) return;
-    this.ejecutar(this.documentos.guardarOrigen(e, r), d => {
+    this.ejecutar(this.documentos.guardarOrigen(e, r).pipe(catchError(error => {
+      if (!this.esMunicipal) return throwError(() => error);
+      // Un resultado incierto bloquea otra confirmación hasta recuperar el origen.
+      this.falloConsultaExistente.set(true); this.revision.set(null);
+      return this.api.evaluarOrigen('reconocimiento', e.id_origen).pipe(switchMap(actual => {
+        this.evaluacion.set(actual);
+        return recuperarMunicipal(this.api, this.documentos, actual).pipe(switchMap(d => d ? of(d) : throwError(() => error)));
+      }));
+    })), d => {
+      this.falloConsultaExistente.set(false);
       this.documento.set(d); this.revision.set(null);
-      if (this.porSesion) this.pasoReconocimiento.set(this.pasoEnvio);
+      if (this.cuatroPasos) this.pasoReconocimiento.set(this.pasoEnvio);
       this.aviso.set(this.porSesion ? d.estado_certificado === 'PREPARADO' ? 'Reconocimiento preparado correctamente' : '' : 'Certificado preparado');
       this.cambios.confirmar();
     }, undefined, 'confirmacion');
@@ -312,12 +416,22 @@ export class PreparacionOrigenComponent {
     })), d => { this.documento.set(d); this.revision.set(null); this.envio.set(null); });
   }
   protected reintentarConsultaExistente(): void {
+    if (this.esMunicipal && !this.operando()) {
+      this.ejecutar(this.api.evaluarOrigen('reconocimiento', this.municipal()!.id_origen).pipe(switchMap(e => {
+        this.evaluacion.set(e);
+        return recuperarMunicipal(this.api, this.documentos, e);
+      })), d => {
+        this.documento.set(d); this.revision.set(null); this.falloConsultaExistente.set(false);
+        this.pasoReconocimiento.set(d ? 4 : 1);
+      }); return;
+    }
     const existentes = this.evaluacion()?.certificados_existentes ?? [];
     if (existentes.length === 1) this.abrirExistente(existentes[0].id_certificado);
   }
   protected authGerencia(): boolean { return this.auth.tienePermiso('emision.ver'); }
   protected puedeRemitir(): boolean {
-    const d = this.documento(); return !!d && d.estado_certificado === 'PREPARADO' && d.facultades?.remitir === true && d.puede_enviar_gerencia !== false && !this.operando();
+    const d = this.documento(); return !!d && d.estado_certificado === 'PREPARADO' && d.facultades?.remitir === true && d.puede_enviar_gerencia !== false && !this.operando()
+      && (!this.esMunicipal || estadoDocumentalPractica(d) === 'Pendiente de envío a Gerencia');
   }
   protected estadoReconocimiento(): string {
     const d = this.documento();
@@ -329,7 +443,7 @@ export class PreparacionOrigenComponent {
   /** Solo el clic explícito del paso 4 revisa y remite el documento ya guardado. */
   protected enviarSesion(): void {
     const d = this.documento();
-    if (!this.porSesion || this.pasoReconocimiento() !== this.pasoEnvio || !d || !this.puedeRemitir()) return;
+    if (!this.cuatroPasos || this.pasoReconocimiento() !== this.pasoEnvio || !d || !this.puedeRemitir()) return;
     this.ejecutar(this.documentos.obtenerRevisionEnvio(d.id_certificado_documento, d.hash_pdf).pipe(
       switchMap(r => {
         if (Date.parse(r.expiresAt) <= Date.now()) return throwError(() => ({ status: 409, mensaje: 'La revisión venció. Reintenta el envío.', errores: {} }));

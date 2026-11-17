@@ -1,4 +1,5 @@
 @if (!revisionBeneficiario()) { <header class="titulo-emision"><span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span><app-page-title title="Generar y emitir" />@if (seleccion()) { <button type="button" class="regresar-beneficiarios" title="Volver a pendientes" aria-label="Volver a pendientes" [disabled]="generando()" (click)="cancelar()"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span></button> }</header> }
+@if (seleccionarPonente) { <p role="status">Selecciona nuevamente el ponente para continuar.</p> }
 @if (!contexto().general && !revisionBeneficiario()) {
   <section class="card contexto-certificacion" aria-label="Contexto de certificación">
     @if (contexto().cargando) { <p role="status">Cargando certificado...</p> }
@@ -37,10 +38,10 @@
       @if (cargandoPendientes()) { <p role="status">Consultando pendientes autorizados…</p> }
       @if (errorPendientes()) { <p role="alert">{{ errorPendientes() }}</p><button class="btn" type="button" (click)="cargarPendientes()">Reintentar pendientes</button> }
     }
-    @if (filtrosPendientes.controls.origen.value === 'practica') { <app-preparacion-origen origen="practica" /> }
+    @if (filtrosPendientes.controls.origen.value === 'practica') { <app-practicas-certificacion /> }
     @else if (filtrosPendientes.controls.origen.value === 'reconocimiento') {
       <app-reconocimientos-actividad />
-      <details><summary>Reconocimientos municipales individuales</summary><app-preparacion-origen origen="reconocimiento" /></details>
+      <details><summary>Reconocimientos municipales individuales</summary><app-municipales-individuales /></details>
     }
     @else { @if (pendientes(); as pagina) {
       <div class="tabla"><table class="table pendientes-certificacion"><caption class="sr-only">Pendientes de certificación autorizados</caption><thead><tr><th>N.°</th><th>Actividad / origen</th>@if (filtrosPendientes.controls.origen.value === 'sesion') { <th>Sesión</th> }<th>Inscritos</th><th>Elegibles</th><th>Pendientes</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>

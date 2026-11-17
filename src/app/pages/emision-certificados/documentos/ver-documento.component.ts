@@ -12,7 +12,7 @@ import { listoParaEntrega } from '../../../core/interfaces/emision-certificados/
 @Component({
   selector: 'app-ver-documento', standalone: true, imports: [RouterLink, VisorPdfComponent],
   template: `
-    <header><a class="btn" [routerLink]="regresoGerencia ? '/pendientes/documentos-firmar' : '/certificaciones/certificados/documentos'" [queryParams]="regresoGerencia ? { pestana: 'preparados', page: paginaRegreso } : null">Volver</a><h1>Certificado</h1></header>
+    <header><a class="btn" [routerLink]="regresoGerencia ? '/pendientes/documentos-firmar' : regresoPracticas ? '/certificaciones/generar-emitir' : '/certificaciones/certificados/documentos'" [queryParams]="regresoGerencia ? { pestana: 'preparados', page: paginaRegreso } : regresoPracticas ? { origen_documental: 'practica' } : null" aria-label="Volver al listado"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Volver</a><h1>Certificado</h1></header>
     @if (cargando()) { <p role="status">Cargando certificado...</p> }
     @if (error()) { <p role="alert">{{ error() }}</p><button class="btn" type="button" (click)="cargar()">Reintentar</button> }
     @if (documento(); as d) {
@@ -30,6 +30,7 @@ export class VerDocumentoComponent implements OnInit {
   private readonly destroy = inject(DestroyRef);
   private carga?: Subscription;
   protected get regresoGerencia(): boolean { return this.route.snapshot.queryParamMap.get('origen') === 'gerencia'; }
+  protected get regresoPracticas(): boolean { return this.route.snapshot.queryParamMap.get('origen') === 'practicas'; }
   protected get paginaRegreso(): number { const pagina = Number(this.route.snapshot.queryParamMap.get('page')); return Number.isSafeInteger(pagina) && pagina > 0 ? pagina : 1; }
   private readonly cambios = inject(CambiosCertificadosService);
   protected readonly origenTexto = origenCatalogo;

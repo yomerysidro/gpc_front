@@ -139,7 +139,7 @@ describe('Certificados emitidos: consulta sencilla autorizada', () => {
     expect(vista().textContent).toContain('2026-01-01'); expect(vista().querySelector('app-dialogo')).toBeNull();
     cambiar('tipo-certificado', 'Prácticas'); const filas = vista().querySelectorAll('tbody tr'); expect(filas.length).toBe(1);
     expect(filas[0].querySelector('a')!.getAttribute('href')).toBe('/certificaciones/certificados/22/documentos/122/visor');
-    expect(filas[0].textContent).toContain('Listo para entrega'); expect(filas[0].textContent).not.toContain('Entregado');
+    expect(filas[0].textContent).toContain('Certificado confirmado'); expect(filas[0].textContent).not.toContain('Entregado');
     http.expectNone(r => r.method !== 'GET');
   });
   it('muestra la actividad real de un reconocimiento confirmado con sesión NULL y conserva el visor único', () => {

@@ -357,7 +357,7 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     expect(vista().querySelector('app-solicitud-detalle')?.textContent).toContain('Aprobada');
     expect(Array.from(vista().querySelectorAll('app-dialogo button'), nombreBoton)).not.toContain('Aprobar');
     boton('Cerrar').click(); harness.detectChanges();
-    boton('Pendientes de aprobación').click(); await harness.fixture.whenStable(); harness.detectChanges();
+    boton('Actividades por Aprobar').click(); await harness.fixture.whenStable(); harness.detectChanges();
     const pendientes = http.expectOne(req => req.url === solicitudes);
     expect(pendientes.request.params.get('estado')).toBe('Pendiente de aprobación');
     pendientes.flush(pagina([])); harness.detectChanges();

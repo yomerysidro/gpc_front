@@ -1,3 +1,5 @@
+import { MunicipalesIndividualesComponent } from './municipales-individuales.component';
+import { PracticasCertificacionComponent } from './practicas-certificacion.component';
 import { ReconocimientosActividadComponent } from './reconocimientos-actividad.component';
 import { OrigenesTabsComponent, PestanaOrigen } from './origenes-tabs.component';
 import { PonentesSesionComponent } from './ponentes-sesion.component';
@@ -56,7 +58,7 @@ function solicitarContexto(parametros: ParamMap): SolicitudContexto {
 }
 @Component({
   selector: 'app-generar-emitir', standalone: true,
-  imports: [ReconocimientosActividadComponent, OrigenesTabsComponent, PonentesSesionComponent, PreparacionOrigenComponent, DatePipe, ReactiveFormsModule, RouterLink, PageTitleComponent, ListarCertificadosComponent, VisorCertificadoComponent, FormularioCertificadoComponent, VisorPdfComponent, DialogoComponent],
+  imports: [MunicipalesIndividualesComponent, PracticasCertificacionComponent, ReconocimientosActividadComponent, OrigenesTabsComponent, PonentesSesionComponent, PreparacionOrigenComponent, DatePipe, ReactiveFormsModule, RouterLink, PageTitleComponent, ListarCertificadosComponent, VisorCertificadoComponent, FormularioCertificadoComponent, VisorPdfComponent, DialogoComponent],
   templateUrl: './generar-emitir.component.html', styleUrls: ['../compartidos/emision.scss', './generar-emitir.component.scss'],
 })
 export class GenerarEmitirComponent {
@@ -324,6 +326,7 @@ export class GenerarEmitirComponent {
   }
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  protected readonly seleccionarPonente = this.router.getCurrentNavigation()?.extras.state?.['seleccionarPonente'] === true;
   protected readonly escrituraAutorizada = inject(ESCRITURA_EMISION_AUTORIZADA);
   protected readonly formulario = viewChild(FormularioCertificadoComponent);
   protected readonly contextosFormulario = signal([contextoParametros(this.route.snapshot.queryParamMap)]);

@@ -14,6 +14,7 @@ import { OrigenDocumental } from '../../../core/interfaces/emision-certificados/
 
 @Component({ selector: 'app-visor-pdf', standalone: true, template: '' })
 class VisorPrueba {
+  readonly permitirDescarga = input(true);
   readonly urlAdministrativa = input<string | null>(null);
   readonly archivoVisualizado = output<ArchivoPdf>(); readonly errorVisualizacion = output<string>();
   readonly archivoPrevio = input<unknown>(); readonly compacto = input(false); readonly documentoId = input<number>();
@@ -42,6 +43,80 @@ describe('Preparación integrada por origen real', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: EmisionCertificadosService, useValue: api },
       { provide: DocumentosDigitalesService, useValue: docs }, { provide: AuthService, useValue: { tienePermiso: () => true } }] })
       .overrideComponent(PreparacionOrigenComponent, { remove: { imports: [VisorPdfComponent] }, add: { imports: [VisorPrueba] } });
+  });
+  function iniciarMunicipal(documento?: typeof doc): void {
+    fixture = TestBed.createComponent(PreparacionOrigenComponent);
+    fixture.componentRef.setInput('origen', 'reconocimiento');
+    fixture.componentRef.setInput('municipal', { ...evaluacionOrigenPrueba('reconocimiento'), mensaje_predeterminado: revision.mensaje, texto_editable: true });
+    fixture.componentRef.setInput('asistente', true);
+    fixture.componentRef.setInput('consultaExterna', true);
+    if (documento) fixture.componentRef.setInput('documentoRecuperado', documento);
+    fixture.detectChanges(); fixture.detectChanges(); c = fixture.componentInstance;
+  }
+  it('municipal: conserva identidad, cuatro pasos y confirma una sola vez antes del envío explícito', () => {
+    iniciarMunicipal();
+    expect(api.listarTodos).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelectorAll('.pasos-reconocimiento li').length).toBe(4);
+    expect(fixture.nativeElement.textContent).toContain('Ana Municipal');
+    expect(fixture.nativeElement.textContent).not.toContain(revision.mensaje);
+    c.siguienteReconocimiento(); fixture.detectChanges();
+    expect(docs.revisarOrigen).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('textarea').readOnly).toBeFalse();
+    c.siguienteReconocimiento(); fixture.detectChanges();
+    expect(docs.revisarOrigen).toHaveBeenCalledOnceWith('reconocimiento', 71, undefined, revision.mensaje);
+    c.pdfReconocimientoRevisado.set(revision.archivo); c.guardar(); c.guardar(); fixture.detectChanges();
+    expect(docs.guardarOrigen).toHaveBeenCalledTimes(1);
+    expect(c.pasoReconocimiento()).toBe(4);
+    expect(docs.confirmarEnvio).not.toHaveBeenCalled();
+    c.enviarSesion(); c.enviarSesion();
+    expect(docs.confirmarEnvio).toHaveBeenCalledTimes(1);
+  });
+  it('municipal: recupera PREPARADO conservando documento y evita revisión y regeneración', () => {
+    iniciarMunicipal(doc);
+    expect(c.documento()).toEqual(doc);
+    expect(c.pasoReconocimiento()).toBe(1);
+    expect(docs.revisarOrigen).not.toHaveBeenCalled();
+    expect(docs.guardarOrigen).not.toHaveBeenCalled();
+    expect(docs.confirmarEnvio).not.toHaveBeenCalled();
+  });
+  it('municipal: bloquea otra confirmación tras respuesta incierta hasta recuperar el origen', () => {
+    iniciarMunicipal(); c.siguienteReconocimiento(); c.siguienteReconocimiento();
+    c.pdfReconocimientoRevisado.set(revision.archivo);
+    docs.guardarOrigen.and.returnValue(throwError(() => ({ status: 408, mensaje: 'Incierto', errores: {} })));
+    api.evaluarOrigen.and.returnValue(throwError(() => ({ status: 503, mensaje: 'No disponible', errores: {} })));
+    c.guardar(); c.guardar();
+    expect(docs.guardarOrigen).toHaveBeenCalledTimes(1);
+    expect(c.puedePreparar()).toBeFalse();
+  });
+  it('municipal: editar después de la vista previa invalida token y no genera PDF al escribir', () => {
+    iniciarMunicipal(); c.siguienteReconocimiento(); c.siguienteReconocimiento();
+    c.anteriorReconocimiento(); c.mensajeCertificado.setValue('Nuevo mensaje');
+    expect(c.revision()).toBeNull(); expect(c.pdfReconocimientoRevisado()).toBeNull();
+    expect(docs.revisarOrigen).toHaveBeenCalledTimes(1); c.guardar(); expect(docs.guardarOrigen).not.toHaveBeenCalled();
+    docs.revisarOrigen.and.returnValue(of({ ...revision, mensaje: 'Nuevo mensaje', token: 'd'.repeat(64) }));
+    c.siguienteReconocimiento(); expect(c.revision().token).toBe('d'.repeat(64));
+    expect(docs.revisarOrigen).toHaveBeenCalledTimes(2);
+  });
+  it('municipal: persistido false nunca bloquea el editor como si fuera una preparación confirmada', () => {
+    iniciarMunicipal();
+    fixture.componentRef.setInput('documentoRecuperado', { ...doc, persistido: false });
+    fixture.detectChanges(); c.siguienteReconocimiento(); fixture.detectChanges();
+    const campo = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+    expect(c.documento()).toBeNull(); expect(campo.disabled).toBeFalse(); expect(campo.readOnly).toBeFalse();
+    campo.value = 'Edición real con vista previa temporal'; campo.dispatchEvent(new Event('input')); fixture.detectChanges();
+    expect(c.mensajeCertificado.value).toBe(campo.value); expect(docs.revisarOrigen).not.toHaveBeenCalled();
+  });
+  it('municipal: volver al mensaje durante la revisión cancela la espera y permite editar', () => {
+    iniciarMunicipal(); const pendiente = new Subject<any>(); docs.revisarOrigen.and.returnValue(pendiente);
+    c.siguienteReconocimiento(); c.siguienteReconocimiento(); fixture.detectChanges();
+    expect(c.pasoReconocimiento()).toBe(3); expect(c.operando()).toBeTrue();
+    const anterior = fixture.nativeElement.querySelector('.acciones-paso button') as HTMLButtonElement;
+    expect(anterior.disabled).toBeFalse(); anterior.click(); fixture.detectChanges();
+    expect(c.pasoReconocimiento()).toBe(2); expect(c.operando()).toBeFalse();
+    const campo = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+    expect(campo.readOnly).toBeFalse(); campo.value = 'Texto actualizado'; campo.dispatchEvent(new Event('input'));
+    pendiente.next(revision); fixture.detectChanges();
+    expect(c.mensajeCertificado.value).toBe('Texto actualizado'); expect(c.pasoReconocimiento()).toBe(2); expect(c.revision()).toBeNull();
   });
   function iniciar(origen: OrigenDocumental, elegible = true): void {
     api.evaluarOrigen.and.returnValue(of(evaluacionOrigenPrueba(origen, elegible)));

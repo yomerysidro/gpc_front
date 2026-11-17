@@ -1,0 +1,170 @@
+❯ Building...
+✔ Building...
+Browser bundles        
+Initial chunk files     | Names                            |  Raw size
+main.js                 | main                             | 256.27 kB | 
+polyfills.js            | polyfills                        |  90.20 kB | 
+chunk-T4DVKT2G.js       | -                                |  46.35 kB | 
+chunk-XE4WOOMM.js       | -                                |  24.50 kB | 
+styles.css              | styles                           |  15.42 kB | 
+chunk-7GIIY3UL.js       | -                                |   8.51 kB | 
+chunk-7X5SZZGG.js       | -                                |   5.35 kB | 
+chunk-FBUEDRSD.js       | -                                |   3.94 kB | 
+chunk-RNTHJWV3.js       | -                                |   2.23 kB | 
+chunk-R2QGWZ7S.js       | -                                |   2.01 kB | 
+chunk-5J5EWAUF.js       | -                                |   1.37 kB | 
+chunk-L5K5NNPQ.js       | -                                |   1.32 kB | 
+chunk-I537J36Y.js       | -                                |   1.02 kB | 
+chunk-4QPZ4ZWF.js       | -                                | 774 bytes | 
+chunk-T3NHKJVX.js       | -                                | 423 bytes | 
+chunk-W2463ZNS.js       | -                                | 154 bytes | 
+
+                        | Initial total                    | 459.86 kB
+
+Lazy chunk files        | Names                            |  Raw size
+chunk-TOJVVIB3.js       | generar-emitir-component         | 292.78 kB | 
+chunk-ECCVDQ4P.js       | listar-actividades-component     | 211.43 kB | 
+chunk-DB7AWFBJ.js       | -                                | 132.95 kB | 
+chunk-37VPEI37.js       | -                                | 121.53 kB | 
+chunk-AZC2TWZH.js       | -                                |  96.44 kB | 
+chunk-YIU33HP4.js       | -                                |  87.34 kB | 
+chunk-2ECVTYIT.js       | -                                |  80.72 kB | 
+chunk-CVKGL47C.js       | -                                |  69.05 kB | 
+chunk-JRFR6GI3.js       | detalle-documento-component      |  66.77 kB | 
+chunk-5FCOE3D2.js       | -                                |  60.77 kB | 
+chunk-O3URIZMF.js       | listar-reconocimientos-component |  56.70 kB | 
+chunk-QDOP3PA7.js       | -                                |  56.01 kB | 
+chunk-YK77XLIW.js       | -                                |  47.51 kB | 
+chunk-AEBC2HSL.js       | documentos-por-firmar-component  |  40.69 kB | 
+chunk-FNPEA3I7.js       | preparar-practica-component      |  39.25 kB | 
+...and 41 more lazy chunks files. Use "--verbose" to show all the files.
+
+
+Server bundles         
+Initial chunk files     | Names                            |  Raw size
+polyfills.server.mjs    | polyfills.server                 | 572.91 kB | 
+main.server.mjs         | main.server                      | 256.81 kB | 
+chunk-WDX6BVVK.mjs      | -                                |  46.39 kB | 
+chunk-3MU5GOIW.mjs      | -                                |  24.54 kB | 
+chunk-6IPRFYVO.mjs      | -                                |   8.55 kB | 
+chunk-KK7SQRPR.mjs      | -                                |   5.39 kB | 
+chunk-DJC35EWJ.mjs      | -                                |   3.98 kB | 
+chunk-OWO4ZWI7.mjs      | -                                |   2.27 kB | 
+chunk-4UYMCEPV.mjs      | -                                |   2.05 kB | 
+chunk-RPOBBJXD.mjs      | -                                |   1.40 kB | 
+chunk-ELH33JJG.mjs      | -                                |   1.36 kB | 
+chunk-H5KKAN7M.mjs      | -                                |   1.05 kB | 
+chunk-QG4BEULN.mjs      | -                                | 809 bytes | 
+render-utils.server.mjs | render-utils.server              | 503 bytes | 
+chunk-QBKJFZAZ.mjs      | -                                | 458 bytes | 
+chunk-NP7M7R34.mjs      | -                                | 189 bytes | 
+
+Lazy chunk files        | Names                            |  Raw size
+chunk-JDSS5G2R.mjs      | generar-emitir-component         | 292.83 kB | 
+chunk-TYW5GFXN.mjs      | listar-actividades-component     | 211.48 kB | 
+chunk-ESYZ6WI3.mjs      | -                                | 132.99 kB | 
+chunk-5MLKXNFO.mjs      | -                                | 121.57 kB | 
+chunk-XJIHGWEZ.mjs      | -                                |  96.49 kB | 
+chunk-LFSSAI44.mjs      | -                                |  87.38 kB | 
+chunk-DHRXH42C.mjs      | -                                |  80.77 kB | 
+chunk-OURB4ZZN.mjs      | -                                |  69.09 kB | 
+chunk-PLHZQOTS.mjs      | detalle-documento-component      |  66.81 kB | 
+chunk-FVWIXYTJ.mjs      | -                                |  60.81 kB | 
+chunk-BZOF75KF.mjs      | listar-reconocimientos-component |  56.74 kB | 
+chunk-22MMUH6Z.mjs      | -                                |  56.05 kB | 
+chunk-WMEV7A4O.mjs      | -                                |  47.55 kB | 
+chunk-36OERPWW.mjs      | documentos-por-firmar-component  |  40.74 kB | 
+chunk-IKW2OSOY.mjs      | preparar-practica-component      |  39.30 kB | 
+...and 41 more lazy chunks files. Use "--verbose" to show all the files.
+
+Application bundle generation complete. [19.143 seconds]
+
+Watch mode enabled. Watching for file changes...
+NOTE: Raw file sizes do not reflect development server per-request transformations.
+  ➜  Local:   http://localhost:4200/
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Application bundle generation failed. [9.702 seconds]
+
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Browser bundles        
+Initial chunk files     | Names                            |  Raw size
+main.js                 | main                             | 256.27 kB | 
+polyfills.js            | polyfills                        |  90.20 kB | 
+chunk-T4DVKT2G.js       | -                                |  46.35 kB | 
+chunk-XE4WOOMM.js       | -                                |  24.50 kB | 
+styles.css              | styles                           |  15.42 kB | 
+chunk-7GIIY3UL.js       | -                                |   8.51 kB | 
+chunk-7X5SZZGG.js       | -                                |   5.35 kB | 
+chunk-FBUEDRSD.js       | -                                |   3.94 kB | 
+chunk-RNTHJWV3.js       | -                                |   2.23 kB | 
+chunk-R2QGWZ7S.js       | -                                |   2.01 kB | 
+chunk-5J5EWAUF.js       | -                                |   1.37 kB | 
+chunk-L5K5NNPQ.js       | -                                |   1.32 kB | 
+chunk-I537J36Y.js       | -                                |   1.02 kB | 
+chunk-4QPZ4ZWF.js       | -                                | 774 bytes | 
+chunk-T3NHKJVX.js       | -                                | 423 bytes | 
+chunk-W2463ZNS.js       | -                                | 154 bytes | 
+
+                        | Initial total                    | 459.86 kB
+
+Lazy chunk files        | Names                            |  Raw size
+chunk-JHQQRLFI.js       | generar-emitir-component         | 292.78 kB | 
+chunk-ECCVDQ4P.js       | listar-actividades-component     | 211.43 kB | 
+chunk-QKIJSG72.js       | -                                | 133.47 kB | 
+chunk-37VPEI37.js       | -                                | 121.53 kB | 
+chunk-AZC2TWZH.js       | -                                |  96.44 kB | 
+chunk-YIU33HP4.js       | -                                |  87.34 kB | 
+chunk-2ECVTYIT.js       | -                                |  80.72 kB | 
+chunk-CVKGL47C.js       | -                                |  69.05 kB | 
+chunk-JRFR6GI3.js       | detalle-documento-component      |  66.77 kB | 
+chunk-5FCOE3D2.js       | -                                |  60.77 kB | 
+chunk-O3URIZMF.js       | listar-reconocimientos-component |  56.70 kB | 
+chunk-QDOP3PA7.js       | -                                |  56.01 kB | 
+chunk-YK77XLIW.js       | -                                |  47.51 kB | 
+chunk-AEBC2HSL.js       | documentos-por-firmar-component  |  40.69 kB | 
+chunk-FNPEA3I7.js       | preparar-practica-component      |  39.25 kB | 
+...and 41 more lazy chunks files. Use "--verbose" to show all the files.
+
+
+Server bundles         
+Initial chunk files     | Names                            |  Raw size
+polyfills.server.mjs    | polyfills.server                 | 572.91 kB | 
+main.server.mjs         | main.server                      | 256.81 kB | 
+chunk-WDX6BVVK.mjs      | -                                |  46.39 kB | 
+chunk-3MU5GOIW.mjs      | -                                |  24.54 kB | 
+chunk-6IPRFYVO.mjs      | -                                |   8.55 kB | 
+chunk-KK7SQRPR.mjs      | -                                |   5.39 kB | 
+chunk-DJC35EWJ.mjs      | -                                |   3.98 kB | 
+chunk-OWO4ZWI7.mjs      | -                                |   2.27 kB | 
+chunk-4UYMCEPV.mjs      | -                                |   2.05 kB | 
+chunk-RPOBBJXD.mjs      | -                                |   1.40 kB | 
+chunk-ELH33JJG.mjs      | -                                |   1.36 kB | 
+chunk-H5KKAN7M.mjs      | -                                |   1.05 kB | 
+chunk-QG4BEULN.mjs      | -                                | 809 bytes | 
+render-utils.server.mjs | render-utils.server              | 503 bytes | 
+chunk-QBKJFZAZ.mjs      | -                                | 458 bytes | 
+chunk-NP7M7R34.mjs      | -                                | 189 bytes | 
+
+Lazy chunk files        | Names                            |  Raw size
+chunk-JDSS5G2R.mjs      | generar-emitir-component         | 292.83 kB | 
+chunk-TYW5GFXN.mjs      | listar-actividades-component     | 211.48 kB | 
+chunk-ESYZ6WI3.mjs      | -                                | 132.99 kB | 
+chunk-5MLKXNFO.mjs      | -                                | 121.57 kB | 
+chunk-XJIHGWEZ.mjs      | -                                |  96.49 kB | 
+chunk-LFSSAI44.mjs      | -                                |  87.38 kB | 
+chunk-DHRXH42C.mjs      | -                                |  80.77 kB | 
+chunk-OURB4ZZN.mjs      | -                                |  69.09 kB | 
+chunk-PLHZQOTS.mjs      | detalle-documento-component      |  66.81 kB | 
+chunk-FVWIXYTJ.mjs      | -                                |  60.81 kB | 
+chunk-BZOF75KF.mjs      | listar-reconocimientos-component |  56.74 kB | 
+chunk-22MMUH6Z.mjs      | -                                |  56.05 kB | 
+chunk-WMEV7A4O.mjs      | -                                |  47.55 kB | 
+chunk-36OERPWW.mjs      | documentos-por-firmar-component  |  40.74 kB | 
+chunk-IKW2OSOY.mjs      | preparar-practica-component      |  39.30 kB | 
+...and 41 more lazy chunks files. Use "--verbose" to show all the files.
+
+Application bundle generation complete. [2.019 seconds]
+
+Page reload sent to client(s).

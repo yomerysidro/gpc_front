@@ -72,8 +72,14 @@ describe('Autorización institucional y navegación de Emisión', () => {
 
   it('abre el reconocimiento por sesión en página completa dentro del layout y resalta Generar y emitir', async () => {
     await sesion(['emision.ver', 'actividades.ver', 'ponentes-firmantes.ver']);
-    const url = '/certificaciones/generar-emitir/reconocimientos/sesion/15/ponentes/71?id_actividad=7&id_sesion=15&modalidad=sesion&origen=participacion';
-    const harness = await RouterTestingHarness.create(url); harness.detectChanges();
+    const url = '/certificaciones/generar-emitir/reconocimientos/preparar';
+    const harness = await RouterTestingHarness.create('/certificaciones/generar-emitir?origen_documental=reconocimiento');
+    await TestBed.inject(Router).navigateByUrl(url, { state: { reconocimientoSesion: ponentesSesionPrueba().ponentes_sesion![0].reconocimiento } });
+    harness.detectChanges(); TestBed.flushEffects(); harness.detectChanges();
+    expect(TestBed.inject(Router).url).toBe(url);
+    const consulta = http.expectOne('/api/certificaciones/ponente_sesion/71/preparar?accion=consultar_preparacion&modalidad_reconocimiento=sesion&id_sesion=15');
+    consulta.flush({ success: true, data: { ...ponentesSesionPrueba().ponentes_sesion![0].reconocimiento, recuperado: false, persistido: false } });
+    harness.detectChanges(); TestBed.flushEffects(); harness.detectChanges();
     const vista = harness.routeNativeElement!;
     expect(vista.querySelector('app-header')).not.toBeNull();
     expect(vista.querySelector('app-sidebar')).not.toBeNull();
@@ -81,10 +87,10 @@ describe('Autorización institucional y navegación de Emisión', () => {
     expect(vista.querySelector('app-generar-emitir')).toBeNull();
     expect(vista.querySelector('app-preparar-reconocimiento-sesion')).not.toBeNull();
     expect(vista.textContent).toContain('Maria Perez');
-    expect(vista.textContent).toContain('Texto del reconocimiento');
+    expect(vista.textContent).toContain('2. Mensaje');
     expect(vista.textContent).toContain('Sesión N.º 001');
     expect(vista.textContent).toContain('10/02/2026');
-    expect(api.ponentesCertificacion).toHaveBeenCalledWith(15);
+    expect(api.ponentesCertificacion).not.toHaveBeenCalled();
     const volver = vista.querySelector('app-preparacion-origen a')!;
     expect(volver.getAttribute('href')).toContain('id_sesion=15');
     expect(volver.getAttribute('href')).toContain('modalidad=sesion');
@@ -92,8 +98,19 @@ describe('Autorización institucional y navegación de Emisión', () => {
 
   it('deniega la ruta de reconocimiento por sesión antes de consultar si falta permiso de ponentes', async () => {
     await sesion(['emision.ver', 'actividades.ver']);
-    await RouterTestingHarness.create('/certificaciones/generar-emitir/reconocimientos/sesion/15/ponentes/71');
+    await RouterTestingHarness.create('/certificaciones/generar-emitir/reconocimientos/preparar');
     expect(TestBed.inject(Router).url).toBe('/acceso-denegado'); expect(api.ponentesCertificacion).not.toHaveBeenCalled();
+  });
+
+  it('vuelve a Reconocimientos y muestra una indicación al recargar sin contexto', async () => {
+    await sesion(['emision.ver', 'actividades.ver', 'ponentes-firmantes.ver']);
+    const harness = await RouterTestingHarness.create('/certificaciones/generar-emitir/reconocimientos/preparar');
+    await harness.fixture.whenStable(); harness.detectChanges();
+    expect(TestBed.inject(Router).url).toBe('/certificaciones/generar-emitir?origen_documental=reconocimiento');
+    expect(harness.routeNativeElement!.textContent).toContain('Selecciona nuevamente el ponente para continuar.');
+    expect(harness.routeNativeElement!.querySelector('app-preparar-reconocimiento-sesion')).toBeNull();
+    expect(harness.routeNativeElement!.textContent).not.toContain('Maria Perez');
+    http.expectNone(r => r.url.includes('/ponente_sesion/'));
   });
 
   for (const url of ['/gestion/firmantes-municipales', '/certificaciones/firmas', '/firmas']) {

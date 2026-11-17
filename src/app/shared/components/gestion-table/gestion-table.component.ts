@@ -97,6 +97,30 @@ export class GestionTableComponent implements OnInit {
     'id_institucion': inject(InstitutionService),
   };
 
+  protected readonly finalizandoPractica = signal<number | null>(null);
+  protected practicaFinalizada(registro: GestionRecord): boolean {
+    return String(registro['estado']).trim().toLocaleLowerCase() === 'finalizado';
+  }
+  protected finalizarPractica(registro: GestionRecord): void {
+    if (this.finalizandoPractica() !== null || !this.puede('editar') || this.practicaFinalizada(registro)) return;
+    const practicante = this.catalogos()['id_persona_practicante']?.find(r => Number(r['id_persona_practicante']) === Number(registro['id_persona_practicante']));
+    const referencia = practicante ? `de ${this.nombreRelacion(practicante, 'id_persona_practicante')}, ` : '';
+    if (!window.confirm(`¿Finalizar la práctica ${referencia}${registro['carrera'] ?? ''}, del ${registro['fecha_inicio'] ?? 'inicio no registrado'} al ${registro['fecha_fin'] ?? 'fin no registrado'}?`)) return;
+    const id = Number(registro['id_practica']); this.finalizandoPractica.set(id); this.errorCarga.set('');
+    (this.relaciones['id_practica'] as PracticeService).finalizar(id).pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.finalizandoPractica.set(null))).subscribe({
+      next: e => {
+        this.registros.update(rs => rs.map(r => Number(r['id_practica']) === id ? { ...r, ...e.practica } : r));
+        this.servicio().obtener(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: fila => this.registros.update(rs => rs.map(r => Number(r['id_practica']) === id ? fila : r)),
+          error: () => this.errorCarga.set('Práctica finalizada. No se pudo actualizar su detalle.'),
+        });
+      },
+      error: e => this.errorCarga.set(e?.status === 409
+        ? (e?.error?.data?.motivos_bloqueo ?? []).join(' ') || e?.error?.message || 'El servidor no permite finalizar esta práctica.'
+        : e?.status === 403 ? 'No tienes permiso para finalizar esta práctica.'
+          : 'No se pudo finalizar la práctica. Intenta nuevamente.'),
+    });
+  }
   protected puede(accion: string): boolean {
     const clave = this.config()?.permisos[accion];
     const ver = this.config()?.permisos['ver'];

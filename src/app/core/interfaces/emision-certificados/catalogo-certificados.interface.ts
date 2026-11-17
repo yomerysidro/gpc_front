@@ -61,6 +61,7 @@ export function origenCatalogo(fila: Pick<CertificadoCatalogo, 'actividad' | 'se
 }
 
 export function estadoCatalogo(fila: CertificadoCatalogo): string {
+  if (fila.origen === 'practica' || fila.id_practica) return estadoDocumentalPractica(fila);
   if (!fila.id_certificado_documento) return 'Sin documento';
   if (fila.emision_oficial_verificada === true && fila.firma_verificada === true) return 'Emitido';
   if (fila.firma_verificada === true) return 'Firmado';
@@ -70,4 +71,28 @@ export function estadoCatalogo(fila: CertificadoCatalogo): string {
   if (['FIRMADO', 'EMITIDO'].includes(fila.estado_certificado)) return 'Documento histórico';
   if (/listo para entrega|preparado para entrega|firmado|emitido|entregado/i.test(fila.etiqueta_estado ?? '')) return 'Documento histórico';
   return fila.etiqueta_estado || fila.estado_documental || 'Documento histórico';
+}
+
+/** Presentación compartida: existencia de PDF y confirmación administrativa son evidencias distintas. */
+export interface EstadoDocumentalPractica {
+  id_certificado_documento?: number | null;
+  estado_certificado?: string;
+  estado_flujo?: string;
+  estado_documental?: string | null;
+  estado_documento?: string;
+  estado?: string | boolean | null;
+  pdf_confirmado?: boolean;
+  disponible_rrhh?: boolean;
+}
+export function estadoDocumentalPractica(d: EstadoDocumentalPractica): string {
+  const normalizar = (valor: unknown) => String(valor ?? '').trim().toUpperCase();
+  const estado = normalizar(d.estado_certificado ?? d.estado_flujo);
+  if ([estado, d.estado_flujo, d.estado_documental, d.estado_documento, d.estado].some(v => normalizar(v) === 'ANULADO')) return 'Anulado';
+  if (d.estado_certificado && d.estado_flujo && normalizar(d.estado_certificado) !== normalizar(d.estado_flujo)) return 'Estado documental por verificar';
+  if (!Number.isSafeInteger(d.id_certificado_documento) || Number(d.id_certificado_documento) < 1) return 'Sin documento';
+  if (estado === 'PREPARADO') return d.pdf_confirmado === true || d.disponible_rrhh === true
+    ? 'Estado documental por verificar' : 'Pendiente de envío a Gerencia';
+  if (d.pdf_confirmado === true && d.disponible_rrhh === true) return 'Certificado confirmado';
+  if (estado === 'PENDIENTE_FIRMA') return 'Pendiente de firma';
+  return 'Estado documental por verificar';
 }

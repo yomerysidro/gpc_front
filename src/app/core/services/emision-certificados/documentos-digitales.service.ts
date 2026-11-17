@@ -8,15 +8,20 @@ import { AUTHENTICATED_REQUEST } from '../../security/auth-request.context';
 import { aErrorApi } from '../../../shared/utils/error-api';
 import { decodificarVistaPrevia } from './vista-previa-pdf';
 import {
-  EvaluacionDocumental, EvaluacionPonente, EvaluacionPonenteActividad, EvaluacionPonenteSesion, OrigenDocumental,
+  EvaluacionOrigen, EvaluacionDocumental, EvaluacionPonente, EvaluacionPonenteActividad, EvaluacionPonenteSesion, OrigenDocumental,
   OrigenPonente, PonentesActividadCertificacion, PonentesCertificacion,
 } from '../../interfaces/emision-certificados/origenes-certificado.interface';
 
 export interface DocumentoFirmas {
+  persistido?: boolean;
+  estado_documento?: string;
+  puede_visualizar?: boolean;
+  puede_descargar?: boolean;
+  fecha_sesion?: string | null;
   url_documento?: string; enviado?: boolean; puede_enviar_gerencia?: boolean;
   remision?: { estado_persistido?: string } | null;
   mensaje?: string; mensaje_aprobado?: string; motivo?: string; texto_editable?: boolean;
-  modalidad_reconocimiento?: 'actividad' | 'sesion';
+  modalidad_reconocimiento?: 'individual' | 'actividad' | 'sesion';
   id_actividad_ponente?: number;
   origen?: string;
   id_reconocimiento?: number | null;
@@ -47,7 +52,7 @@ export interface DocumentoFirmas {
   sesion: string | null;
   tipo_certificado: string;
   firmantes: readonly { id_firma: number | null; id_persona_trabajador?: number; area?: string | null; nombre?: string; nombre_aprobado?: string; cargo?: string; cargo_aprobado?: string; orden_firma?: number; estado?: string; estado_firma?: string }[];
-  facultades: { remitir: boolean; descargar: boolean };
+  facultades: { remitir: boolean; descargar: boolean; ver?: boolean; visualizar?: boolean };
 }
 interface PdfRevision { contenido_base64: string; tipo_contenido: string; nombre_archivo: string; persistido: boolean; hash_pdf?: string }
 export interface RevisionDocumental { token: string; archivo: ArchivoPdf; expiresAt: string; hash: string; mensaje?: string; motivo?: string; documento?: DocumentoFirmas }
@@ -79,14 +84,60 @@ export function mensajeDocumento(error: ErrorApi): string {
 
 @Injectable({ providedIn: 'root' })
 export class DocumentosDigitalesService {
+  private readonly lecturasSesion = new Map<string, Observable<EvaluacionPonenteSesion | DocumentoFirmas>>();
+  /** Lectura puntual sin PDF ni operaciones documentales. */
+  consultarReconocimientoSesion(id: number, sesion: number): Observable<EvaluacionPonenteSesion | DocumentoFirmas> {
+    const clave = `${id}:${sesion}`;
+    const pendiente = this.lecturasSesion.get(clave);
+    if (pendiente) return pendiente;
+    const consulta = this.http.get<ApiResponse<EvaluacionPonenteSesion | DocumentoFirmas>>(
+      `${this.api}/certificaciones/ponente_sesion/${id}/preparar`, {
+        ...this.privado, headers: this.sinCache,
+        params: { accion: 'consultar_preparacion', modalidad_reconocimiento: 'sesion', id_sesion: sesion },
+      }).pipe(timeout(30000), map(r => {
+        const d = this.datos(r) as (EvaluacionPonenteSesion | DocumentoFirmas) & { recuperado?: boolean; persistido?: boolean };
+        const documento = 'id_certificado_documento' in d;
+        if (documento ? d.recuperado !== true || d.persistido !== true || d.id_actividad_ponente !== id || d.id_sesion !== sesion
+          : d.recuperado !== false || d.persistido !== false || d.origen !== 'ponente_sesion'
+            || d.modalidad_reconocimiento !== 'sesion' || d.id_origen !== id || d.id_sesion !== sesion) {
+          throw { status: 409, mensaje: 'Contexto incompatible con el reconocimiento de la sesión.', errores: {} };
+        }
+        return d;
+      }), catchError(error => this.error(error)), finalize(() => this.lecturasSesion.delete(clave)),
+      shareReplay({ bufferSize: 1, refCount: true }));
+    this.lecturasSesion.set(clave, consulta);
+    return consulta;
+  }
+  consultarPractica(id: number): Observable<DocumentoFirmas | EvaluacionDocumental> {
+    return this.http.get<ApiResponse<DocumentoFirmas | EvaluacionDocumental>>(
+      this.api + '/certificaciones/practica/' + id + '/preparar',
+      { ...this.privado, headers: this.sinCache, params: { accion: 'consultar_preparacion' } }).pipe(timeout(30000), map(r => {
+        const d = this.datos(r);
+        if (d.origen !== 'practica' || ('id_origen' in d ? d.id_origen !== id : d.id_practica !== id)) throw new Error('La preparación no corresponde a la práctica.');
+        return d;
+      }), catchError(e => this.error(e)));
+  }
   private readonly consultasSesion = new Map<string, Observable<DocumentoFirmas>>();
+  consultarReconocimiento(id: number): Observable<DocumentoFirmas | EvaluacionOrigen> {
+    return this.http.get<ApiResponse<DocumentoFirmas | EvaluacionOrigen>>(
+      `${this.api}/certificaciones/reconocimiento/${id}/preparar`,
+      { ...this.privado, headers: this.sinCache, params: { accion: 'consultar_preparacion' } }).pipe(
+      timeout(30000), map(r => {
+        const d = this.datos(r);
+        if (d.origen !== 'reconocimiento' || ('id_origen' in d ? d.id_origen !== id : d.id_reconocimiento !== id)) {
+          throw new Error('La preparación no corresponde al reconocimiento individual.');
+        }
+        return d;
+      }), catchError(e => this.error(e)));
+  }
   private readonly http = inject(HttpClient);
   private readonly api = environment.apiBaseUrl.replace(/\/$/, '');
   private readonly privado = { context: new HttpContext().set(AUTHENTICATED_REQUEST, true), withCredentials: true };
   private readonly sinCache = { 'Cache-Control': 'no-cache, no-store, max-age=0', Pragma: 'no-cache' };
 
   revisarOrigen(origen: OrigenDocumental | OrigenPonente, id: number,
-    sesion?: { modalidad_reconocimiento: 'sesion'; id_sesion: number; mensaje?: string; motivo?: string }): Observable<RevisionDocumental & { mensaje: string }> {
+    sesion?: { modalidad_reconocimiento: 'sesion'; id_sesion: number; mensaje?: string; motivo?: string }, mensajePractica?: string): Observable<RevisionDocumental & { mensaje: string }> {
+    if (mensajePractica !== undefined && origen !== 'practica' && origen !== 'reconocimiento') return throwError(() => ({ status: 422, mensaje: 'El mensaje no corresponde al origen solicitado.', errores: {} }));
     const porSesion = origen === 'ponente_sesion';
     if (porSesion !== !!sesion) {
       return throwError(() => ({ status: 422, mensaje: 'La modalidad solicitada no corresponde a este origen.', errores: {} }));
@@ -102,7 +153,9 @@ export class DocumentosDigitalesService {
       token_revision: string; expires_at: string; hash_pdf: string; mensaje: string; motivo?: string;
       recuperado?: boolean; texto_editable?: boolean; id_certificado_documento?: number;
       vista_previa_pdf: Pick<PdfRevision, 'contenido_base64' | 'tipo_contenido'> }>(origen, id,
-      { accion: 'revisar_documento', ...modalidad, ...(sesion?.mensaje !== undefined ? { mensaje: sesion.mensaje, motivo: sesion.motivo } : {}) }).pipe(switchMap(d => {
+      { accion: 'revisar_documento', ...modalidad, ...(sesion?.mensaje !== undefined ? { mensaje: sesion.mensaje, motivo: sesion.motivo } : {}),
+        ...((origen === 'practica' || origen === 'reconocimiento') && mensajePractica !== undefined ? { mensaje: mensajePractica } : {}) }).pipe(switchMap(d => {
+        if ((origen === 'practica' || origen === 'reconocimiento') && mensajePractica !== undefined && d.mensaje !== mensajePractica) throw new Error('El servidor devolvió un mensaje distinto del solicitado.');
         if (porSesion && d.recuperado === true && d.persistido === true && d.texto_editable === false
           && d.origen === origen && d.id_origen === id && d.id_actividad_ponente === id
           && d.modalidad_reconocimiento === 'sesion' && d.id_sesion === sesion!.id_sesion && d.id_certificado_documento) {
@@ -134,6 +187,7 @@ export class DocumentosDigitalesService {
       : evaluacion.origen === 'ponente_actividad' ? { modalidad_reconocimiento: 'actividad' as const } : {};
     return this.operacionOrigen<DocumentoFirmas & { preparacion_persistida: boolean }>(evaluacion.origen, evaluacion.id_origen,
       { accion: 'confirmar_preparacion', token_revision: revision.token, confirmar: true, ...modalidad,
+        ...((evaluacion.origen === 'practica' || evaluacion.origen === 'reconocimiento') && revision.mensaje !== undefined ? { mensaje: revision.mensaje } : {}),
         ...(evaluacion.origen === 'ponente_sesion' && revision.motivo !== undefined ? { mensaje: revision.mensaje, motivo: revision.motivo } : {}) }).pipe(
       switchMap(d => {
         if (d.preparacion_persistida !== true || !Number.isSafeInteger(d.id_certificado_documento) || d.id_certificado_documento < 1) {
@@ -160,6 +214,8 @@ export class DocumentosDigitalesService {
             || !['PREPARADO', 'PENDIENTE_FIRMA'].includes(detalle.estado_certificado)) {
             throw new Error('No se pudo confirmar el origen y el PDF guardado.');
           }
+          if ((evaluacion.origen === 'practica' || evaluacion.origen === 'reconocimiento') && revision.mensaje !== undefined
+            && (detalle.mensaje_aprobado ?? detalle.mensaje) !== revision.mensaje) throw new Error('El documento guardado no conserva el mensaje aprobado.');
           return detalle;
         }));
       }), catchError(error => {
@@ -181,12 +237,8 @@ export class DocumentosDigitalesService {
     const clave = [e.id_origen, e.id_sesion, certificado, hash ?? ''].join(':');
     const pendiente = this.consultasSesion.get(clave);
     if (pendiente) return pendiente;
-    const consulta = this.http.get<ApiResponse<DocumentoFirmas & { recuperado: boolean; persistido: boolean }>>(
-      `${this.api}/certificaciones/ponente_sesion/${e.id_origen}/preparar`, {
-        ...this.privado, headers: this.sinCache,
-        params: { accion: 'consultar_preparacion', modalidad_reconocimiento: 'sesion', id_sesion: e.id_sesion },
-      }).pipe(timeout(30000), map(r => {
-        const d = this.datos(r);
+    const consulta = this.consultarReconocimientoSesion(e.id_origen, e.id_sesion).pipe(map(resultado => {
+        const d = resultado as DocumentoFirmas & { recuperado: boolean; persistido: boolean };
         if (d.recuperado === false && d.persistido === false) {
           throw { status: 404, mensaje: 'Preparación inexistente.', errores: {}, evaluacion: d };
         }

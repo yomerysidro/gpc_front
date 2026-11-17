@@ -89,6 +89,15 @@ export interface DatosOrigen {
   area?: string; institucion?: string; carrera?: string;
 }
 export interface EvaluacionOrigen {
+  mensaje_predeterminado?: string;
+  mensaje?: string | null;
+  texto_editable?: boolean;
+  modalidad_reconocimiento?: 'individual' | 'actividad' | 'sesion';
+  contexto_origen_real?: { origen: 'reconocimiento' | OrigenPonente; id_origen: number; id_actividad: number | null; id_sesion: number | null; id_actividad_ponente: number | null };
+  documento_existente?: DocumentoOrigenAdministrativo | null;
+  documentos_existentes?: readonly DocumentoOrigenAdministrativo[];
+  puede_consultar_documento_original?: boolean;
+  motivo_documento?: string | null;
   origen: OrigenDocumental; id_origen: number; id_persona: number; id_area: number;
   id_actividad: null; id_sesion: null; id_tipo_certificado: number | null; tipo_certificado: string | null;
   reconocimiento?: DatosOrigen; practica?: DatosOrigen;
@@ -98,9 +107,64 @@ export interface EvaluacionOrigen {
   certificados_existentes: readonly {
     id_certificado: number; id_tipo_certificado: number; id_persona: number;
     id_reconocimiento: number | null; id_practica: number | null; estado: string;
+    id_certificado_documento?: number | null;
   }[];
   periodo_transcurrido_valido?: boolean; cumplimiento_requisitos_acreditado?: boolean | null;
   aprobacion_acreditada?: boolean | null; requiere_asistencia_capacitacion?: false;
+}
+export interface DocumentoOrigenAdministrativo {
+  origen: 'reconocimiento' | OrigenPonente;
+  id_origen: number;
+  id_reconocimiento: number;
+  modalidad_reconocimiento: 'individual' | 'actividad' | 'sesion';
+  id_certificado: number;
+  id_certificado_documento: number;
+  id_actividad: number | null;
+  id_sesion: number | null;
+  id_actividad_ponente: number | null;
+  beneficiario: { id_persona: number; nombre: string };
+  estado_certificado: string;
+  estado_documento: string;
+  url_documento: string | null;
+  puede_visualizar?: boolean;
+  puede_descargar?: boolean;
+  motivo_documento?: string | null;
+  facultades: { ver: boolean; visualizar?: boolean; descargar: boolean };
+}
+
+/** La evaluación anida este acceso en documento_existente; el detalle lo devuelve en su raíz. */
+interface AccesoDocumentoAdministrativo {
+  id_certificado_documento: number;
+  url_documento?: string | null;
+  puede_visualizar?: boolean;
+  puede_descargar?: boolean;
+  facultades?: { ver?: boolean; visualizar?: boolean; descargar?: boolean };
+}
+export function puedeVerDocumentoAdministrativo(d: AccesoDocumentoAdministrativo | null | undefined): boolean {
+  return !!d && Number.isSafeInteger(d.id_certificado_documento) && d.id_certificado_documento > 0
+    && typeof d.url_documento === 'string' && !!d.url_documento.trim() && d.facultades?.ver === true
+    && d.facultades.visualizar !== false && d.puede_visualizar !== false;
+}
+export function puedeDescargarDocumentoAdministrativo(d: AccesoDocumentoAdministrativo | null | undefined): boolean {
+  return puedeVerDocumentoAdministrativo(d) && d?.facultades?.descargar === true && d.puede_descargar !== false;
+}
+export interface EvaluacionPractica extends EvaluacionOrigen {
+  origen: 'practica'; finalizacion_registrada: boolean; situacion_constancia: string; practica: DatosOrigen;
+  mensaje_predeterminado?: string;
+  mensaje?: string | null;
+  texto_editable?: boolean;
+  mensaje_estructurado_disponible?: boolean;
+  /** Registro informativo del backend; no constituye una validación local de elegibilidad. */
+  supervisores?: readonly {
+    id_practica_supervisor: number;
+    nombres: string;
+    apellido_paterno: string | null;
+    apellido_materno: string | null;
+    tipo_supervision: string | null;
+    fecha_inicio: string | null;
+    fecha_fin: string | null;
+    estado: string;
+  }[];
 }
 export interface CatalogosOrigenes {
   tipos_actividad: readonly { id_tipo_actividad: number; nombre: string; estado: boolean }[];

@@ -13,7 +13,7 @@ export const PLANTILLA_VISOR_PDF = `
       @if (error()) { <p role="alert">{{ error() }}</p><button type="button" class="btn" (click)="revision.update(siguiente)">Reintentar PDF</button> }
       @if (integrado()) { <app-pdf-continuo [archivo]="archivoIntegrado()" [ajustarAncho]="ajustarAncho()" [textosEsperados]="textosEsperados()" [zoom]="zoom()" (listo)="archivoVisualizado.emit($event)" (fallo)="errorVisualizacion.emit($event)" /> }
       @if (urlSegura(); as src) {
-        <div class="acciones"><a class="btn" [href]="url()" [download]="archivoPrevio()?.nombre || 'certificado.pdf'">{{ archivoPrevio() && !persistido() ? 'Descargar vista previa' : 'Descargar PDF' }}</a>@if (!compacto()) { <button type="button" class="btn" (click)="imprimir()">Imprimir PDF</button><a class="btn" [href]="url()" target="_blank" rel="noopener">Abrir PDF</a> }</div>
+        @if (permitirDescarga()) { <div class="acciones"><a class="btn" [href]="url()" [download]="archivoPrevio()?.nombre || 'certificado.pdf'">{{ archivoPrevio() && !persistido() ? 'Descargar vista previa' : 'Descargar PDF' }}</a>@if (!compacto()) { <button type="button" class="btn" (click)="imprimir()">Imprimir PDF</button><a class="btn" [href]="url()" target="_blank" rel="noopener">Abrir PDF</a> }</div> }
         @if (controlesZoom()) { <label>Zoom del PDF <select aria-label="Zoom del PDF" [value]="zoom()" (change)="cambiarZoom($any($event.target).value)"><option value="75">75 %</option><option value="100">100 %</option><option value="125">125 %</option><option value="150">150 %</option><option value="200">200 %</option></select></label> }
         @if (!integrado()) { @for (recurso of recursos(); track recurso.url) {
           <iframe #marco [src]="recurso.src" (load)="marcoCargado($event)" (error)="marcoFallido($event)" title="PDF del certificado"></iframe>
@@ -33,6 +33,7 @@ export const PLANTILLA_VISOR_PDF = `
   styles: `:host { display:block; min-width:0 } iframe { width:100%; height:72vh; min-height:24rem; border:1px solid #d5dee8; border-radius:.5rem; background:#fff } .acciones { display:flex; flex-wrap:wrap; gap:.5rem; margin-block:1rem } p { overflow-wrap:anywhere } @media(max-width:600px) { iframe { height:65vh; min-height:18rem } }`,
 })
 export class VisorPdfComponent {
+  readonly permitirDescarga = input(true);
   readonly integrado = input(false);
   readonly ajustarAncho = input(false);
   private readonly archivoDescargado = signal<ArchivoPdf | null>(null);

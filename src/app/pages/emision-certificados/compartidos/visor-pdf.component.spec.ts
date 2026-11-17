@@ -24,6 +24,14 @@ describe('Visor de bytes PDF almacenados', () => {
     expect(f.nativeElement.querySelector('iframe').getAttribute('title')).toBe('PDF del certificado');
     expect(api.archivo).toHaveBeenCalledOnceWith(31); f.destroy();
   });
+  it('conserva la visualización y oculta descarga, impresión y apertura cuando no están autorizadas', () => {
+    const f = TestBed.createComponent(VisorPdfComponent);
+    f.componentRef.setInput('documentoId', 31); f.componentRef.setInput('permitirDescarga', false);
+    f.detectChanges(); f.detectChanges();
+    expect(f.nativeElement.querySelector('iframe')).not.toBeNull();
+    expect(f.nativeElement.querySelector('a[download]')).toBeNull();
+    expect(f.nativeElement.querySelector('.acciones')).toBeNull(); f.destroy();
+  });
   it('RR. HH. visualiza y descarga el mismo blob autorizado sin usar rutas de Gerencia', () => {
     const archivo = { blob: new Blob(['%PDF-1.4\nRevisión confirmada'], { type: 'application/pdf' }), nombre: 'certificado.pdf' };
     api.archivoRrhh.and.returnValue(of(archivo));

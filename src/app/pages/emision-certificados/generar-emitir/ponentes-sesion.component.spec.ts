@@ -6,7 +6,7 @@ import { PonentesSesionComponent } from './ponentes-sesion.component';
 import { Router, provideRouter } from '@angular/router';
 import { ponentesSesionPrueba } from '../../../core/interfaces/emision-certificados/origenes-certificado.fixture';
 import { DocumentoFirmas, DocumentosDigitalesService } from '../../../core/services/emision-certificados/documentos-digitales.service';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 describe('Ponentes vinculados a una sesión real', () => {
   let http: HttpTestingController; let fixture: ComponentFixture<PonentesSesionComponent>; let permitido: boolean;
@@ -30,6 +30,30 @@ describe('Ponentes vinculados a una sesión real', () => {
     fixture.detectChanges(); return fixture.componentInstance;
   }
   function consulta(sesion = 15) { return http.expectOne(`/api/activity-session/${sesion}/ponentes-certificacion`); }
+
+  it('muestra la tabla y permite navegar mientras la consulta documental sigue pendiente', () => {
+    const pendiente = new Subject<DocumentoFirmas>();
+    docs.recuperarReconocimientoSesion.and.returnValue(pendiente);
+    const navegar = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    const datos = respuesta();
+    Object.assign(datos.data.ponentes_sesion![0].reconocimiento, {
+      puede_preparar: false, puede_consultar_certificado_existente: true,
+      certificados_existentes: [{ id_certificado: 151, id_tipo_certificado: 47, estado: 'PREPARADO' }] });
+    iniciar(); consulta().flush(datos); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Maria Perez');
+    expect(fixture.nativeElement.textContent).not.toContain('Cargando ponentes');
+    expect((fixture.componentInstance as any).cargando()).toBeFalse();
+    (fixture.nativeElement.querySelector('tbody button') as HTMLButtonElement).click();
+    expect(navegar).toHaveBeenCalledTimes(1);
+    http.expectNone(r => r.url.includes('ponentes-certificacion'));
+    fixture.destroy();
+  });
+
+  it('finaliza loading al destruir el componente y cancelar la consulta inicial', () => {
+    const componente = iniciar(); const req = consulta(); fixture.destroy();
+    expect(req.cancelled).toBeTrue();
+    expect((componente as any).cargando()).toBeFalse();
+  });
 
   it('consulta al mostrar el grupo con autenticación y el ID real de sesión', () => {
     iniciar(); const req = consulta();
@@ -64,10 +88,10 @@ describe('Ponentes vinculados a una sesión real', () => {
     iniciar(); consulta().flush(respuesta()); fixture.detectChanges();
     const boton = fixture.nativeElement.querySelector('tbody button') as HTMLButtonElement;
     expect(boton.textContent?.trim()).toBe('Preparar certificado'); expect(boton.disabled).toBeFalse();
-    boton.click(); consulta().flush(respuesta()); fixture.detectChanges();
+    boton.click(); http.expectNone(`/api/activity-session/15/ponentes-certificacion`); fixture.detectChanges();
     expect(navegar).toHaveBeenCalledWith(
-      ['/certificaciones/generar-emitir/reconocimientos/sesion', 15, 'ponentes', 71],
-      { queryParams: { id_actividad: 7, id_sesion: 15, id_actividad_ponente: 71, modalidad: 'sesion', origen: 'ponente_sesion' } });
+      ['/certificaciones/generar-emitir/reconocimientos/preparar'],
+      { state: { reconocimientoSesion: respuesta().data.ponentes_sesion![0].reconocimiento } });
     expect(fixture.nativeElement.querySelector('app-preparacion-origen')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Procesando documento');
   });
@@ -81,7 +105,7 @@ describe('Ponentes vinculados a una sesión real', () => {
     const boton = fixture.nativeElement.querySelector('tbody button') as HTMLButtonElement;
     expect(boton.textContent?.trim()).toBe('Continuar preparación'); expect(boton.disabled).toBeFalse();
     expect(fixture.nativeElement.textContent).toContain('Pendiente de envío a Gerencia');
-    boton.click(); consulta().flush(datos); fixture.detectChanges();
+    boton.click(); http.expectNone(`/api/activity-session/15/ponentes-certificacion`); fixture.detectChanges();
     expect(navegar).toHaveBeenCalledTimes(1);
   });
 

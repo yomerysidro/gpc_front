@@ -26,7 +26,22 @@ export const redirigirSesionesAnteriores = (route: ActivatedRouteSnapshot) => {
 /** Mantiene las URLs públicas del menú; solo cambia la ubicación física de las páginas. */
 export const EMISION_CERTIFICADOS_ROUTES: Routes = [
   {
-    path: 'generar-emitir/reconocimientos/sesion/:sesionId/ponentes/:ponenteId',
+    path: 'generar-emitir/reconocimientos/documento-original/:reconocimientoId', canActivate: [permissionGuard],
+    data: { permiso: 'emision.ver', requiere: ['reconocimientos.ver'], visorMunicipal: true, titulo: 'Certificado' },
+    loadComponent: () => import('./generar-emitir/preparar-municipal.component').then(m => m.PrepararMunicipalComponent),
+  },
+  {
+    path: 'generar-emitir/reconocimientos/individual/:reconocimientoId', canActivate: [permissionGuard],
+    data: { permiso: 'emision.ver', requiere: ['reconocimientos.ver'], titulo: 'Preparar reconocimiento municipal' },
+    loadComponent: () => import('./generar-emitir/preparar-municipal.component').then(m => m.PrepararMunicipalComponent),
+  },
+  {
+    path: 'generar-emitir/practicas/:practicaId/preparar', canActivate: [permissionGuard],
+    data: { permiso: 'emision.ver', requiere: ['practicantes.ver'], titulo: 'Preparar certificado de prácticas' },
+    loadComponent: () => import('./generar-emitir/preparar-practica.component').then(m => m.PrepararPracticaComponent),
+  },
+  {
+    path: 'generar-emitir/reconocimientos/preparar',
     canActivate: [permissionGuard],
     data: { permiso: 'emision.ver', requiere: ['actividades.ver', 'ponentes-firmantes.ver'], titulo: 'Preparar reconocimiento' },
     loadComponent: () => import('./generar-emitir/preparar-reconocimiento-sesion.component').then(m => m.PrepararReconocimientoSesionComponent),

@@ -67,7 +67,7 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
     { id: 'emitidos', label: 'Certificados emitidos', icon: 'verified', path: '/certificaciones/certificados/documentos', rutasActivas: ['/certificaciones/certificados/:id', '/certificaciones/certificados/:id/documentos'], permiso: 'emision.ver', habilitado: true },
   ] },
   { id: 'gerencia', label: 'GERENCIA', icon: 'account_balance', hijos: [
-    { id: 'pendientes-aprobacion', label: 'Pendientes de aprobación', icon: 'pending_actions', habilitado: true, path: '/pendientes/pendientes-aprobacion', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_gerencia' },
+    { id: 'pendientes-aprobacion', label: 'Actividades por Aprobar', icon: 'pending_actions', habilitado: true, path: '/pendientes/pendientes-aprobacion', permiso: 'solicitudes.consultar', capacidadSolicitud: 'consultar_gerencia' },
     { id: 'documentos-firmar', label: 'Certificados por firmar', icon: 'draw', habilitado: true, path: '/pendientes/documentos-firmar', permiso: 'emision.ver' },
   ] },
   { id: 'reportes', label: 'REPORTES', icon: 'bar_chart', hijos: [

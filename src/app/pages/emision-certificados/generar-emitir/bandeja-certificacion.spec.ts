@@ -55,14 +55,21 @@ describe('Bandeja de certificación y beneficiarios', () => {
         http.expectOne('/api/activity').flush({ success: true, data: [] });
         http.expectOne(r => r.url === '/api/reconocimientos/list').flush({ success: true, data: pagina([{ id_reconocimiento: 71, titulo: 'Servicio municipal', estado: 'ca' }]) });
       } else {
-        http.expectOne('/api/practices/list').flush({ success: true, data: [{ id_practica: 71, carrera: 'Administración', fecha_inicio: '2026-01-01', fecha_fin: '2026-06-30', estado: 'activo' }] });
+        http.expectOne('/api/practices/evaluacion-certificacion').flush({ success: true, data: { practicas: [{
+          ...evaluacionOrigenPrueba(origen, false), finalizacion_registrada: false, situacion_constancia: 'activa',
+        }] } });
+        f.detectChanges();
+        expect(f.nativeElement.textContent).toContain('Ana Municipal');
+        expect(f.nativeElement.textContent).toContain('Primero debe finalizarse la práctica');
+        expect(f.nativeElement.querySelector('app-practicas-certificacion')).not.toBeNull();
+        http.expectNone(r => r.method !== 'GET' || /practices\/list|catalogos-origenes|activity-requests|attendance|beneficiarios/.test(r.url));
+        f.destroy(); return;
       }
-      http.expectOne('/api/certificaciones/catalogos-origenes').flush({ success: true, data: { tipos_actividad: [], tipos_certificado: [] } }); f.detectChanges();
-      const consultar = Array.from(f.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(b => b.textContent === 'Consultar beneficiario')!;
-      consultar.click();
-      http.expectOne(`/api/${origen === 'practica' ? 'practices' : 'reconocimientos'}/71/evaluacion-certificacion`).flush({ success: true, data: evaluacionOrigenPrueba(origen, false) });
-      f.detectChanges(); expect(f.nativeElement.textContent).toContain('Ana Municipal'); expect(f.nativeElement.textContent).toContain('Falta la aprobación institucional.');
-      expect(f.nativeElement.querySelector('app-preparacion-origen')).not.toBeNull();
+      http.expectOne('/api/reconocimientos/71/evaluacion-certificacion').flush({ success: true, data: evaluacionOrigenPrueba(origen, false) });
+      f.detectChanges(); expect(f.nativeElement.textContent).toContain('Servicio municipal'); expect(f.nativeElement.textContent).toContain('Falta la aprobación institucional.');
+      expect(f.nativeElement.textContent).not.toContain('Consultar beneficiario');
+      expect(f.nativeElement.querySelector('app-municipales-individuales')).not.toBeNull();
+      http.expectNone('/api/certificaciones/catalogos-origenes');
       http.expectNone(r => r.method !== 'GET' || /activity-requests|attendance|beneficiarios/.test(r.url)); f.destroy();
     });
   }

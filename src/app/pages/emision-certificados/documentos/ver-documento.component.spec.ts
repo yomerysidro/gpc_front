@@ -41,6 +41,19 @@ describe('Página completa del certificado autorizado', () => {
     http.expectOne(r => r.url === '/api/certificados-documentos/list').flush(pagina({ ...fila, hash_pdf: 'b'.repeat(64), pdf_confirmado: true, disponible_rrhh: true })); h.detectChanges();
     expect(h.routeNativeElement!.textContent).toContain('Listo para entrega'); http.expectNone(r => r.method !== 'GET');
   });
+  it('abre prácticas directamente en el visor con regreso al listado y sin preparar ni enviar', async () => {
+    const h = await RouterTestingHarness.create('/certificaciones/certificados/1/documentos/101/visor?origen=practicas');
+    http.expectOne(r => r.url === '/api/certificados-documentos/list').flush({ success: true, data: { data: [{
+      id_certificado: 1, id_certificado_documento: 101, origen: 'practica', id_practica: 12, nombre_completo: 'Practicante',
+      estado_certificado: 'PENDIENTE_FIRMA', pdf_confirmado: true, disponible_rrhh: true, hash_pdf: 'a'.repeat(64), codigo_verificacion: 'original',
+    }], current_page: 1, last_page: 1, per_page: 100, total: 1 } });
+    h.detectChanges();
+    expect(h.routeNativeElement!.textContent).toContain('Certificado confirmado');
+    expect(h.routeNativeElement!.querySelector('a')?.getAttribute('href')).toBe('/certificaciones/generar-emitir?origen_documental=practica');
+    expect(h.routeNativeElement!.querySelector('app-visor-pdf')).not.toBeNull();
+    expect(h.routeNativeElement!.querySelector('textarea')).toBeNull();
+    http.expectNone(r => r.method !== 'GET' || r.url.includes('practices') || r.url.includes('/preparar'));
+  });
   for(const status of [401,403,404,409]) it('respeta HTTP '+status+' sin intentar otro documento',async()=>{
     const h=await RouterTestingHarness.create('/certificaciones/certificados/1/documentos/101/visor');
     http.expectOne(r=>r.url==='/api/certificados-documentos/list').flush({message:'No disponible'},{status,statusText:'Error'});h.detectChanges();

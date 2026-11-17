@@ -43,6 +43,10 @@
                   </td>
                 }
                 <td><div class="acciones">
+ @if (clavePrimaria() === 'id_practica') {
+   @if (practicaFinalizada(registro)) { <span>Finalizado</span> }
+   @else { <button type="button" class="btn" [disabled]="!puede('editar') || finalizandoPractica() !== null" (click)="finalizarPractica(registro)">{{ finalizandoPractica() === registro['id_practica'] ? 'Finalizando…' : 'Finalizar práctica' }}</button> }
+ }
                   <button type="button" class="btn" [disabled]="!puede('ver') || guardando()" (click)="ver(registro)" [attr.aria-label]="'Ver registro ' + registro[clavePrimaria()]">
                     <span class="material-symbols-outlined" aria-hidden="true">visibility</span>Ver
                   </button>

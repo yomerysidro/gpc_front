@@ -1,6 +1,6 @@
 import { Component, DestroyRef, effect, inject, input, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subscription, catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { Subscription, catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 import { DocumentoFirmas, DocumentosDigitalesService } from '../../../core/services/emision-certificados/documentos-digitales.service';
 import { PonenteSesion, PonentesCertificacion } from '../../../core/interfaces/emision-certificados/origenes-certificado.interface';
 import { ErrorApi } from '../../../core/interfaces/api/api-response.interface';
@@ -18,7 +18,7 @@ import { Router } from '@angular/router';
   template: `<section class="grupo-ponentes" aria-label="Ponentes de la sesión">
     <header class="cabecera-grupo"><h2>Ponentes</h2></header>
     @if (!autorizado()) { <p role="status">No tienes permiso para consultar los ponentes de esta sesión.</p> }
-    @if (cargando()) { <p role="status">Cargando ponentes de la sesión…</p> }
+    @if (cargando() && !datos()) { <p role="status">Cargando ponentes de la sesión…</p> }
     @if (error()) { <p role="alert">{{ error() }}</p><button class="btn" type="button" (click)="cargar()">Reintentar ponentes</button> }
     @if (datos(); as d) {
       @if (!d.ponentes_sesion?.length) {
@@ -99,11 +99,12 @@ export class PonentesSesionComponent {
     if (!this.autorizado() || this.cargando()) return;
     const actividad = Number(this.actividadId()); const sesion = Number(this.sesionId());
     if (!Number.isSafeInteger(actividad) || actividad < 1 || !Number.isSafeInteger(sesion) || sesion < 1) return;
-    this.consulta?.unsubscribe(); this.datos.set(null); this.error.set(''); this.cargando.set(true);
+    this.consulta?.unsubscribe(); this.error.set(''); this.cargando.set(true);
     this.estados.set(new Map());
     this.erroresConsulta.set(new Map());
     this.consulta = this.api.ponentesCertificacion(sesion).pipe(switchMap(d => {
       if (Number(d.id_actividad) !== actividad || Number(d.id_sesion) !== sesion) return of(d);
+      this.datos.set(d); this.cargando.set(false);
       const consultas = (d.ponentes_sesion ?? []).filter(p => p.reconocimiento.puede_consultar_certificado_existente
         && p.reconocimiento.certificados_existentes?.length === 1).map(p =>
         this.documentos.recuperarReconocimientoSesion(p.reconocimiento, p.reconocimiento.certificados_existentes![0].id_certificado)
@@ -115,7 +116,7 @@ export class PonentesSesionComponent {
           `No se pudo consultar la preparación (${r.error.errores?.['endpoint']?.[0] ?? 'recuperación documental autenticada'}, HTTP ${r.error.status}).`] as const] : [])));
         return d;
       })) : of(d);
-    }), takeUntilDestroyed(this.destroy)).subscribe({
+    }), takeUntilDestroyed(this.destroy), finalize(() => this.cargando.set(false))).subscribe({
       next: d => {
         this.cargando.set(false);
         if (Number(d.id_actividad) !== actividad || Number(d.id_sesion) !== sesion) {
@@ -162,23 +163,8 @@ export class PonentesSesionComponent {
   }
   protected abrir(p: PonenteSesion): void {
     if (this.cargando() || !this.puedeAbrir(p) || !this.datos()?.ponentes_sesion?.includes(p)) return;
-    const actividad = Number(this.actividadId()); const sesion = Number(this.sesionId());
-    this.cargando.set(true); this.error.set('');
-    // Se reconfirma el vínculo vigente antes de navegar; nunca se reutiliza otra sesión.
-    this.consulta = this.api.ponentesCertificacion(sesion).pipe(takeUntilDestroyed(this.destroy)).subscribe({
-      next: d => {
-        this.cargando.set(false);
-        const vigente = d.ponentes_sesion?.find(f => f.id_actividad_ponente === p.id_actividad_ponente);
-        if (!vigente || !this.puedeAbrir(vigente) || Number(d.id_actividad) !== actividad) {
-          this.datos.set(d); this.error.set('El vínculo del ponente cambió. Actualiza la lista.'); return;
-        }
-        this.datos.set(d);
-        void this.router.navigate(
-          ['/certificaciones/generar-emitir/reconocimientos/sesion', sesion, 'ponentes', p.id_actividad_ponente],
-          { queryParams: { id_actividad: actividad, id_sesion: sesion, id_actividad_ponente: p.id_actividad_ponente,
-            modalidad: 'sesion', origen: 'ponente_sesion' } });
-      },
-      error: (e: ErrorApi) => { this.cargando.set(false); this.error.set(mensajeEtapaA(e)); },
-    });
+    void this.router.navigate(
+      ['/certificaciones/generar-emitir/reconocimientos/preparar'],
+      { state: { reconocimientoSesion: p.reconocimiento } });
   }
 }

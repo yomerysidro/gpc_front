@@ -9,7 +9,7 @@
   </div></div></div></header><app-integracion-solicitudes />
 @if (bandeja() === 'gerencia') {
 <div class="pestanas-gerencia" role="tablist" aria-label="Solicitudes de actividades" (keydown)="teclearPestanasGerencia($event)">
-  <button type="button" role="tab" id="gerencia-pendientes" aria-label="Pendientes de aprobación" aria-controls="gerencia-solicitudes" [attr.aria-selected]="pestanaGerencia() === 'pendientes'" [attr.tabindex]="pestanaGerencia() === 'pendientes' ? 0 : -1" [disabled]="ocupado()" (click)="cambiarPestanaGerencia('pendientes')"><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span>Pendientes de aprobación</button>
+  <button type="button" role="tab" id="gerencia-pendientes" aria-label="Actividades por Aprobar" aria-controls="gerencia-solicitudes" [attr.aria-selected]="pestanaGerencia() === 'pendientes'" [attr.tabindex]="pestanaGerencia() === 'pendientes' ? 0 : -1" [disabled]="ocupado()" (click)="cambiarPestanaGerencia('pendientes')"><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span>Actividades por Aprobar</button>
   <button type="button" role="tab" id="gerencia-aprobadas" aria-label="Solicitudes aprobadas" aria-controls="gerencia-solicitudes" [attr.aria-selected]="pestanaGerencia() === 'aprobadas'" [attr.tabindex]="pestanaGerencia() === 'aprobadas' ? 0 : -1" [disabled]="ocupado()" (click)="cambiarPestanaGerencia('aprobadas')"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>Solicitudes aprobadas</button>
 </div>
 } @else {

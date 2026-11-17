@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { AUTHENTICATED_REQUEST } from '../../security/auth-request.context';
+import { EvaluacionPractica } from '../../interfaces/emision-certificados/origenes-certificado.interface';
 
 export type Practice = {
   id_practica: number;
@@ -21,6 +22,23 @@ export class PracticeService {
   private readonly http = inject(HttpClient);
   private readonly url = `${environment.apiBaseUrl}/practices`;
 
+  evaluaciones(): Observable<readonly EvaluacionPractica[]> {
+    return this.http.get<ApiResponse<{ practicas: EvaluacionPractica[] }>>(
+      `${this.url}/evaluacion-certificacion`, this.opciones()).pipe(map(r => {
+      if (!r.success || !Array.isArray(r.data?.practicas)) throw new Error('No se pudo consultar las prácticas.');
+      return r.data.practicas;
+    }));
+  }
+  evaluar(id: number) {
+    return this.http.get<ApiResponse<EvaluacionPractica>>(`${this.url}/${id}/evaluacion-certificacion`, this.opciones()).pipe(map(r => {
+      if (!r.success || r.data?.id_origen !== id) throw new Error('No se pudo confirmar la práctica.'); return r.data;
+    }));
+  }
+  finalizar(id: number) {
+    return this.http.post<ApiResponse<EvaluacionPractica & { practica_finalizada: boolean }>>(`${this.url}/${id}/finalizar`, {}, this.opciones()).pipe(map(r => {
+      if (!r.success || r.data?.practica_finalizada !== true || !r.data.finalizacion_registrada || r.data.id_origen !== id) throw new Error('El servidor no confirmó la finalización.'); return r.data;
+    }));
+  }
   listar(): Observable<readonly Practice[]> {
     return this.http.get<ApiResponse<readonly Practice[]>>(`${this.url}/list`, this.opciones()).pipe(
       map(respuesta => {

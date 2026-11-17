@@ -55,6 +55,38 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
   }
   function completar() { componente.formulario.patchValue({ id_persona: 2, codigo: 'P02', estado: 'Activo' }); }
 
+  function iniciarFinalizacion() {
+    const fila = { id_practica: 13, id_persona_practicante: 7, carrera: 'Sistemas', fecha_inicio: '2026-01-01', fecha_fin: '2026-03-01', estado: 'activo' };
+    fixture.componentRef.setInput('clavePrimaria', 'id_practica');
+    const c = fixture.componentInstance as any;
+    c.registros.set([fila]);
+    spyOn(window, 'confirm').and.returnValue(true);
+    c.finalizarPractica(fila);
+    return { c, fila, peticion: http.expectOne('/api/practices/13/finalizar') };
+  }
+  it('solicita finalizar sin exigir supervisión y actualiza solo la fila con el estado confirmado', () => {
+    const { c, fila, peticion } = iniciarFinalizacion();
+    expect(peticion.request.body).toEqual({});
+    expect(c.registros()[0].estado).toBe('activo');
+    const finalizada = { ...fila, estado: 'finalizado' };
+    servicio.obtener.and.returnValue(of(finalizada));
+    peticion.flush({ success: true, data: { id_origen: 13, practica_finalizada: true, finalizacion_registrada: true, practica: finalizada } });
+    expect(c.registros()[0]).toEqual(finalizada);
+    expect(servicio.obtener).toHaveBeenCalledOnceWith(13);
+    expect(c.practicaFinalizada(finalizada)).toBeTrue();
+    c.finalizarPractica(finalizada);
+    http.expectNone('/api/practices/13/finalizar');
+  });
+  it('mantiene el estado original y la respuesta real cuando Laravel rechaza por supervisión', () => {
+    const { c, fila, peticion } = iniciarFinalizacion();
+    const motivo = 'Se requiere supervisión acreditada que cubra todo el periodo y estados institucionales de supervisión autorizados.';
+    peticion.flush({ success: false, message: 'No se puede finalizar la práctica.', data: { practica_finalizada: false, motivos_bloqueo: [motivo] } }, { status: 409, statusText: 'Conflict' });
+    expect(c.registros()).toEqual([fila]);
+    expect(c.errorCarga()).toBe(motivo);
+    expect(c.finalizandoPractica()).toBeNull();
+    expect(servicio.obtener).not.toHaveBeenCalled();
+  });
+
   it('omite solo el sufijo construido y conserva los números y paréntesis del dato original', () => {
     for (const nombre of ['Universidad Peruana Unión', 'DNI', 'sistemas', 'supervisor', 'Área 2 (piso 3)', 'Nombre (ID 25) original']) {
       expect(componente.nombreRelacion({ id_area: 4, nombre }, 'id_area')).toBe(nombre);

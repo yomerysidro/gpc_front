@@ -21,6 +21,16 @@ describe('Reconocimiento de ponente por sesión: contrato y persistencia', () =>
   afterEach(() => http.verify());
 
   const ligera = '/api/certificaciones/ponente_sesion/71/preparar?accion=consultar_preparacion&modalidad_reconocimiento=sesion&id_sesion=15';
+  it('consulta puntualmente un reconocimiento nuevo y comparte la lectura concurrente', () => {
+    let resultado: unknown;
+    docs.consultarReconocimientoSesion(71, 15).subscribe(d => resultado = d);
+    docs.consultarReconocimientoSesion(71, 15).subscribe();
+    const req = http.expectOne(ligera);
+    expect(req.request.method).toBe('GET'); expect(req.request.withCredentials).toBeTrue();
+    req.flush({ success: true, data: { ...e, recuperado: false, persistido: false } });
+    expect(resultado).toEqual({ ...e, recuperado: false, persistido: false });
+    http.expectNone(r => r.method === 'POST' || r.url.includes('/archivo') || r.url.includes('ponentes-certificacion'));
+  });
   for (const estado of ['PREPARADO', 'PENDIENTE_FIRMA']) {
     it('recupera con GET ligero sin PDF ni POST: ' + estado, () => {
       let d: any; docs.recuperarReconocimientoSesion(e, 151).subscribe(r => d = r);
