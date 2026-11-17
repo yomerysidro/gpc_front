@@ -1,0 +1,314 @@
+<section aria-label="Gestión de actividades">
+  <div #encabezado class="encabezado" tabindex="-1">
+    <div class="encabezado-texto">
+      <app-page-title title="Actividades" />
+      <p class="descripcion">Administra las actividades institucionales.</p>
+    </div>
+    <a *appHasPermission="'solicitudes.crear'" class="btn btn-primary solicitar-actividad" routerLink="/solicitudes/nueva"><span class="material-symbols-outlined" aria-hidden="true">add</span>Solicitar actividad</a>
+  </div>
+
+  <div class="pestanas" role="tablist" aria-label="Actividades" (keydown)="alTeclearPestanas($event)">
+    <button id="actividades-tab-listado" type="button" role="tab" aria-controls="actividades-panel-listado"
+      [attr.aria-selected]="pestana() === 'listado'" [attr.tabindex]="pestana() === 'listado' ? 0 : -1"
+      (click)="volverAlListado()">Mis actividades</button>
+    <span class="ayuda-pestana" [attr.tabindex]="actividadDetalle() === null ? 0 : null" aria-describedby="ayuda-detalles-actividad">
+    <button id="actividades-tab-detalle" type="button" role="tab" aria-controls="actividades-panel-detalle" aria-describedby="ayuda-detalles-actividad"
+      [disabled]="actividadDetalle() === null" [attr.aria-selected]="pestana() === 'detalle'"
+      [attr.tabindex]="pestana() === 'detalle' ? 0 : -1" (click)="actividadDetalle() !== null && pestana.set('detalle')">Detalles de la actividad</button>
+      <span id="ayuda-detalles-actividad" class="tooltip-detalles" role="tooltip">Selecciona una actividad para ver sus detalles</span>
+    </span>
+  </div>
+
+  <div id="actividades-panel-listado" role="tabpanel" aria-labelledby="actividades-tab-listado" tabindex="0" [hidden]="pestana() !== 'listado'">
+  <div role="status">
+    @if (aviso(); as mensaje) {
+      <div class="alert" [class.alert-exito]="mensaje.tipo === 'exito'" [class.alert-error]="mensaje.tipo === 'error'">
+        <span>{{ mensaje.texto }}</span>
+      </div>
+    }
+  </div>
+
+  @if (errorAreas() || errorTipos()) {
+    <div class="form-ayuda aviso-datos" role="status">
+      <div>
+        @if (errorAreas()) { <p>Áreas no disponibles. {{ errorAreas() }}</p> }
+        @if (errorTipos()) { <p>Tipos de actividad no disponibles. {{ errorTipos() }}</p> }
+        <button type="button" class="btn" (click)="cargarCatalogos()" [disabled]="cargandoAreas() || cargandoTipos()">Reintentar catálogos</button>
+      </div>
+    </div>
+  }
+
+    <div class="filtros" role="search" aria-label="Filtrar actividades">
+      <div class="form-field buscador">
+        <label for="buscar-actividad">Buscar por nombre</label>
+        <input #busqueda id="buscar-actividad" class="input" type="search" placeholder="Nombre de la actividad"
+          [value]="filtros().nombre" (input)="filtrar('nombre', busqueda.value)" />
+      </div>
+      <div class="form-field">
+        <label for="filtrar-area">Área</label>
+        <select #areaFiltro id="filtrar-area" class="input" [value]="filtros().area" (change)="filtrar('area', areaFiltro.value)">
+          <option value="">Todas las áreas</option>
+          @for (area of areasFiltro(); track area.id_area) { <option [value]="area.id_area" [selected]="filtros().area === '' + area.id_area">{{ area.nombre }}</option> }
+        </select>
+      </div>
+
+
+      <button type="button" class="btn limpiar" (click)="limpiarFiltros()">Limpiar filtros</button>
+    </div>
+
+    <div [attr.aria-busy]="cargando()">
+      @if (cargando() || !listadoListo()) {
+        <p role="status">{{ listadoListo() ? 'Actualizando actividades…' : 'Cargando actividades…' }}</p>
+      }
+      @if (errorCarga()) {
+        <p class="form-ayuda aviso-datos" role="status">No se pudo cargar el listado de actividades. {{ errorCarga() }}</p>
+        <button type="button" class="btn" (click)="cargar()">Reintentar</button>
+      }
+        <div class="tabla-caja" [hidden]="!listadoListo()" tabindex="0" role="region" aria-label="Listado de actividades con desplazamiento horizontal">
+          <table class="table">
+            <caption class="sr-only">Actividades registradas</caption>
+            <thead><tr>
+              <th scope="col" class="col-centro">N.º</th><th scope="col">Nombre</th><th scope="col">Área</th><th scope="col">Tipo de actividad</th>
+              <th scope="col" class="col-centro">Fecha de inicio</th><th scope="col" class="col-centro">Fecha de fin</th><th scope="col" class="col-centro">Estado</th><th scope="col" class="col-centro">Acciones</th>
+            </tr></thead>
+            <tbody>
+              @for (actividad of listadoListo() ? visibles() : []; track actividad.id_actividad; let indice = $index) {
+                <tr [class.registro-inactivo]="actividad.estado === 'Cerrada'">
+                  <td class="col-centro">{{ (paginaActual() - 1) * porPagina() + indice + 1 }}</td><th scope="row" class="nombre-actividad">{{ actividad.nombre }}</th>
+                  <td>{{ nombreArea(actividad.id_area, actividad.area_nombre) }}</td>
+                  <td>{{ nombreTipo(actividad.id_tipo_actividad, actividad.tipo_actividad_nombre) }}</td>
+                  <td class="col-centro fecha">{{ fecha(actividad.fecha_inicio) }}</td><td class="col-centro fecha">{{ fecha(actividad.fecha_fin) }}</td>
+                  <td class="col-centro"><span class="badge" [class.badge-exito]="actividad.estado === 'Activa'" [attr.data-estado]="actividad.estado">{{ actividad.estado }}</span></td>
+                  <td class="col-centro"><div class="acciones-fila">
+                    <button type="button" class="btn btn-icono btn-sin-borde gestionar-actividad" title="Ver actividad" aria-label="Ver actividad"
+                      (click)="seleccionarActividad(actividad)">
+                      <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+                    </button>
+                    <button type="button" class="btn btn-icono btn-sin-borde gestionar-actividad" title="Gestionar actividad"
+                      aria-label="Gestionar actividad" (click)="gestionar(actividad)" [disabled]="cambiandoEstado() || enviando()">
+                      <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+                    </button>
+                  </div></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="8" class="estado-vacio">
+                  @if (cargando()) { Cargando actividades… }
+                  @else if (errorCarga()) { Datos del listado no disponibles. }
+                  @else if (!actividades().length) {
+                    <p>Aún no hay actividades registradas.</p>
+                    <p>Las actividades nuevas se originan en solicitudes aprobadas por Gerencia.</p>
+                  } @else { No se encontraron actividades con esos filtros. }
+                </td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <nav class="paginacion" aria-label="Paginación de actividades">
+          <p class="dato" role="status">
+            @if (!listadoListo()) { Cargando total… }
+            @else { {{ rango().desde }}–{{ rango().hasta }} de {{ rango().total }} }
+            <span class="sr-only"> · Página {{ paginaActual() }} de {{ totalPaginas() }}</span>
+          </p>
+          <div class="tamano-pagina">
+            <label for="tamano-pagina">Registros por página</label>
+            <select #tamano id="tamano-pagina" class="input" [value]="porPagina()" (change)="cambiarTamanoPagina(tamano.value)">
+              <option value="10">10</option><option value="20">20</option><option value="50">50</option>
+            </select>
+          </div>
+          <div class="paginacion-botones">
+            <button type="button" class="btn" [disabled]="paginaActual() <= 1" (click)="pagina.set(paginaActual() - 1)"><span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>Anterior</button>
+            <button type="button" class="btn" [disabled]="paginaActual() >= totalPaginas()" (click)="pagina.set(paginaActual() + 1)">Siguiente<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button>
+          </div>
+        </nav>
+      @if (cambiandoEstado()) { <p role="status">Actualizando estado…</p> }
+    </div>
+  </div>
+  <div id="actividades-panel-detalle" role="tabpanel" aria-labelledby="actividades-tab-detalle" tabindex="0" [hidden]="pestana() !== 'detalle'">
+    @if (aviso(); as mensaje) { <p role="status" class="alert" [class.alert-exito]="mensaje.tipo === 'exito'" [class.alert-error]="mensaje.tipo === 'error'">{{ mensaje.texto }}</p> }
+    @if (actividadDetalle(); as id) {
+      <app-detalle-actividad [actividadId]="id" [revision]="revisionDetalle()" [solicitudRuta]="rutaSolicitud()" [operando]="cambiandoEstado() || enviando()"
+        (volver)="volverAlListado()" (editarActividad)="ejecutar('editar', $event)" (cerrarActividad)="ejecutar('cerrar', $event)" />
+    } @else {
+      <p>Selecciona una actividad para ver sus detalles.</p>
+    }
+  </div>
+</section>
+
+<app-dialogo #dialogoAcciones class="modal-acciones" titulo="Acciones de la actividad">
+  @if (seleccionada(); as actividad) {
+    <p class="contexto-actividad">{{ actividad.nombre }} <span class="badge" [attr.data-estado]="actividad.estado">{{ actividad.estado }}</span></p>
+    <div class="panel-acciones">
+      <button type="button" class="tarjeta-accion" title="Ver detalle" [disabled]="!permitido('actividades.ver')" (click)="ejecutar('detalle', actividad)">
+        <span class="material-symbols-outlined" aria-hidden="true">visibility</span><span>Ver detalle</span>
+      </button>
+      <button type="button" class="tarjeta-accion" title="Editar" [disabled]="!permitido('actividades.editar')" (click)="ejecutar('editar', actividad)">
+        <span class="material-symbols-outlined" aria-hidden="true">edit</span><span>Editar</span>
+      </button>
+      @if (permitido('participantes.ver')) {
+        <a class="tarjeta-accion" routerLink="/certificaciones/participantes" [queryParams]="{ id_actividad: actividad.id_actividad }" (click)="dialogoAcciones.cerrar()" title="Registrar y consultar participantes">
+          <span class="material-symbols-outlined" aria-hidden="true">groups</span><span>Participantes</span>
+        </a>
+      } @else {
+        <button class="tarjeta-accion" type="button" disabled title="Requiere participantes.ver"><span class="material-symbols-outlined" aria-hidden="true">groups</span><span>Participantes</span></button>
+      }
+      <button type="button" class="tarjeta-accion" title="Consultar ponentes de la actividad" [disabled]="!permitido('ponentes-firmantes.ver')" (click)="ejecutar('ponentes', actividad)">
+        <span class="material-symbols-outlined" aria-hidden="true">co_present</span><span>Ponentes</span>
+      </button>
+      @if (permitido('actividades.ver')) {
+        <a class="tarjeta-accion" routerLink="/certificaciones/actividades" [queryParams]="{ id_actividad: actividad.id_actividad }" (click)="dialogoAcciones.cerrar()">
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><span>Sesiones de la actividad</span>
+        </a>
+      } @else {
+        <button class="tarjeta-accion" type="button" disabled title="Requiere actividades.ver"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span><span>Sesiones de la actividad</span></button>
+      }
+      <button type="button" class="tarjeta-accion tarjeta-cerrar" title="Cerrar actividad" [disabled]="actividad.estado !== 'Activa' || !permitido('actividades.editar') || cambiandoEstado()" (click)="ejecutar('cerrar', actividad)">
+        <span class="material-symbols-outlined" aria-hidden="true">lock</span><span>Cerrar actividad</span>
+      </button>
+    </div>
+    <p class="form-ayuda">Las acciones disponibles dependen de los permisos de tu sesión. Laravel valida cada operación.</p>
+    <div class="dialogo-acciones"><button class="btn" type="button" (click)="dialogoAcciones.cerrar()">Volver al listado</button></div>
+  }
+</app-dialogo>
+
+<app-dialogo #dialogoPonentes class="modal-ponentes" titulo="Ponentes de la actividad" [mostrarCerrar]="true" [cierreControlado]="true" (cierreSolicitado)="!guardandoPonente() && dialogoPonentes.cerrar()" (cerrado)="cerrarDetalle()" (keydown.escape)="bloquearEscapePonentes($event)">
+  @if (actividadPonentes(); as actividad) {
+    <p class="contexto-actividad">Actividad: <strong>{{ actividad.nombre }}</strong> · #{{ actividad.id_actividad }}</p>
+    <p class="form-ayuda">Aquí se conservan los vínculos históricos de la actividad. La asignación de ponentes se realiza desde cada sesión, en «Sesiones de la actividad».</p>
+    @if (avisoPonentes()) { <p role="status">{{ avisoPonentes() }}</p> }
+    @if (cargandoPonentes()) { <p role="status">Consultando asignaciones…</p> }
+    @else if (errorPonentes()) {
+      <p class="error-text" role="alert">{{ errorPonentes() }}</p><button class="btn" type="button" (click)="cargarPonentes()">Reintentar asignaciones</button>
+    } @else {
+      <ul class="ponentes">
+        @for (ponente of ponentes(); track ponente.id_actividad_ponente) {
+          <li><strong>{{ ponente.nombre || 'Ponente #' + ponente.id_persona_ponente }}</strong>
+            @if (ponente.errorNombre) { <p class="error-text">{{ ponente.errorNombre }}</p> }
+            <button *appHasPermission="'ponentes-firmantes.eliminar'" class="btn" type="button" [disabled]="guardandoPonente()" (click)="desvincularPonente(ponente)">Desvincular</button>
+          </li>
+        } @empty { <li>No hay ponentes asignados a esta actividad.</li> }
+      </ul>
+    }
+    <div class="dialogo-acciones"><button class="btn" type="button" [disabled]="guardandoPonente()" (click)="dialogoPonentes.cerrar()">Cerrar</button></div>
+  }
+</app-dialogo>
+<app-dialogo-confirmacion #confirmarPonente titulo="Desvincular ponente" texto="Se retirará la asociación con esta actividad. El catálogo de RR. HH. se conservará." confirmar="Desvincular" />
+
+<app-dialogo #dialogoFormulario class="modal-actividad" titulo="Editar actividad" (cerrado)="alCerrarFormulario()">
+  @if (formularioAbierto()) {
+    <section class="formulario" [attr.aria-busy]="cargandoEdicion() || enviando()">
+      @if (cargandoEdicion()) {
+        <p role="status">Cargando los datos de la actividad…</p>
+        <button type="button" class="btn" (click)="cerrarFormulario()">Volver al listado</button>
+      } @else {
+        @if (errorFormulario(); as mensaje) { <div class="alert alert-error" role="alert">{{ mensaje }}</div> }
+        @if (cargandoAreas() || cargandoTipos()) {
+          <p role="status">Cargando áreas y tipos de actividad…</p>
+        } @else if (!errorAreas() && !errorTipos() && (!areas().length || !tipos().length)) {
+          <div class="alert alert-advertencia" role="alert">No hay áreas autorizadas o tipos disponibles para cambiar esos campos.</div>
+        }
+        @if (errorAreas() || errorTipos()) {
+          <p class="form-ayuda" role="status">Se conservan los identificadores del detalle. Puedes editar otros campos; los cambios de área o tipo requieren opciones disponibles y autorización de Laravel.</p>
+          <button type="button" class="btn" (click)="cargarCatalogos()" [disabled]="cargandoAreas() || cargandoTipos()">Reintentar catálogos</button>
+        }
+        <p class="form-ayuda">Los campos con * son obligatorios.</p>
+        <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+          <div class="rejilla-formulario">
+            <div class="form-field ancho-completo">
+              <label for="actividad-nombre">Nombre de la actividad *</label>
+              <input id="actividad-nombre" class="input" autofocus formControlName="nombre" maxlength="100" aria-required="true"
+                aria-describedby="actividad-nombre-error" [attr.aria-invalid]="!!errorCampo('nombre')" />
+              @if (errorCampo('nombre'); as error) { <p id="actividad-nombre-error" class="error-text">{{ error }}</p> }
+            </div>
+            <div class="form-field">
+              <label for="actividad-area">Área *</label>
+              <select id="actividad-area" class="input" formControlName="id_area" aria-required="true"
+                aria-describedby="actividad-area-error" [attr.aria-invalid]="!!errorCampo('id_area')">
+                <option value="" disabled>Selecciona un área</option>
+                @for (area of areasFiltro(); track area.id_area) { <option [value]="area.id_area">{{ area.nombre }}</option> }
+              </select>
+              @if (errorCampo('id_area'); as error) { <p id="actividad-area-error" class="error-text">{{ error }}</p> }
+            </div>
+            <div class="form-field">
+              <label for="actividad-tipo">Tipo de actividad *</label>
+              <select id="actividad-tipo" class="input" formControlName="id_tipo_actividad" aria-required="true"
+                aria-describedby="actividad-tipo-error" [attr.aria-invalid]="!!errorCampo('id_tipo_actividad')">
+                <option value="" disabled>Selecciona un tipo</option>
+                @for (tipo of tiposEdicion(); track tipo.id_tipo_actividad) { <option [value]="tipo.id_tipo_actividad">{{ tipo.nombre }}</option> }
+              </select>
+              @if (errorCampo('id_tipo_actividad'); as error) { <p id="actividad-tipo-error" class="error-text">{{ error }}</p> }
+            </div>
+            <div class="form-field ancho-completo">
+              <label for="actividad-descripcion">Descripción</label>
+              <textarea id="actividad-descripcion" class="input" formControlName="descripcion" maxlength="255" rows="3"
+                aria-describedby="actividad-descripcion-error" [attr.aria-invalid]="!!errorCampo('descripcion')"></textarea>
+              @if (errorCampo('descripcion'); as error) { <p id="actividad-descripcion-error" class="error-text">{{ error }}</p> }
+            </div>
+            <div class="form-field">
+              <label for="actividad-inicio">Fecha de inicio *</label>
+              <input id="actividad-inicio" class="input" type="date" formControlName="fecha_inicio" aria-required="true"
+                aria-describedby="actividad-inicio-error" [attr.aria-invalid]="!!errorCampo('fecha_inicio')" />
+              @if (errorCampo('fecha_inicio'); as error) { <p id="actividad-inicio-error" class="error-text">{{ error }}</p> }
+            </div>
+            <div class="form-field">
+              <label for="actividad-fin">Fecha de fin *</label>
+              <input id="actividad-fin" class="input" type="date" formControlName="fecha_fin" [min]="form.controls.fecha_inicio.value"
+                aria-required="true" aria-describedby="actividad-fin-error" [attr.aria-invalid]="!!errorCampo('fecha_fin')" />
+              @if (errorCampo('fecha_fin'); as error) { <p id="actividad-fin-error" class="error-text">{{ error }}</p> }
+            </div>
+            <div class="form-field">
+              <label for="actividad-sede">Sede</label>
+              <input id="actividad-sede" class="input" formControlName="sede" maxlength="100"
+                aria-describedby="actividad-sede-error" [attr.aria-invalid]="!!errorCampo('sede')" />
+              @if (errorCampo('sede'); as error) { <p id="actividad-sede-error" class="error-text">{{ error }}</p> }
+            </div>
+            <div class="form-field">
+              <label for="actividad-estado">Estado *</label>
+              <select id="actividad-estado" class="input" formControlName="estado" aria-required="true"
+                aria-describedby="actividad-estado-error" [attr.aria-invalid]="!!errorCampo('estado')">
+                @for (estado of estados; track estado) { <option [value]="estado">{{ estado }}</option> }
+              </select>
+              @if (errorCampo('estado'); as error) { <p id="actividad-estado-error" class="error-text">{{ error }}</p> }
+            </div>
+          </div>
+          <div class="acciones-formulario">
+            <button type="button" class="btn" (click)="cerrarFormulario()" [disabled]="enviando()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="enviando() || !catalogosDisponibles()" [attr.aria-busy]="enviando()">
+              {{ enviando() ? 'Guardando…' : 'Guardar cambios' }}
+            </button>
+          </div>
+        </form>
+      }
+    </section>
+  }
+</app-dialogo>
+
+<app-dialogo #dialogoDetalle titulo="Detalle de actividad" (cerrado)="cerrarDetalle()">
+  @if (cargandoDetalle()) { <p role="status">Cargando detalle…</p> }
+  @if (errorDetalle(); as error) { <div class="alert alert-error" role="alert">{{ error }}</div> }
+  @if (detalle(); as actividad) {
+    <dl class="detalle">
+      <div><dt>ID de actividad</dt><dd>{{ actividad.id_actividad }}</dd></div>
+      <div><dt>Nombre</dt><dd>{{ actividad.nombre }}</dd></div>
+      <div><dt>Área</dt><dd>{{ nombreArea(actividad.id_area, actividad.area_nombre) }}</dd></div>
+      <div><dt>Tipo de actividad</dt><dd>{{ nombreTipo(actividad.id_tipo_actividad, actividad.tipo_actividad_nombre) }}</dd></div>
+      <div><dt>Descripción</dt><dd class="texto-largo">{{ actividad.descripcion || 'Sin descripción' }}</dd></div>
+      <div><dt>Inicio</dt><dd>{{ fecha(actividad.fecha_inicio) }}</dd></div>
+      <div><dt>Fin</dt><dd>{{ fecha(actividad.fecha_fin) }}</dd></div>
+      <div><dt>Sede</dt><dd>{{ actividad.sede || 'Sin sede registrada' }}</dd></div>
+      <div><dt>Estado</dt><dd><span class="badge" [class.badge-exito]="actividad.estado === 'Activa'" [attr.data-estado]="actividad.estado">{{ actividad.estado }}</span></dd></div>
+      <div><dt>Origen</dt><dd>{{ origenActividad(actividad) }}</dd></div>
+      @if (actividad.id_solicitud_actividad; as solicitudId) {
+        <div><dt>Solicitud relacionada</dt><dd>Solicitud #{{ solicitudId }}
+          @if (rutaSolicitud(); as ruta) { <a [routerLink]="ruta" [queryParams]="{ solicitud: solicitudId }">Consultar solicitud</a> }
+        </dd></div>
+      }
+    </dl>
+    <div class="dialogo-acciones"><button class="btn" type="button" (click)="gestionar(actividad)">Gestionar actividad</button></div>
+  }
+  <div class="dialogo-acciones"><button type="button" class="btn" (click)="dialogoDetalle.cerrar()">Cerrar</button></div>
+</app-dialogo>
+
+<app-dialogo-confirmacion #confirmacionEstado
+  [titulo]="'Cerrar actividad: ' + (porCambiarEstado()?.nombre ?? '')"
+  texto="Se cerrará la actividad seleccionada. Confirma para enviar la operación al servidor."
+  confirmar="Cerrar actividad" />

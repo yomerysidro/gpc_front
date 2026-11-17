@@ -1,0 +1,21 @@
+﻿<div class="encabezado"><app-page-title title="Certificados emitidos" /><button class="btn" type="button" [disabled]="cargando()" (click)="cargar()">Actualizar</button></div>
+<form class="card filtros-documentos" [formGroup]="filtros" (submit)="$event.preventDefault()" role="search" aria-label="Filtrar certificados">
+  <div class="form-field"><label for="actividad">Actividad</label><select id="actividad" class="input" formControlName="actividad"><option value="">Todas las actividades</option>@for (a of actividades(); track a[0]) { <option [value]="a[0]">{{ a[1] }}</option> }</select></div>
+  <div class="form-field"><label for="sesion">Sesión</label><select id="sesion" class="input" formControlName="sesion"><option value="">Todas las sesiones</option>@for (s of sesiones(); track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }</select></div>
+  <div class="form-field"><label for="participante">Buscar beneficiario</label><input id="participante" class="input" type="search" formControlName="nombre" placeholder="Nombre o apellidos" /></div>
+<div class="form-field"><label for="tipo-certificado">Tipo de certificado</label><select id="tipo-certificado" class="input" formControlName="tipo"><option value="">Todos</option>@for (tipo of tipos(); track tipo) { <option [value]="tipo">{{ tipo }}</option> }</select></div>
+</form>
+@if (cargando()) { <p role="status">Consultando certificados…</p> }
+@if (error()) { <p class="alert alert-error" role="alert">{{ error() }}</p><button class="btn" type="button" (click)="cargar()">Reintentar</button> }
+@if (!cargando() && !error()) {
+  @if (!filtrados().length) { <section class="card vacio" role="status"><h2>No hay certificados con estos criterios</h2></section> }
+  @else {
+    <div class="tabla-documentos" tabindex="0" role="region" aria-label="Certificados emitidos"><table class="table"><caption>{{ filtrados().length }} certificados</caption>
+      <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th scope="col">Beneficiario</th><th scope="col">Origen / actividad o periodo</th><th scope="col">Tipo de certificado</th><th scope="col" class="col-centro">Estado</th><th scope="col" class="col-centro">Acción</th></tr></thead>
+      <tbody>@for (fila of visibles(); track fila.id_certificado + ':' + fila.id_certificado_documento; let numeroVisual = $index) {
+        <tr><td class="col-centro col-numero" data-label="N.º">{{ (paginaActual() - 1) * 20 + numeroVisual + 1 }}</td><td>{{ fila.nombre_completo || 'Beneficiario no informado' }}</td><td>{{ origenTexto(fila) }}</td><td>{{ fila.tipo_certificado }}</td><td class="col-centro"><span class="estado-catalogo" [class.listo]="estadoTexto(fila) === 'Certificado confirmado' || (!fila.id_practica && fila.origen !== 'practica' && fila.pdf_confirmado === true && fila.disponible_rrhh === true)" [attr.data-estado]="estadoTexto(fila)">{{ estadoTexto(fila) }}</span></td>
+          <td>@if (tienePdf(fila)) { <a class="btn" [routerLink]="['/certificaciones/certificados', fila.id_certificado, 'documentos', fila.id_certificado_documento, 'visor']">Ver certificado</a> } @else { <span>Sin PDF disponible</span> }</td></tr>
+      }</tbody></table></div>
+    <nav class="acciones" aria-label="Paginación de certificados"><button class="btn" type="button" [disabled]="paginaActual() <= 1" (click)="pagina.set(paginaActual() - 1)">Anterior</button><span>Página {{ paginaActual() }} de {{ totalPaginas() }}</span><button class="btn" type="button" [disabled]="paginaActual() >= totalPaginas()" (click)="pagina.set(paginaActual() + 1)">Siguiente</button></nav>
+  }
+}

@@ -1,0 +1,10 @@
+.introduccion { max-width: 44rem; margin: 0; color: var(--neutro-700); }
+.busqueda { margin-bottom: var(--espacio-5); }
+.busqueda h2 { font-size: 1rem; color: var(--boton-azul); }
+.campos-busqueda { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: var(--espacio-4); }
+.campos-busqueda .form-field { margin-bottom: 0; }
+.tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--espacio-5); align-items: stretch; }
+.vacio { text-align: center; padding: var(--espacio-6); }
+.vacio > .material-symbols-outlined { width: 2em; height: 2em; font-size: 2rem; color: var(--boton-azul); }
+#listado-reconocimientos-titulo { font-size: 1.125rem; margin: 0; }
+@media (max-width: 480px) { .encabezado > .btn { width: 100%; } .paginacion .acciones { width: 100%; } .paginacion button { flex: 1; } }

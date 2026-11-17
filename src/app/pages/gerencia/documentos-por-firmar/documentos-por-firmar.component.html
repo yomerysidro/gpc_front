@@ -1,0 +1,46 @@
+<header class="encabezado-pagina"><span class="material-symbols-outlined icono-pagina" aria-hidden="true">draw</span><app-page-title title="Certificados por firmar" /></header>
+<div class="pestanas-gerencia" role="tablist" aria-label="Certificados por firmar" (keydown)="alTeclear($event)">
+  <button type="button" role="tab" id="certificados-pendientes" [attr.aria-selected]="pestana() === 'pendientes'" [attr.tabindex]="pestana() === 'pendientes' ? 0 : -1" aria-controls="bandeja-certificados" (click)="seleccionarPestana('pendientes')"><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span>Pendientes de firma</button>
+  <button type="button" role="tab" id="certificados-preparados" [attr.aria-selected]="pestana() === 'preparados'" [attr.tabindex]="pestana() === 'preparados' ? 0 : -1" aria-controls="bandeja-preparados" (click)="seleccionarPestana('preparados')"><span class="material-symbols-outlined" aria-hidden="true">verified</span>Certificados preparados</button>
+</div>
+@if (aviso()) { <p class="aviso-exito" role="status">{{ aviso() }}</p> }
+<section class="card" role="tabpanel" id="bandeja-certificados" [hidden]="pestana() !== 'pendientes'" [attr.aria-busy]="cargando()" aria-labelledby="certificados-pendientes">
+  @if (cargando()) { <p role="status">Cargando certificados...</p> }
+  @if (error()) { <p class="error" role="alert">{{ error() }}</p><button class="btn" type="button" (click)="cargar()">Reintentar</button> }
+  @if (pagina(); as datos) {
+    @if (datos.data.length) {
+      <div class="tabla-scroll" role="region" tabindex="0" aria-label="Pendientes de firma"><table class="table">
+        <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th>Beneficiario</th><th>Origen / actividad o periodo</th><th>Tipo</th><th class="col-centro">Estado</th><th>Firmantes</th><th class="col-centro">Acción</th></tr></thead>
+        <tbody>@for (doc of datos.data; track doc.id_certificado_documento; let numeroVisual = $index) {
+          <tr><td class="col-centro col-numero">{{ numeroPendiente(datos, numeroVisual) ?? '—' }}</td><td>{{ beneficiario(doc) }}</td><td>{{ doc.origen === 'practica' ? 'Registro de prácticas' : doc.origen === 'reconocimiento' ? 'Reconocimiento municipal' : (doc.actividad || doc.contexto?.actividad || 'Origen no informado') }}@if (doc.sesion || doc.contexto?.sesion) { <small>{{ doc.sesion || doc.contexto?.sesion }}</small> }</td>
+            <td>{{ doc.tipo_certificado || doc.contexto?.tipo_certificado }}</td><td class="col-centro">{{ estado(doc) }}</td>
+            <td>@for (firmante of doc.firmantes; track $index) { <div>{{ firmante.nombre || firmante.nombre_aprobado }}</div> } @empty { Asignación de firmantes pendiente. }</td>
+            <td><a class="btn btn-icono" [routerLink]="['/pendientes/documentos-firmar', doc.id_certificado_documento]" [queryParams]="{ page: datos.current_page }" aria-label="Ver documento" title="Ver documento"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver documento</span></a></td></tr>
+        }</tbody>
+      </table></div>
+    } @else if (!cargando() && !error()) { <p role="status">No hay certificados pendientes de firma.</p> }
+    @if (datos.last_page > 1) {
+      <nav class="paginacion" aria-label="Paginación de pendientes"><button class="btn" type="button" [disabled]="cargando() || datos.current_page <= 1" (click)="cambiarPagina(datos.current_page - 1)">Anterior</button><span>Página {{ datos.current_page }} de {{ datos.last_page }}</span><button class="btn" type="button" [disabled]="cargando() || datos.current_page >= datos.last_page" (click)="cambiarPagina(datos.current_page + 1)">Siguiente</button></nav>
+    }
+  }
+</section>
+<section class="card" role="tabpanel" id="bandeja-preparados" [hidden]="pestana() !== 'preparados'" [attr.aria-busy]="cargandoPreparados()" aria-labelledby="certificados-preparados">
+  @if (cargandoPreparados()) { <p role="status">Cargando certificados...</p> }
+  @if (errorPreparados()) { <p class="error" role="alert">{{ errorPreparados() }}</p><button class="btn" type="button" (click)="cargarPreparados()">Reintentar</button> }
+  @if (!cargandoPreparados() && preparados(); as documentos) {
+    @if (documentos.length) {
+      <div class="tabla-scroll" role="region" tabindex="0" aria-label="Certificados preparados"><table class="table">
+        <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th>Beneficiario</th><th>Origen / actividad o periodo</th><th>Tipo</th><th>Firmantes</th><th class="col-centro">Estado</th><th class="col-centro">Acción</th></tr></thead>
+        <tbody>@for (doc of preparadosVisibles(); track doc.id_certificado + ':' + doc.id_certificado_documento; let numeroVisual = $index) {
+          <tr><td class="col-centro col-numero" data-label="N.º">{{ (paginaPreparadosActual() - 1) * 20 + numeroVisual + 1 }}</td><td>{{ doc.nombre_completo }}</td><td>{{ doc.origen === 'reconocimiento' || doc.id_reconocimiento ? (doc.titulo_reconocimiento || 'Reconocimiento municipal') : doc.origen === 'practica' || doc.id_practica ? 'Prácticas' : doc.actividad }}@if (doc.sesion) { <small>{{ doc.sesion }}</small> }@if (doc.fecha_inicio_practica) { <small>{{ doc.fecha_inicio_practica }} – {{ doc.fecha_fin_practica }}</small> }</td><td>{{ doc.tipo_certificado }}</td>
+            <td>@for (responsable of doc.responsables_administrativos; track $index) { <div>{{ responsable.nombre }}<small>{{ responsable.cargo }}</small></div> } @empty { No informados }</td>
+            <td class="col-centro"><span class="estado-listo" [attr.data-estado]="estadoPreparado(doc)">{{ estadoPreparado(doc) }}</span></td>
+            <td>@if (doc.hash_pdf && doc.codigo_verificacion) { <a class="btn btn-icono" [routerLink]="['/certificaciones/certificados', doc.id_certificado, 'documentos', doc.id_certificado_documento, 'visor']" [queryParams]="{ origen: 'gerencia', page: paginaPreparadosActual() }" aria-label="Ver documento" title="Ver documento"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver documento</span></a> } @else { Sin PDF disponible }</td></tr>
+        }</tbody>
+      </table></div>
+      @if (paginasPreparados() > 1) {
+        <nav class="paginacion" aria-label="Paginación de preparados"><button class="btn" type="button" [disabled]="paginaPreparadosActual() <= 1" (click)="cambiarPagina(paginaPreparadosActual() - 1)">Anterior</button><span>Página {{ paginaPreparadosActual() }} de {{ paginasPreparados() }}</span><button class="btn" type="button" [disabled]="paginaPreparadosActual() >= paginasPreparados()" (click)="cambiarPagina(paginaPreparadosActual() + 1)">Siguiente</button></nav>
+      }
+    } @else if (!errorPreparados()) { <p role="status">No hay certificados preparados.</p> }
+  }
+</section>

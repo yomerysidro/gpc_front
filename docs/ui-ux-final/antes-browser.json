@@ -1,0 +1,329 @@
+{
+  "results": [
+    {
+      "route": "login",
+      "width": 1920,
+      "url": "/login",
+      "title": "Iniciar sesión",
+      "viewport": 1920,
+      "scrollWidth": 1920,
+      "bodyWidth": 1920,
+      "focusable": 5
+    },
+    {
+      "route": "login",
+      "width": 1440,
+      "url": "/login",
+      "title": "Iniciar sesión",
+      "viewport": 1440,
+      "scrollWidth": 1440,
+      "bodyWidth": 1440,
+      "focusable": 5
+    },
+    {
+      "route": "login",
+      "width": 1366,
+      "url": "/login",
+      "title": "Iniciar sesión",
+      "viewport": 1366,
+      "scrollWidth": 1366,
+      "bodyWidth": 1366,
+      "focusable": 5
+    },
+    {
+      "route": "login",
+      "width": 1024,
+      "url": "/login",
+      "title": "Iniciar sesión",
+      "viewport": 1024,
+      "scrollWidth": 1024,
+      "bodyWidth": 1024,
+      "focusable": 5
+    },
+    {
+      "route": "login",
+      "width": 768,
+      "url": "/login",
+      "title": "Iniciar sesión",
+      "viewport": 768,
+      "scrollWidth": 768,
+      "bodyWidth": 768,
+      "focusable": 5
+    },
+    {
+      "route": "login",
+      "width": 390,
+      "url": "/login",
+      "title": "Iniciar sesión",
+      "viewport": 390,
+      "scrollWidth": 390,
+      "bodyWidth": 390,
+      "focusable": 5
+    },
+    {
+      "route": "login",
+      "interaction": "submit vacío",
+      "validations": [
+        "Ingresa un correo válido.",
+        "Ingresa tu contraseña."
+      ]
+    },
+    {
+      "route": "portal-certificados",
+      "width": 1920,
+      "url": "/portal-certificados",
+      "title": "Portal Público de Certificados",
+      "viewport": 1920,
+      "scrollWidth": 1920,
+      "bodyWidth": 1920,
+      "focusable": 4
+    },
+    {
+      "route": "portal-certificados",
+      "width": 1440,
+      "url": "/portal-certificados",
+      "title": "Portal Público de Certificados",
+      "viewport": 1440,
+      "scrollWidth": 1440,
+      "bodyWidth": 1440,
+      "focusable": 4
+    },
+    {
+      "route": "portal-certificados",
+      "width": 1366,
+      "url": "/portal-certificados",
+      "title": "Portal Público de Certificados",
+      "viewport": 1366,
+      "scrollWidth": 1366,
+      "bodyWidth": 1366,
+      "focusable": 4
+    },
+    {
+      "route": "portal-certificados",
+      "width": 1024,
+      "url": "/portal-certificados",
+      "title": "Portal Público de Certificados",
+      "viewport": 1024,
+      "scrollWidth": 1024,
+      "bodyWidth": 1024,
+      "focusable": 4
+    },
+    {
+      "route": "portal-certificados",
+      "width": 768,
+      "url": "/portal-certificados",
+      "title": "Portal Público de Certificados",
+      "viewport": 768,
+      "scrollWidth": 768,
+      "bodyWidth": 768,
+      "focusable": 4
+    },
+    {
+      "route": "portal-certificados",
+      "width": 390,
+      "url": "/portal-certificados",
+      "title": "Portal Público de Certificados",
+      "viewport": 390,
+      "scrollWidth": 390,
+      "bodyWidth": 390,
+      "focusable": 4
+    },
+    {
+      "route": "portal-certificados",
+      "interaction": "seleccionar código",
+      "codeInput": true,
+      "dniInput": false
+    },
+    {
+      "route": "recuperar-password",
+      "width": 1920,
+      "url": "/recuperar-password",
+      "title": "Recuperar contraseña",
+      "viewport": 1920,
+      "scrollWidth": 1920,
+      "bodyWidth": 1920,
+      "focusable": 3
+    },
+    {
+      "route": "recuperar-password",
+      "width": 1440,
+      "url": "/recuperar-password",
+      "title": "Recuperar contraseña",
+      "viewport": 1440,
+      "scrollWidth": 1440,
+      "bodyWidth": 1440,
+      "focusable": 3
+    },
+    {
+      "route": "recuperar-password",
+      "width": 1366,
+      "url": "/recuperar-password",
+      "title": "Recuperar contraseña",
+      "viewport": 1366,
+      "scrollWidth": 1366,
+      "bodyWidth": 1366,
+      "focusable": 3
+    },
+    {
+      "route": "recuperar-password",
+      "width": 1024,
+      "url": "/recuperar-password",
+      "title": "Recuperar contraseña",
+      "viewport": 1024,
+      "scrollWidth": 1024,
+      "bodyWidth": 1024,
+      "focusable": 3
+    },
+    {
+      "route": "recuperar-password",
+      "width": 768,
+      "url": "/recuperar-password",
+      "title": "Recuperar contraseña",
+      "viewport": 768,
+      "scrollWidth": 768,
+      "bodyWidth": 768,
+      "focusable": 3
+    },
+    {
+      "route": "recuperar-password",
+      "width": 390,
+      "url": "/recuperar-password",
+      "title": "Recuperar contraseña",
+      "viewport": 390,
+      "scrollWidth": 390,
+      "bodyWidth": 390,
+      "focusable": 3
+    },
+    {
+      "route": "reset-password",
+      "width": 1920,
+      "url": "/reset-password",
+      "title": "Restablecer contraseña",
+      "viewport": 1920,
+      "scrollWidth": 1920,
+      "bodyWidth": 1920,
+      "focusable": 1
+    },
+    {
+      "route": "reset-password",
+      "width": 1440,
+      "url": "/reset-password",
+      "title": "Restablecer contraseña",
+      "viewport": 1440,
+      "scrollWidth": 1440,
+      "bodyWidth": 1440,
+      "focusable": 1
+    },
+    {
+      "route": "reset-password",
+      "width": 1366,
+      "url": "/reset-password",
+      "title": "Restablecer contraseña",
+      "viewport": 1366,
+      "scrollWidth": 1366,
+      "bodyWidth": 1366,
+      "focusable": 1
+    },
+    {
+      "route": "reset-password",
+      "width": 1024,
+      "url": "/reset-password",
+      "title": "Restablecer contraseña",
+      "viewport": 1024,
+      "scrollWidth": 1024,
+      "bodyWidth": 1024,
+      "focusable": 1
+    },
+    {
+      "route": "reset-password",
+      "width": 768,
+      "url": "/reset-password",
+      "title": "Restablecer contraseña",
+      "viewport": 768,
+      "scrollWidth": 768,
+      "bodyWidth": 768,
+      "focusable": 1
+    },
+    {
+      "route": "reset-password",
+      "width": 390,
+      "url": "/reset-password",
+      "title": "Restablecer contraseña",
+      "viewport": 390,
+      "scrollWidth": 390,
+      "bodyWidth": 390,
+      "focusable": 1
+    },
+    {
+      "route": "acceso-denegado",
+      "width": 1920,
+      "url": "/acceso-denegado",
+      "title": "Acceso denegado",
+      "viewport": 1920,
+      "scrollWidth": 1920,
+      "bodyWidth": 1920,
+      "focusable": 1
+    },
+    {
+      "route": "acceso-denegado",
+      "width": 1440,
+      "url": "/acceso-denegado",
+      "title": "Acceso denegado",
+      "viewport": 1440,
+      "scrollWidth": 1440,
+      "bodyWidth": 1440,
+      "focusable": 1
+    },
+    {
+      "route": "acceso-denegado",
+      "width": 1366,
+      "url": "/acceso-denegado",
+      "title": "Acceso denegado",
+      "viewport": 1366,
+      "scrollWidth": 1366,
+      "bodyWidth": 1366,
+      "focusable": 1
+    },
+    {
+      "route": "acceso-denegado",
+      "width": 1024,
+      "url": "/acceso-denegado",
+      "title": "Acceso denegado",
+      "viewport": 1024,
+      "scrollWidth": 1024,
+      "bodyWidth": 1024,
+      "focusable": 1
+    },
+    {
+      "route": "acceso-denegado",
+      "width": 768,
+      "url": "/acceso-denegado",
+      "title": "Acceso denegado",
+      "viewport": 768,
+      "scrollWidth": 768,
+      "bodyWidth": 768,
+      "focusable": 1
+    },
+    {
+      "route": "acceso-denegado",
+      "width": 390,
+      "url": "/acceso-denegado",
+      "title": "Acceso denegado",
+      "viewport": 390,
+      "scrollWidth": 390,
+      "bodyWidth": 390,
+      "focusable": 1
+    },
+    {
+      "route": "inicio",
+      "actual": "/login",
+      "note": "Sin sesión: comprobación de guard real, sin simular autenticación."
+    }
+  ],
+  "errors": [
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ]
+}

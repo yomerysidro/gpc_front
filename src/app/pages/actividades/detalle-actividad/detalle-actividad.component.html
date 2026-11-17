@@ -1,0 +1,93 @@
+<section aria-label="Detalle de la actividad seleccionada">
+  <div class="encabezado">
+    <button type="button" class="btn btn-icono btn-sin-borde volver-actividad" title="Volver a actividades" aria-label="Volver a actividades" [disabled]="panelOcupado()" (click)="volver.emit()"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span></button>
+    @if (actividad(); as actual) { <div class="identidad"><h1>{{ actual.nombre }}</h1><span class="badge" [attr.data-estado]="actual.estado">{{ actual.estado }}</span></div> }
+    @if (actividad(); as actual) {
+      @if (auth?.tienePermiso('actividades.editar')) { <div aria-label="Acciones de la actividad"><button class="btn btn-icono" type="button" [disabled]="operando() || panelOcupado()" (click)="editarActividad.emit(actual)" aria-label="Editar" title="Editar"><span class="material-symbols-outlined" aria-hidden="true" data-icon="edit"></span><span class="sr-only">Editar</span></button></div> }
+    }
+  </div>
+  @if (cargando()) { <p role="status">Cargando actividad…</p> }
+  @else if (sinSeleccion()) { <p role="status">Selecciona una actividad para ver su detalle</p> }
+  @else if (error()) { <div class="alert alert-error" role="alert">{{ error() }}</div><button class="btn" type="button" (click)="cargar()">Reintentar</button> }
+  @if (actividad(); as actual) {
+    <div class="tarjetas-detalle">
+      <section class="panel resumen-actividad" aria-labelledby="titulo-informacion">
+        <h2 id="titulo-informacion" class="sr-only">Resumen de la actividad</h2>
+        <dl class="informacion">
+          <div><dt>Área municipal</dt><dd [attr.aria-busy]="cargandoArea()">{{ cargandoArea() ? 'Cargando área…' : area() }}</dd></div>
+          <div><dt>Tipo</dt><dd [attr.aria-busy]="cargandoTipo()">{{ cargandoTipo() ? 'Cargando tipo…' : tipo() }}</dd></div>
+          <div><dt>Fechas</dt><dd>{{ fecha(actual.fecha_inicio) }} – {{ fecha(actual.fecha_fin) }}</dd></div>
+          <div><dt>Origen</dt><dd>{{ actual.origen === 'solicitud' ? 'Solicitud aprobada' : actual.origen === 'sin_solicitud' ? 'Registro administrativo directo' : 'Origen no informado' }}</dd></div>
+        </dl>
+        <dl class="indicadores" aria-label="Totales de la actividad">
+          <div><dt>Participantes inscritos</dt><dd>{{ contadoresActividad()?.inscritos_actividad_vigentes ?? 'No informado' }}</dd></div>
+          <div><dt>Sesiones programadas</dt><dd>{{ cargandoSesiones() ? 'Consultando…' : errorSesiones() || !auth?.tienePermiso('actividades.ver') ? 'No disponible' : sesiones().length }}</dd></div>
+        </dl>
+        @if (actual.descripcion || actual.sede) { <dl class="informacion informacion-adicional">@if (actual.descripcion) { <div><dt>Descripción</dt><dd>{{ actual.descripcion }}</dd></div> } @if (actual.sede) { <div><dt>Sede</dt><dd>{{ actual.sede }}</dd></div> }</dl> }
+        @if (avisoCatalogos()) { <p role="status">No se pudieron consultar algunos catálogos de áreas o tipos de actividad.</p> }
+        @if (errorParticipantes()) { <p role="alert">{{ errorParticipantes() }}</p><button class="btn" type="button" (click)="cargarParticipantes()">Reintentar participantes</button> }
+        @for (aviso of avisosParticipantes(); track aviso.recurso) { <p role="status">{{ aviso.mensaje }}</p><button class="btn" type="button" [disabled]="reintentando().includes(aviso.recurso)" (click)="reintentarCatalogo(aviso.recurso)">Reintentar {{ aviso.recurso === 'personas' ? 'personas' : 'tipos de participación' }}</button> }
+      </section>
+      @if (avisoInscripcion()) { <p class="alert alert-exito" role="status">{{ avisoInscripcion() }}</p> }
+      <section class="panel sesiones" aria-labelledby="titulo-sesiones" [attr.aria-busy]="cargandoSesiones()">
+        <div class="titulo-panel"><h2 id="titulo-sesiones">Sesiones de la actividad</h2>
+          @if (auth?.tienePermiso('actividades.crear')) { <button class="btn accion-principal" type="button" [disabled]="panelOcupado()" (click)="abrirSesion()"><span class="material-symbols-outlined" aria-hidden="true">add</span>Registrar sesión</button> }
+        </div>
+        @if (cargandoSesiones()) { <p role="status">Cargando sesiones…</p> }
+        @else if (errorSesiones()) { <p role="alert">{{ errorSesiones() }}</p><button class="btn" type="button" (click)="cargarSesiones()">Reintentar sesiones</button> }
+        @else if (!auth?.tienePermiso('actividades.ver')) { <p>No tienes permiso para consultar las sesiones.</p> }
+        @else if (!sesiones().length) { <p>Esta actividad todavía no tiene sesiones programadas</p> }
+        @else {
+          <ul class="lista-sesiones">
+            @for (sesion of sesiones(); track sesion['id_actividad_sesion']) {
+              <li class="tarjeta-sesion" [attr.data-sesion-id]="sesion['id_actividad_sesion']" [attr.data-actividad-id]="actual.id_actividad">
+                <div class="titulo-panel"><div class="identidad-sesion"><small class="numero-sesion">Sesión #{{ sesion['numero_sesion'] ?? sesion['id_actividad_sesion'] }}</small><h3>{{ sesion['nombre'] || 'Nombre no disponible' }}</h3></div><span class="badge" [class.badge-exito]="sesion['estado'] === 'Finalizada'" [attr.data-estado]="sesion['estado'] || 'No disponible'">{{ sesion['estado'] || 'No disponible' }}</span></div>
+                <p>{{ fecha($any(sesion['fecha'])) }} · {{ sesion['hora_inicio'] || 'Hora no disponible' }} – {{ sesion['hora_fin'] || 'Hora no disponible' }}</p>
+                @if (capacidadSesion(sesion['id_actividad_sesion'])?.contadores; as c) {
+                  <small class="resumen-sesion">{{ c.participantes_sesion }} participantes · {{ c.presentes }} {{ c.presentes === 1 ? 'presente' : 'presentes' }} · {{ c.ausentes }} {{ c.ausentes === 1 ? 'ausente' : 'ausentes' }}</small>
+                }
+                <nav class="acciones-sesion" [attr.aria-label]="'Opciones de ' + (sesion['nombre'] || 'sesión sin nombre')">
+                  <button class="btn" type="button" title="Detalle de sesión" aria-label="Detalle de sesión" [disabled]="panelOcupado()" (click)="abrirPanel('detalle', sesion)"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button>
+                  @if (auth?.tienePermiso('ponentes-firmantes.ver')) { <button class="btn" type="button" title="Asignar ponentes" aria-label="Asignar ponentes" [disabled]="panelOcupado()" (click)="abrirPanel('ponentes', sesion)"><span class="material-symbols-outlined" aria-hidden="true">co_present</span></button> }
+                  @if (auth?.tienePermiso('participantes.crear')) { <button class="btn" type="button" title="Inscribir participante en la actividad" aria-label="Inscribir participante" [disabled]="panelOcupado()" (click)="abrirInscripcion(sesion)"><span class="material-symbols-outlined" aria-hidden="true">how_to_reg</span></button> }
+                  @if (auth?.tienePermiso('participantes.ver')) { <button class="btn asistencia-principal" type="button" title="Control de asistencia" aria-label="Asistencia de sesión" [disabled]="panelOcupado()" (click)="abrirPanel('asistencia', sesion)"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span></button> }
+                </nav>
+                @if (sesion['estado'] !== 'Finalizada' && capacidadSesion(sesion['id_actividad_sesion'])?.finalizada !== true) {
+                  <div class="cierre-sesion">
+                    @if (!capacidadSesion(sesion['id_actividad_sesion'])) { <button class="btn" type="button" [disabled]="cargandoCapacidades().includes(+$any(sesion['id_actividad_sesion']))" (click)="cargarCapacidades(sesion)">Consultar cierre</button> }
+                    <button class="btn" type="button" title="Finalizar sesión" aria-label="Finalizar sesión" [disabled]="!puedeFinalizar(sesion)" (click)="finalizarSesion(sesion)"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>{{ finalizandoSesion() === +$any(sesion['id_actividad_sesion']) ? 'Finalizando…' : 'Finalizar sesión' }}</button>
+                    @if (capacidadSesion(sesion['id_actividad_sesion'])?.puede_finalizarse === false) { <small>Finalización no disponible para esta sesión.</small> }
+                  </div>
+                }
+                @if (erroresCertificacion()[+$any(sesion['id_actividad_sesion'])]; as error) { <p role="alert">{{ error }}</p> }
+       </li>
+            }
+          </ul>
+        }
+      </section>
+      @if (errorResumen()) { <p role="status">{{ errorResumen() }}</p><button class="btn" type="button" (click)="cargarResumen()">Reintentar resumen de asistencia</button> }
+      @if (auth?.tienePermiso('actividades.editar')) { <footer aria-label="Cierre de la actividad"><button class="btn" type="button" [disabled]="actual.estado !== 'Activa' || operando() || panelOcupado()" (click)="cerrarActividad.emit(actual)"><span class="material-symbols-outlined" aria-hidden="true">lock</span>Cerrar actividad</button></footer> }
+    </div>
+  }
+</section>
+<app-dialogo #modalSesion class="modal-sesion-detalle" [titulo]="sesionEditando() ? 'Editar sesión' : 'Registrar sesión'" [mostrarCerrar]="true" [cierreControlado]="true" (cierreSolicitado)="cerrarSesion()" (cerrado)="formularioSesion.set(false)">
+  @if (formularioSesion()) { <p>Actividad: <strong>{{ actividad()?.nombre }}</strong></p><app-formulario-emision #editorSesion recurso="activity-session" [id]="sesionEditando()" [enDialogo]="true" [actividadContexto]="actividadContexto()" (guardado)="sesionGuardada()" (cancelar)="cerrarSesion()" /> }
+</app-dialogo>
+<app-dialogo #modalDetalle class="modal-detalle-sesion" titulo="Detalle de sesión" [mostrarCerrar]="true">
+  @if (cargandoDetalleSesion()) { <p role="status">Consultando sesión…</p> }
+  @else if (errorDetalleSesion()) { <p role="alert">{{ errorDetalleSesion() }}</p> }
+  @if (detalleSesion(); as detalle) { <h3>{{ detalle['nombre'] }}</h3><dl class="informacion"><div><dt>Fecha</dt><dd>{{ fecha($any(detalle['fecha'])) }}</dd></div><div><dt>Estado</dt><dd>{{ detalle['estado'] || 'No disponible' }}</dd></div><div><dt>Inicio</dt><dd>{{ detalle['hora_inicio'] }}</dd></div><div><dt>Fin</dt><dd>{{ detalle['hora_fin'] }}</dd></div>@if (detalle['lugar']) { <div><dt>Lugar</dt><dd>{{ detalle['lugar'] }}</dd></div> }</dl>@if (auth?.tienePermiso('actividades.editar')) { <button class="btn" type="button" (click)="editarSesion()">Editar sesión</button> } }
+</app-dialogo>
+@if (contextoInscripcion(); as contexto) { <app-listar-participantes [contextoIntegrado]="contexto" (inscripcionGuardada)="inscripcionGuardada()" (formularioCerrado)="contextoInscripcion.set(null)" /> }
+
+<app-dialogo #modalPonentesSesion class="modal-ponentes-sesion" titulo="Ponentes de la sesión" [mostrarCerrar]="true" (cerrado)="cerrarPonentesSesion()">
+  @if (sesionPonentes(); as sesion) {
+    @if (actividadContexto(); as actividad) {
+      <app-ponentes-sesion-actividad
+        [actividad]="actividad"
+        [sesion]="{ id_actividad_sesion: +$any(sesion['id_actividad_sesion']), numero: '' + (sesion['numero_sesion'] ?? sesion['id_actividad_sesion']), fecha: fecha($any(sesion['fecha'])) }" />
+    }
+  }
+</app-dialogo>
+
+<app-dialogo-confirmacion #confirmarFinalizacion titulo="Finalizar sesión" texto="Se consolidará la asistencia de esta sesión según la política institucional. La actividad conservará su estado. La asistencia finalizada requiere regularización autorizada." confirmar="Finalizar sesión" />

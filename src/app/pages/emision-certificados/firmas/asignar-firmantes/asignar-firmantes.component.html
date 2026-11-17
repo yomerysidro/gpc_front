@@ -1,0 +1,4 @@
+@if (!integradoEnFirmas()) { <app-page-title title="Asignar firmantes" /><a class="btn" routerLink="/certificaciones/firmas">Volver a Firmas</a> }
+<p class="nota">Asignar un firmante establece una relación administrativa y su orden. No aplica una firma criptográfica.</p>
+@if (!escrituraAutorizada) { <p class="alert alert-advertencia" role="status">{{ bloqueoEscritura }}</p> }
+<app-listado-emision recurso="actividades-firmas" [soloLectura]="!escrituraAutorizada" />

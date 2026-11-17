@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["documentos-por-firmar.component.ts"],
+  "sourcesContent": [".pestanas-gerencia{display:flex;gap:.25rem;border-bottom:1px solid #d5dee8;margin-bottom:1rem;flex-wrap:wrap}.pestanas-gerencia button{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem .8rem;background:transparent;border:0;border-bottom:3px solid transparent;color:#52677b;cursor:pointer;font:inherit;font-size:.9rem}.pestanas-gerencia [aria-selected=true]{color:#075a9b;border-bottom-color:#d6ad4a;font-weight:600}.pestanas-gerencia .material-symbols-outlined{font-size:1.2rem}.estado-listo{display:inline-block;color:#21643b;background:#e8f5ec;border-radius:1rem;padding:.2rem .6rem;font-size:.85rem}[hidden]{display:none!important}.aviso-exito{color:#21643b;margin-bottom:.75rem}@media(max-width:600px){.pestanas-gerencia button{flex:1;font-size:.85rem;justify-content:center}}"],
+  "mappings": ";AAAA,CAAA;AAAmB,WAAA;AAAa,OAAA;AAAW,iBAAA,IAAA,MAAA;AAAgC,iBAAA;AAAmB,aAAA;;AAAe,CAA7G,kBAA6G;AAA0B,WAAA;AAAoB,eAAA;AAAmB,OAAA;AAAU,WAAA,OAAA;AAAoB,cAAA;AAAuB,UAAA;AAAS,iBAAA,IAAA,MAAA;AAAoC,SAAA;AAAc,UAAA;AAAe,QAAA;AAAa,aAAA;;AAAgB,CAA1U,kBAA0U,CAAA;AAAwC,SAAA;AAAc,uBAAA;AAA4B,eAAA;;AAAgB,CAA5a,kBAA4a,CAAA;AAA8C,aAAA;;AAAiB,CAAA;AAAc,WAAA;AAAqB,SAAA;AAAc,cAAA;AAAmB,iBAAA;AAAmB,WAAA,OAAA;AAAoB,aAAA;;AAAiB,CAAA;AAAS,WAAA;;AAAuB,CAAA;AAAa,SAAA;AAAc,iBAAA;;AAAqB,OAAA,CAAA,SAAA,EAAA;AAAwB,GAA/sB,kBAA+sB;AAA0B,UAAA;AAAO,eAAA;AAAiB,qBAAA;;;",
+  "names": []
+}

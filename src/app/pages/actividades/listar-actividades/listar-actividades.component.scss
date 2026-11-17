@@ -1,0 +1,142 @@
+:host {
+  display: block;
+  min-width: 0;
+  background: var(--neutro-0);
+}
+
+.pestanas { max-width: 100%; overflow: visible; flex-wrap: wrap; }
+[role='tab'] { flex-shrink: 0; }
+.pestanas button:disabled { cursor: not-allowed; }
+[role='tabpanel'][hidden] { display: none; }
+
+.encabezado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.5rem;
+  padding: 1rem .5rem 1.5rem;
+  margin-bottom: var(--espacio-4);
+}
+
+.encabezado-texto { min-width: 0; }
+.descripcion { margin: .4rem 0 0; color: var(--neutro-500); line-height: 1.5; }
+.solicitar-actividad { flex: none; min-height: 44px; padding-inline: 1.25rem; gap: .5rem; }
+.solicitar-actividad .material-symbols-outlined { font-size: 1.2rem; }
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--espacio-3);
+  margin-bottom: var(--espacio-5);
+
+  .form-field { flex: 1 1 10rem; min-width: 0; margin-bottom: 0; }
+  .buscador { flex-grow: 2; }
+}
+
+.tabla-caja {
+  overflow-x: auto;
+  border: 1px solid var(--neutro-200);
+  border-radius: var(--radio-lg);
+
+  .table { min-width: 58rem; }
+  td, th { padding-block: var(--espacio-3); }
+  .table th:first-child, .table td:first-child { padding-left: var(--espacio-4); }
+  .table td:last-child { padding-right: var(--espacio-2); }
+  .table th:last-child { text-align: center; }
+}
+
+.nombre-actividad { min-width: 13rem; overflow-wrap: anywhere; }
+tr.registro-inactivo .nombre-actividad { font-weight: 500; }
+.acciones-fila { display: flex; justify-content: center; gap: 2px; }
+.gestionar-actividad {
+  color: #075a9b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  .material-symbols-outlined { font-size: 1.25rem; flex: none; }
+  cursor: pointer;
+  &:hover { background: #eef5fc; }
+  &:focus-visible { outline: 3px solid #075a9b; outline-offset: 2px; }
+}
+.contexto-actividad { overflow-wrap: anywhere; }
+.panel-acciones {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-block: 1.5rem;
+}
+.tarjeta-accion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  min-height: 7.5rem;
+  padding: 1rem .5rem;
+  border: 1px solid var(--neutro-200);
+  border-radius: var(--radio-lg);
+  background: var(--neutro-0);
+  color: var(--neutro-900);
+  font: inherit;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  .material-symbols-outlined { font-size: 2rem; color: #1763b2; }
+  &:hover:not(:disabled) { border-color: #1763b2; background: #eef5fc; }
+  &:focus-visible { outline: 3px solid #1763b2; outline-offset: 3px; }
+  &:disabled { opacity: .55; cursor: not-allowed; }
+}
+.tarjeta-cerrar .material-symbols-outlined { color: #ba5509; }
+:host ::ng-deep app-dialogo.modal-acciones > dialog.dialogo { width: min(38rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; }
+@media (max-width: 480px) { .panel-acciones { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; } }
+@media (max-width: 300px) { .panel-acciones { grid-template-columns: minmax(0, 1fr); } }
+.tamano-pagina { display: flex; align-items: center; gap: var(--espacio-2); }
+.tamano-pagina .input { width: auto; }
+.formulario { min-width: 0; }
+
+// Alcance exclusivo del diálogo de Actividades; conserva el diseño compartido de Áreas.
+:host ::ng-deep app-dialogo.modal-actividad > dialog.dialogo,
+:host ::ng-deep app-dialogo.modal-ponentes > dialog.dialogo {
+  width: min(48rem, calc(100vw - 2 * var(--espacio-4)));
+  max-height: calc(100dvh - 2 * var(--espacio-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.rejilla-formulario {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--espacio-5);
+}
+
+.ancho-completo { grid-column: 1 / -1; }
+textarea { resize: vertical; }
+.acciones-formulario { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--espacio-3); }
+
+.detalle {
+  margin-block: var(--espacio-4) var(--espacio-5);
+
+  > div { padding-block: var(--espacio-2); border-bottom: 1px solid var(--neutro-100); }
+  dt { color: var(--neutro-500); font-size: 0.8125rem; }
+  dd { margin: 0; overflow-wrap: anywhere; }
+}
+
+.texto-largo { white-space: pre-wrap; }
+.ponentes {
+  padding-left: var(--espacio-5);
+
+  li { margin-bottom: var(--espacio-4); }
+  span { display: block; }
+}
+
+
+@media (max-width: 600px) {
+  .encabezado { padding: .75rem 0 1.25rem; }
+  .solicitar-actividad { justify-content: center; max-width: 100%; }
+  .rejilla-formulario { grid-template-columns: minmax(0, 1fr); }
+  .filtros .form-field { flex-basis: 100%; }
+  .limpiar { width: 100%; }
+  .formulario { padding: var(--espacio-4); }
+}
+:host .tabla-caja[hidden] { display: none; }

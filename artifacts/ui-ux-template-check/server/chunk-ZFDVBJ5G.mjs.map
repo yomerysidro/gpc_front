@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/gerencia/pendientes-aprobacion/pendientes-aprobacion.component.ts"],
+  "sourcesContent": ["import { Component } from '@angular/core';\nimport { BandejaSolicitudesComponent } from '../../solicitudes/compartidos/bandeja-solicitudes.component';\n@Component({ selector: 'app-pendientes-aprobacion', standalone: true, imports: [BandejaSolicitudesComponent],\n  template: '<app-bandeja-solicitudes bandeja=\"gerencia\" titulo=\"Solicitudes de actividades\" />' })\nexport class PendientesAprobacionComponent {}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;AAIM,IAAO,gCAAP,MAAO,+BAA6B;;qCAA7B,gCAA6B;EAAA;yEAA7B,gCAA6B,WAAA,CAAA,CAAA,2BAAA,CAAA,GAAA,YAAA,MAAA,UAAA,CAAA,6BAAA,GAAA,OAAA,GAAA,MAAA,GAAA,QAAA,CAAA,CAAA,WAAA,YAAA,UAAA,4BAAA,CAAA,GAAA,UAAA,SAAA,uCAAA,IAAA,KAAA;AAAA,QAAA,KAAA,GAAA;AAD7B,MAAA,oBAAA,GAAA,2BAAA,CAAA;;oBADmE,2BAA2B,GAAA,eAAA,EAAA,CAAA;;;6EAE9F,+BAA6B,EAAA,WAAA,iCAAA,UAAA,wFAAA,YAAA,EAAA,CAAA;AAAA,GAAA;",
+  "names": []
+}

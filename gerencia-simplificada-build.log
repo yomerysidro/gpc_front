@@ -1,0 +1,123 @@
+
+> gpc-front@0.0.0 build
+> ng build --configuration production
+
+❯ Building...
+✔ Building...
+Browser bundles        
+Initial chunk files     | Names                            |  Raw size | Estimated transfer size
+chunk-4ZYLSQY2.js       | -                                | 178.91 kB |                52.41 kB
+main-V53SKRVY.js        | main                             | 135.70 kB |                28.44 kB
+chunk-3T2JL2MK.js       | -                                |  81.13 kB |                20.39 kB
+chunk-5YQQSZSX.js       | -                                |  46.22 kB |                 9.11 kB
+polyfills-FFHMD2TL.js   | polyfills                        |  34.52 kB |                11.28 kB
+chunk-5FHVTETN.js       | -                                |  21.89 kB |                 6.65 kB
+styles-SG63TMDP.css     | styles                           |  12.94 kB |                 2.90 kB
+chunk-WO47CKHR.js       | -                                |   2.61 kB |                 1.12 kB
+chunk-4YDTYLIQ.js       | -                                |   1.57 kB |               698 bytes
+chunk-GMK2DF6Z.js       | -                                | 631 bytes |               631 bytes
+chunk-4XT3PFPC.js       | -                                | 552 bytes |               552 bytes
+chunk-K2FGLIJN.js       | -                                | 507 bytes |               507 bytes
+chunk-ICI67NGK.js       | -                                | 440 bytes |               440 bytes
+chunk-66MSHE4M.js       | -                                |  25 bytes |                25 bytes
+
+                        | Initial total                    | 517.65 kB |               135.15 kB
+
+Lazy chunk files        | Names                            |  Raw size | Estimated transfer size
+chunk-FGBSD5YT.js       | generar-emitir-component         |  99.70 kB |                21.80 kB
+chunk-HHIODURE.js       | listar-actividades-component     |  95.77 kB |                20.42 kB
+chunk-TOUG63E7.js       | -                                |  56.06 kB |                13.00 kB
+chunk-XD4LZH2W.js       | -                                |  45.15 kB |                10.65 kB
+chunk-NIIDRUP7.js       | listar-firmas-component          |  39.56 kB |                10.57 kB
+chunk-QPFI2UGY.js       | -                                |  35.93 kB |                 7.93 kB
+chunk-EJM5NAW4.js       | -                                |  35.11 kB |                 8.56 kB
+chunk-IQAKGZQV.js       | -                                |  34.05 kB |                 8.07 kB
+chunk-FVTL75XO.js       | -                                |  34.03 kB |                 8.90 kB
+chunk-SFZBHLWO.js       | -                                |  31.62 kB |                 7.77 kB
+chunk-UDY75XYP.js       | listar-reconocimientos-component |  26.97 kB |                 7.04 kB
+chunk-TXEN7VAH.js       | detalle-documento-component      |  19.64 kB |                 5.55 kB
+chunk-36GESMME.js       | reportes-certificados-component  |  16.87 kB |                 4.86 kB
+chunk-446FEPVC.js       | detalle-certificado-component    |  16.40 kB |                 4.48 kB
+chunk-OCNSLLWE.js       | gestion-tabs-component           |  14.18 kB |                 3.08 kB
+...and 34 more lazy chunks files. Use "--verbose" to show all the files.
+
+
+Server bundles         
+Initial chunk files     | Names                            |  Raw size
+server.mjs              | server                           |   1.12 MB |                        
+chunk-MQKL7SOA.mjs      | -                                | 307.31 kB |                        
+polyfills.server.mjs    | polyfills.server                 | 268.60 kB |                        
+chunk-WXZTJF4U.mjs      | -                                | 198.61 kB |                        
+chunk-OIFX2HWK.mjs      | -                                | 135.97 kB |                        
+chunk-IBCSUSLW.mjs      | -                                |  68.02 kB |                        
+chunk-4UYH6QBM.mjs      | -                                |  46.28 kB |                        
+chunk-ONY346EJ.mjs      | -                                |  21.11 kB |                        
+chunk-IRNGVGRW.mjs      | -                                |  13.28 kB |                        
+chunk-M52X2BXO.mjs      | -                                |   2.65 kB |                        
+chunk-RNC2MO3N.mjs      | -                                |   1.67 kB |                        
+chunk-Q4J3LHVA.mjs      | -                                |   1.60 kB |                        
+chunk-MODFBUUG.mjs      | -                                | 977 bytes |                        
+chunk-GVEIJFOY.mjs      | -                                | 665 bytes |                        
+chunk-ZWOUWTT7.mjs      | -                                | 586 bytes |                        
+chunk-HPWZ5AW6.mjs      | -                                | 540 bytes |                        
+main.server.mjs         | main.server                      | 526 bytes |                        
+chunk-OKPKUAEZ.mjs      | -                                | 473 bytes |                        
+render-utils.server.mjs | render-utils.server              | 312 bytes |                        
+chunk-MVQ3E7SG.mjs      | -                                |  58 bytes |                        
+
+Lazy chunk files        | Names                            |  Raw size
+chunk-AF6ZK3YS.mjs      | generar-emitir-component         |  99.84 kB |                        
+chunk-JGOFK7JF.mjs      | listar-actividades-component     |  95.91 kB |                        
+chunk-OIL2BQFT.mjs      | -                                |  56.14 kB |                        
+chunk-23Y5QFYC.mjs      | -                                |  45.26 kB |                        
+chunk-P6O7TWZO.mjs      | listar-firmas-component          |  39.70 kB |                        
+chunk-NJ5IJQ7J.mjs      | -                                |  36.00 kB |                        
+chunk-4OHHLTHZ.mjs      | -                                |  35.22 kB |                        
+chunk-GPMB7774.mjs      | -                                |  34.16 kB |                        
+chunk-5WJZY4SY.mjs      | -                                |  34.10 kB |                        
+chunk-ZL4DP5CV.mjs      | -                                |  31.70 kB |                        
+chunk-MLRFIFGM.mjs      | listar-reconocimientos-component |  27.10 kB |                        
+chunk-5UUDNRPX.mjs      | detalle-documento-component      |  19.77 kB |                        
+chunk-5PP43F42.mjs      | reportes-certificados-component  |  16.97 kB |                        
+chunk-2IEOS2T3.mjs      | detalle-certificado-component    |  16.53 kB |                        
+chunk-U34BZQSX.mjs      | gestion-tabs-component           |  14.32 kB |                        
+...and 35 more lazy chunks files. Use "--verbose" to show all the files.
+
+Prerendered 4 static routes.
+Application bundle generation complete. [47.808 seconds]
+
+▲ [WARNING] bundle initial exceeded maximum budget. Budget 512.00 kB was not met by 5.65 kB with a total of 517.65 kB.
+
+
+▲ [WARNING] src/app/pages/reportes/reportes-actividades/reportes-actividades.component.scss exceeded maximum budget. Budget 2.05 kB was not met by 1.64 kB with a total of 3.69 kB.
+
+
+▲ [WARNING] src/app/pages/reportes/reportes-asistencia/reportes-asistencia.component.scss exceeded maximum budget. Budget 2.05 kB was not met by 646 bytes with a total of 2.69 kB.
+
+
+▲ [WARNING] src/app/pages/reportes/indicadores-generales/indicadores-generales.component.scss exceeded maximum budget. Budget 2.05 kB was not met by 1.29 kB with a total of 3.34 kB.
+
+
+▲ [WARNING] src/app/components/layouts/private-layout/private-layout.component.scss exceeded maximum budget. Budget 2.05 kB was not met by 528 bytes with a total of 2.58 kB.
+
+
+▲ [WARNING] src/app/pages/solicitudes/compartidos/solicitudes.scss exceeded maximum budget. Budget 2.05 kB was not met by 1.73 kB with a total of 3.78 kB.
+
+
+▲ [WARNING] src/app/pages/solicitudes/nueva-solicitud/nueva-solicitud.component.scss exceeded maximum budget. Budget 2.05 kB was not met by 512 bytes with a total of 2.56 kB.
+
+
+▲ [WARNING] src/app/pages/reportes/reportes-certificados/reportes-certificados.component.scss exceeded maximum budget. Budget 2.05 kB was not met by 1.64 kB with a total of 3.69 kB.
+
+
+▲ [WARNING] src/app/pages/emision-certificados/generar-emitir/generar-emitir.component.scss exceeded maximum budget. Budget 2.05 kB was not met by 340 bytes with a total of 2.39 kB.
+
+
+▲ [WARNING] src/app/pages/actividades/detalle-actividad/detalle-actividad.component.scss exceeded maximum budget. Budget 2.05 kB was not met by 1.26 kB with a total of 3.31 kB.
+
+
+▲ [WARNING] src/app/pages/actividades/listar-actividades/listar-actividades.component.scss exceeded maximum budget. Budget 2.05 kB was not met by 1.82 kB with a total of 3.87 kB.
+
+
+Output location: C:\Users\Yomer-Ysidro\Documents\Proyecto_Perfil\gpc_front\dist\gpc_front
+

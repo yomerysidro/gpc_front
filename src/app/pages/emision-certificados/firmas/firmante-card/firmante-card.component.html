@@ -1,0 +1,31 @@
+<article class="firmante-card">
+  <header>
+    <span class="material-symbols-outlined identidad" aria-hidden="true">people</span>
+    <div><span class="etiqueta">Firmante municipal</span><h2>{{ firmante().trabajador?.cargo || 'Cargo no disponible' }}</h2></div>
+  </header>
+  <div class="contenido">
+    <p>Firmante #{{ firmante().firma.id_firma }} · Trabajador #{{ firmante().firma.id_persona_trabajador }}</p>
+    <p>DNI: {{ dniVisible() }}</p>
+    @if (firmante().nombre; as nombre) {
+      @if (nombre.estado === 'disponible') { <h3>{{ nombre.datos }}</h3> }
+      @else { <h3>Trabajador vinculado</h3><p class="dato-pendiente">{{ nombre.mensaje }}</p> }
+    }
+    @if (firmante().area; as area) {
+      <p class="area"><span class="material-symbols-outlined" aria-hidden="true">group</span>{{ area.estado === 'disponible' ? area.datos : area.mensaje }}</p>
+    }
+    @if (firmante().trabajador; as trabajador) {
+      <p class="estado" [class.inactivo]="!trabajador.estado">Trabajador {{ trabajador.estado ? 'activo' : 'inactivo' }}</p>
+    } @else { <p class="dato-pendiente">Estado del trabajador no disponible.</p> }
+    <section class="credencial" aria-label="Información de la credencial">
+      <h4><span class="material-symbols-outlined" aria-hidden="true">edit</span>Credencial registrada</h4>
+      <dl><dt>Referencia administrativa</dt><dd>Credencial #{{ firmante().firma.id_firma }}</dd><dt>Fecha registrada</dt><dd>{{ firmante().firma.fecha_firma }}</dd><dt>Vigencia y validez criptográfica</dt><dd>No informadas por el servicio.</dd></dl>
+      <p>Nombre público del archivo: no informado por Laravel.</p>
+      <p>Disponibilidad para firmar: no informada. No hay operación de firma digital disponible.</p>
+    </section>
+  </div>
+    <footer>
+      <button class="btn btn-consulta btn-icono" type="button" (click)="consultar.emit()" aria-label="Ver detalle" title="Ver detalle"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver detalle</span></button>
+      @if (puedeEditar()) { <button class="btn" type="button" [disabled]="ocupado()" (click)="administrar.emit()">Administrar credencial</button> }
+      @if (puedeEliminar()) { <button class="btn btn-danger" type="button" [disabled]="ocupado()" (click)="eliminar.emit()">Eliminar registro</button> }
+    </footer>
+</article>

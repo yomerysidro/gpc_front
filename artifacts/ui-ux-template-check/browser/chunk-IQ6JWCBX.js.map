@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/core/services/emision-certificados/cambios-certificados.service.ts"],
+  "sourcesContent": ["import { Injectable } from '@angular/core';\nimport { Subject } from 'rxjs';\n\n@Injectable({ providedIn: 'root' })\nexport class CambiosCertificadosService {\n  private readonly cambios = new Subject<void>();\n  readonly cambios$ = this.cambios.asObservable();\n  confirmar(): void { this.cambios.next(); }\n}\n"],
+  "mappings": ";;;;;;AAIM,IAAO,6BAAP,MAAO,4BAA0B;EACpB,UAAU,IAAI,QAAO;EAC7B,WAAW,KAAK,QAAQ,aAAY;EAC7C,YAAS;AAAW,SAAK,QAAQ,KAAI;EAAI;;qCAH9B,6BAA0B;EAAA;4EAA1B,6BAA0B,SAA1B,4BAA0B,WAAA,YADb,OAAM,CAAA;;",
+  "names": []
+}

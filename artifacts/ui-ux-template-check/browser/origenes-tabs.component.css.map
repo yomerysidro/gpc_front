@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["origenes-tabs.component.ts"],
+  "sourcesContent": ["nav{display:flex;gap:.3rem;border-bottom:1px solid #dfe6ef;margin-bottom:1rem;overflow-x:auto}button{border:0;border-bottom:3px solid transparent;background:transparent;padding:.65rem .85rem;color:#526477;cursor:pointer;white-space:nowrap;font:inherit}button[aria-selected=true]{border-color:#075a9b;color:#075a9b;font-weight:600}button:focus-visible{outline:2px solid #075a9b;outline-offset:-2px}button:disabled{opacity:.5;cursor:default}"],
+  "mappings": ";AAAA;AAAI,WAAA;AAAa,OAAA;AAAU,iBAAA,IAAA,MAAA;AAAgC,iBAAA;AAAmB,cAAA;;AAAgB;AAAO,UAAA;AAAS,iBAAA,IAAA,MAAA;AAAoC,cAAA;AAAuB,WAAA,QAAA;AAAsB,SAAA;AAAc,UAAA;AAAe,eAAA;AAAmB,QAAA;;AAAa,MAAA,CAAA;AAA2B,gBAAA;AAAqB,SAAA;AAAc,eAAA;;AAAgB,MAAA;AAAqB,WAAA,IAAA,MAAA;AAA0B,kBAAA;;AAAoB,MAAA;AAAgB,WAAA;AAAW,UAAA;;",
+  "names": []
+}

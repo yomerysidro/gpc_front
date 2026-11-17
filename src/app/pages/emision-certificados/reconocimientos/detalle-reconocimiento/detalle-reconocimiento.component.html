@@ -1,0 +1,39 @@
+<app-page-title title="Detalle del reconocimiento" />
+<a class="btn" routerLink="/certificaciones/reconocimientos">Volver a Reconocimientos</a>
+@if (cargando()) { <p role="status">Cargando reconocimiento y documentos asociados…</p> }
+@if (error(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
+@if (reconocimiento(); as registro) {
+  <article class="card detalle">
+    <span class="badge badge-reconocimiento" [attr.data-estado]="registro.estado">{{ registro.estado }}</span><h2>{{ registro.titulo }}</h2>
+    <dl>
+      <dt>Trabajador registrado</dt><dd>#{{ registro.id_persona_trabajador }} @if (trabajador(); as fila) { · {{ fila.cargo }} · Persona #{{ fila.id_persona }} }</dd>
+      <dt>Nombre completo</dt><dd>{{ nombre() || 'No disponible' }}</dd>
+      <dt>DNI</dt><dd>{{ dni() || 'No disponible' }}</dd>
+      <dt>Área</dt><dd>{{ area() || 'No disponible' }}</dd>
+      <dt>Descripción</dt><dd>{{ registro.descripcion }}</dd><dt>Motivo</dt><dd>{{ registro.motivo }}</dd>
+      <dt>Fecha de reconocimiento</dt><dd>{{ registro.fecha_reconocimiento }}</dd>
+    </dl>
+    <p class="nota">El beneficiario se obtiene de la persona vinculada al trabajador de Gestión.</p>
+    @if (!auth.tienePermiso('ponentes-firmantes.ver')) { <p class="nota" role="status">Falta el permiso ponentes-firmantes.ver para consultar los datos del trabajador.</p> }
+    @if (errorRelacion(); as mensaje) { <p class="alert alert-error" role="alert">No se pudo consultar el trabajador: {{ mensaje }}</p> }
+    @if (auth.tienePermiso('reconocimientos.editar')) { <a class="btn" [routerLink]="['/certificaciones/reconocimientos', registro.id_reconocimiento, 'editar']">Editar reconocimiento</a> }
+  </article>
+  <section class="card detalle">
+    <h2>Certificados y documentos asociados</h2>
+    @if (!auth.tienePermiso('emision.ver')) { <p>No tienes permiso para consultar los certificados asociados.</p> }
+    @if (errorCertificados(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
+    @if (errorDocumentos(); as mensaje) { <p class="alert alert-error" role="alert">No se pudo completar la consulta de documentos: {{ mensaje }}</p> }
+    @if (!cargando() && auth.tienePermiso('emision.ver') && !errorCertificados() && !certificados().length) { <p role="status">Sin certificado asociado.</p> }
+    @for (certificado of certificados(); track certificado.id_certificado) {
+      <h3>Certificado #{{ certificado.id_certificado }} · {{ estadoRegistro(certificado.estado) }}</h3>
+      <a class="btn" [routerLink]="['/certificaciones/certificados', certificado.id_certificado]">Detalle e historial completo</a>
+      @if (!cargando() && !errorDocumentos() && !documentos()[certificado.id_certificado]?.length) { <p>Pendiente: no hay documento generado.</p> }
+      @for (documento of documentos()[certificado.id_certificado] ?? []; track documento.id_certificado_documento) {
+        <div class="acciones">
+          <span>{{ documento.codigo_verificacion || 'Código pendiente' }} · {{ documento.estado }} · {{ documento.fecha_generacion }}</span>
+          <a class="btn btn-consulta" [routerLink]="['/certificaciones/certificados', certificado.id_certificado, 'documentos', documento.id_certificado_documento, 'visor']">Previsualizar documento</a>
+        </div>
+      }
+    }
+  </section>
+}

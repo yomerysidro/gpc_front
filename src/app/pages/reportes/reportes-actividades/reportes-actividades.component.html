@@ -1,0 +1,53 @@
+<section class="reporte">
+  <header>
+    <p class="eyebrow">GESTIÓN MUNICIPAL · REPORTES</p>
+    <h1>Reportes de actividades</h1>
+    <p class="subtitulo">Consulta general de actividades registradas dentro del alcance autorizado de tu usuario.</p>
+  </header>
+  <form class="panel filtros" (ngSubmit)="consultar()">
+    <h2><span class="material-symbols-outlined" aria-hidden="true">tune</span>Filtros de consulta</h2>
+    <label>Fecha de inicio desde<input type="date" name="inicio" [(ngModel)]="inicio" [disabled]="cargando() || exportando()"></label>
+    <label>Fecha de inicio hasta<input type="date" name="fin" [(ngModel)]="fin" [disabled]="cargando() || exportando()"></label>
+    <label>Estado exacto<input name="estado" [(ngModel)]="estado" maxlength="20" placeholder="Todos los estados" [disabled]="cargando() || exportando()"></label>
+    <label>Nombre o código<input type="search" name="busqueda" [(ngModel)]="busqueda" maxlength="100" placeholder="Buscar actividad" [disabled]="cargando() || exportando()"></label>
+    <div class="acciones">
+      <button class="btn btn-primario" type="submit" [disabled]="cargando() || exportando()"><span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>Consultar</button>
+      <button class="btn btn-neutro" type="button" (click)="limpiar()" [disabled]="cargando() || exportando()"><span class="material-symbols-outlined" aria-hidden="true">toggle_off</span>Limpiar filtros</button>
+      <button class="btn btn-secundario" type="button" (click)="actualizar()" [disabled]="cargando() || exportando()"><span class="material-symbols-outlined" aria-hidden="true">tune</span>Actualizar</button>
+    </div>
+  </form>
+  @if (error()) { <p class="error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>{{ error() }}</p> }
+  @if (cargando()) { <p role="status" class="estado"><span class="material-symbols-outlined" aria-hidden="true">visibility</span>Consultando actividades…</p> }
+  @if (pagina(); as resultado) {
+    <section class="panel" aria-label="Resultado del reporte">
+      <h2>{{ hayFiltros() ? 'Resultado filtrado' : 'Listado general' }}</h2>
+      <p><strong>{{ resultado.total }}</strong> actividades {{ hayFiltros() ? 'coinciden con los filtros aplicados' : 'registradas en el alcance autorizado' }}. {{ resultado.data.length }} en esta página.</p>
+      @if (resultado.resumen; as resumen) { <p>{{ resumen['sesiones'] }} sesiones · {{ resumen['participaciones'] }} participaciones en las actividades de la consulta.</p> }
+      @if (hayFiltros()) {
+        <p class="subtitulo">Filtros aplicados: inicio desde {{ aplicado.desde || 'sin límite' }} · inicio hasta {{ aplicado.hasta || 'sin límite' }} · estado {{ aplicado.estado || 'todos' }} · búsqueda {{ aplicado.q || 'ninguna' }}.</p>
+      }
+      <p class="subtitulo">El rango incluye ambos extremos de la fecha de inicio. Todos los filtros, el total y la paginación se calculan en el servidor.</p>
+      <div class="acciones">
+        @if (auth.tienePermiso('reportes.exportar')) { <button class="btn btn-exportar" (click)="exportar()" [disabled]="!resultado.total || exportando()"><span class="material-symbols-outlined" aria-hidden="true">download</span>{{ exportando() ? 'Exportando…' : 'Exportar CSV completo' }}</button> }
+        <small>Incluye todos los resultados con los filtros aplicados.</small>
+      </div>
+      @if (errorExportacion()) { <p class="error" role="alert">{{ errorExportacion() }}</p> }
+      @if (!resultado.data.length) { <p role="status" class="estado">No hay actividades en esta página para la consulta aplicada.</p> }
+      @else {
+        <div class="tabla" tabindex="0" role="region" aria-label="Tabla de actividades">
+          <table>
+            <caption>Actividades · página {{ resultado.current_page }} de {{ resultado.last_page }}</caption>
+            <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th scope="col">Código</th><th scope="col">Nombre</th><th scope="col">Tipo</th><th scope="col" class="col-centro">Inicio</th><th scope="col" class="col-centro">Fin</th><th scope="col" class="col-centro">Estado</th><th scope="col">Sede</th><th scope="col">Área</th><th scope="col">Sesiones</th><th scope="col">Participaciones</th></tr></thead>
+            <tbody>@for (fila of resultado.data; track fila.id_actividad; let numeroVisual = $index) {
+              <tr><td class="col-centro col-numero" data-label="N.º">{{ (resultado.current_page - 1) * resultado.per_page + numeroVisual + 1 }}</td><td>{{ fila.id_actividad }}</td><td>{{ fila.nombre }}</td><td>{{ fila.tipo_actividad || 'Sin tipo disponible' }}</td><td class="col-centro">{{ fila.fecha_inicio }}</td><td class="col-centro">{{ fila.fecha_fin || 'Sin fecha' }}</td><td class="col-centro"><span class="badge" [class.badge-exito]="fila.estado === 'Activa'" [attr.data-estado]="fila.estado">{{ fila.estado }}</span></td><td>{{ fila.sede || 'Sin sede' }}</td><td>{{ fila.area || 'Sin área' }}</td><td>{{ fila.sesiones ?? '—' }}</td><td>{{ fila.participaciones ?? '—' }}</td></tr>
+            }</tbody>
+          </table>
+        </div>
+      }
+      <div class="paginacion">
+        <span>Página {{ resultado.current_page }} de {{ resultado.last_page }} · {{ resultado.total }} actividades</span>
+        <div class="acciones"><button class="btn btn-secundario" (click)="cargar(resultado.current_page - 1)" [disabled]="resultado.current_page <= 1">Anterior</button><button class="btn btn-secundario" (click)="cargar(resultado.current_page + 1)" [disabled]="resultado.current_page >= resultado.last_page">Siguiente</button></div>
+      </div>
+    </section>
+  }
+</section>

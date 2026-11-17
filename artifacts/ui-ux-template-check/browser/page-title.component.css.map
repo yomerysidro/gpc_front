@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/page-title/page-title.component.scss"],
+  "sourcesContent": [":host {\n  display: block;\n  min-width: 0;\n}\n\nh1 { color: var(--azul-oscuro); font-size: clamp(1.35rem, 1.7vw, 1.8rem); overflow-wrap: anywhere; }\n"],
+  "mappings": ";AAAA;AACE,WAAA;AACA,aAAA;;AAGF;AAAK,SAAA,IAAA;AAA2B,aAAA,MAAA,OAAA,EAAA,KAAA,EAAA;AAA0C,iBAAA;;",
+  "names": []
+}

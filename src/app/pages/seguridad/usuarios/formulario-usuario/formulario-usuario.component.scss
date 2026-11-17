@@ -1,0 +1,87 @@
+:host {
+  display: block;
+}
+
+.formulario-usuario {
+  max-width: 44rem;
+}
+
+fieldset {
+  min-width: 0;
+  margin: 0 0 var(--espacio-5);
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  margin-bottom: var(--espacio-4);
+  padding: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--espacio-4);
+}
+
+.campo-dni {
+  max-width: 12rem;
+}
+
+.opcional {
+  color: var(--neutro-500);
+  font-weight: 400;
+}
+
+// La ayuda cierra el grupo de nombres: el form-field anterior ya deja su margen.
+.ayuda-persona {
+  margin-top: calc(var(--espacio-3) * -1);
+}
+
+.solo-lectura {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--espacio-4);
+  margin: 0 0 var(--espacio-5);
+  padding-bottom: var(--espacio-5);
+  border-bottom: 1px solid var(--neutro-200);
+
+  dt {
+    color: var(--neutro-500);
+    font-size: 0.8125rem;
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 600;
+  }
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--espacio-3);
+  padding-top: var(--espacio-5);
+  border-top: 1px solid var(--neutro-200);
+}
+
+.estado-carga {
+  color: var(--neutro-500);
+}
+
+@media (max-width: 600px) {
+  .fila {
+    grid-template-columns: 1fr;
+  }
+
+  .campo-dni {
+    max-width: none;
+  }
+
+  .acciones .btn {
+    flex: 1;
+  }
+}

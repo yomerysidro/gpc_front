@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/environments/environment.ts", "src/app/core/security/auth-request.context.ts"],
+  "sourcesContent": ["export const environment = {\r\n  production: false,\r\n  // El proxy de ng serve reenvía /api al backend local.\r\n  apiBaseUrl: '/api',\r\n};\r\n\r\n", "import { HttpContextToken } from '@angular/common/http';\n\n/** Autorización explícita por solicitud; no enviar credenciales a todos los destinos. */\nexport const AUTHENTICATED_REQUEST = new HttpContextToken<boolean>(() => false);\n"],
+  "mappings": ";;;;;AAAO,IAAM,cAAc;EACzB,YAAY;;EAEZ,YAAY;;;;ACAP,IAAM,wBAAwB,IAAI,iBAA0B,MAAM,KAAK;",
+  "names": []
+}

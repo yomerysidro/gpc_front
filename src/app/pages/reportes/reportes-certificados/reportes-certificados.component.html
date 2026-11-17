@@ -1,0 +1,28 @@
+<section class="reporte">
+  <header><p class="eyebrow">REPORTES</p><h1>Certificados</h1></header>
+  <form class="panel filtros filtros-compactos" (ngSubmit)="consultar()" aria-label="Buscar certificados">
+    <label class="campo-busqueda">Buscar certificado<div class="buscador"><span class="material-symbols-outlined" aria-hidden="true">search</span><input type="search" name="busqueda" [(ngModel)]="busqueda" maxlength="100" placeholder="Beneficiario, actividad o código" [disabled]="cargando() || exportando()"></div></label>
+    <label>Estado<select name="estado" [(ngModel)]="estado" [disabled]="cargando() || exportando()"><option value="">Todos los estados</option><option value="PREPARADO">Preparado</option><option value="PENDIENTE_FIRMA">Pendiente de firma</option><option value="FIRMADO">Firmado</option><option value="EMITIDO">Emitido</option><option value="ANULADO">Anulado</option></select></label>
+    <label>Tipo<select name="tipo" [(ngModel)]="tipo" (ngModelChange)="seleccionarTipo($event)" [disabled]="cargando() || cargandoTipos() || exportando()"><option value="">Todos los tipos</option>@for (opcion of tiposDisponibles(); track opcion.id_tipo_certificado) { <option [value]="opcion.id_tipo_certificado">{{ opcion.nombre_tipo }}</option> }</select></label>
+    <button class="btn btn-primario btn-buscar" type="submit" [disabled]="cargando() || exportando()">{{ cargando() ? 'Consultando…' : 'Consultar' }}</button>
+    @if (catalogo(); as tipos) { @if (tipos.last_page > 1) { <div class="catalogo-paginacion"><small>Tipos {{ tipos.current_page }} de {{ tipos.last_page }}</small><button type="button" class="btn" (click)="cargarTipos(tipos.current_page - 1)" [disabled]="tipos.current_page <= 1 || cargandoTipos()">Anteriores</button><button type="button" class="btn" (click)="cargarTipos(tipos.current_page + 1)" [disabled]="tipos.current_page >= tipos.last_page || cargandoTipos()">Más tipos</button></div> } }
+    @if (errorTipos()) { <p class="error" role="alert">{{ errorTipos() }} <button type="button" class="btn" (click)="cargarTipos()">Reintentar tipos</button></p> }
+  </form>
+  @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+  @if (cargando()) { <p class="estado" role="status">Consultando certificados…</p> }
+  @if (pagina(); as resultado) {
+    <section class="panel" aria-label="Resultado del reporte">
+      <div class="encabezado-resultados"><div><h2><span class="total-resultados">{{ resultado.total }}</span> certificados</h2><p class="subtitulo">{{ resultado.resumen['personas_unicas'] }} beneficiarios únicos</p></div>@if (auth.tienePermiso('reportes.exportar')) { <button class="btn btn-exportar" (click)="exportar()" [disabled]="!resultado.total || exportando()"><span class="material-symbols-outlined" aria-hidden="true">download</span>{{ exportando() ? 'Exportando…' : 'Exportar CSV' }}</button> }</div>
+      @if (errorExportacion()) { <p class="error" role="alert">{{ errorExportacion() }}</p> }
+      @if (!resultado.data.length) { <p class="estado" role="status">No hay certificados para esta consulta.</p> }
+      @else {
+        <div class="tabla" tabindex="0" role="region" aria-label="Tabla de certificados"><table>
+          <caption>Certificados · página {{ resultado.current_page }} de {{ resultado.last_page }}</caption>
+          <thead><tr><th scope="col">Código</th><th scope="col">Beneficiario</th><th scope="col">Tipo</th><th scope="col">Actividad</th><th scope="col">Emisión</th><th scope="col">Estado</th><th scope="col">Último documento</th><th scope="col">Verificación</th></tr></thead>
+          <tbody>@for (fila of filas(); track fila.id_certificado) { <tr><td>{{ fila.id_certificado }}</td><td class="nombre-principal">{{ fila.beneficiario || 'Sin beneficiario registrado' }}</td><td>{{ fila.tipo_certificado || 'Sin tipo' }}</td><td>{{ fila.actividad || 'No corresponde a actividad' }}</td><td>{{ fila.fecha_emision || 'Sin fecha registrada' }}</td><td><span class="badge" [class.badge-exito]="fila.estado === 'EMITIDO'">{{ estadoTexto(fila.estado) }}</span></td><td>{{ fila.id_certificado_documento ? (fila.estado_documento || 'Sin estado') : 'Sin documento' }}</td><td>{{ fila.codigo_verificacion || '—' }}</td></tr> }</tbody>
+        </table></div>
+      }
+      <div class="paginacion"><span>Página {{ resultado.current_page }} de {{ resultado.last_page }} · {{ resultado.total }} certificados</span><div class="acciones"><button class="btn" (click)="cargar(resultado.current_page - 1)" [disabled]="resultado.current_page <= 1 || exportando()">Anterior</button><button class="btn" (click)="cargar(resultado.current_page + 1)" [disabled]="resultado.current_page >= resultado.last_page || exportando()">Siguiente</button></div></div>
+    </section>
+  }
+</section>

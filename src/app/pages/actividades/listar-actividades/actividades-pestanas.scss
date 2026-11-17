@@ -1,0 +1,4 @@
+.ayuda-pestana { position: relative; display: inline-flex; }
+.tooltip-detalles { position: absolute; top: calc(100% + .35rem); right: 0; z-index: 5; width: max-content; max-width: min(18rem, 80vw); padding: .5rem .75rem; border-radius: .4rem; color: #fff; background: #075a9b; font-size: .85rem; pointer-events: none; visibility: hidden; }
+.ayuda-pestana:hover .tooltip-detalles, .ayuda-pestana:focus-within .tooltip-detalles { visibility: visible; }
+.ayuda-pestana:focus-visible { outline: 2px solid #075a9b; outline-offset: 2px; }

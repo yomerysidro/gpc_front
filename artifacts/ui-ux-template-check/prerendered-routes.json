@@ -1,0 +1,8 @@
+{
+  "routes": [
+    "/",
+    "/acceso-denegado",
+    "/login",
+    "/recuperar-password"
+  ]
+}

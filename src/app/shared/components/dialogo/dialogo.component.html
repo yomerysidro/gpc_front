@@ -1,0 +1,5 @@
+<dialog #dialogo class="dialogo" [attr.aria-labelledby]="idTitulo" [attr.aria-describedby]="idDescripcion()" (close)="cerrado.emit()" (cancel)="solicitarCierre($event)">
+  <h2 [id]="idTitulo" [class.con-cierre]="mostrarCerrar()">{{ titulo() }}</h2>
+  @if (mostrarCerrar()) { <button type="button" class="dialogo-cerrar" title="Cerrar ventana" aria-label="Cerrar ventana" (click)="solicitarCierre()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button> }
+  <ng-content />
+</dialog>

@@ -32,13 +32,23 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "public",
+                "ignore": [
+                  "marca/escudo-morales-solo.png"
+                ]
               },
               {
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "/assets/",
-                "ignore": ["**/.gitkeep"]
+                "ignore": [
+                  "**/.gitkeep"
+                ]
+              },
+              {
+                "glob": "pdf.worker.min.mjs",
+                "input": "node_modules/pdfjs-dist/build",
+                "output": "/assets/pdfjs/"
               }
             ],
             "styles": [
@@ -46,7 +56,10 @@
             ],
             "scripts": [],
             "server": "src/main.server.ts",
-            "prerender": true,
+            "prerender": {
+              "discoverRoutes": false,
+              "routesFile": "prerender-routes.txt"
+            },
             "ssr": {
               "entry": "server.ts"
             }
@@ -68,7 +81,7 @@
                 {
                   "type": "anyComponentStyle",
                   "maximumWarning": "2kB",
-                  "maximumError": "4kB"
+                  "maximumError": "8kB"
                 }
               ],
               "outputHashing": "all"
@@ -88,7 +101,8 @@
               "buildTarget": "gpc_front:build:production"
             },
             "development": {
-              "buildTarget": "gpc_front:build:development"
+              "buildTarget": "gpc_front:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"
@@ -108,13 +122,23 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "public",
+                "ignore": [
+                  "marca/escudo-morales-solo.png"
+                ]
               },
               {
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "/assets/",
-                "ignore": ["**/.gitkeep"]
+                "ignore": [
+                  "**/.gitkeep"
+                ]
+              },
+              {
+                "glob": "pdf.worker.min.mjs",
+                "input": "node_modules/pdfjs-dist/build",
+                "output": "/assets/pdfjs/"
               }
             ],
             "styles": [
@@ -125,5 +149,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "ad683d3f-5263-4307-babf-d6942b2acd91"
   }
 }

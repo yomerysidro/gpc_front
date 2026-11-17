@@ -1,0 +1,22 @@
+<div class="pestanas" role="tablist" aria-label="Solicitudes" (keydown)="alTeclear($event)">
+  <button type="button" role="tab" id="solicitudes-tab-mis-solicitudes" aria-controls="solicitudes-panel-mis-solicitudes"
+    [attr.aria-selected]="pestana() === 'mis-solicitudes'" [attr.tabindex]="pestana() === 'mis-solicitudes' ? 0 : -1"
+    (click)="seleccionar('mis-solicitudes')">Mis solicitudes</button>
+  @if (auth.tienePermiso('solicitudes.crear')) {
+    <button type="button" role="tab" id="solicitudes-tab-nueva" aria-controls="solicitudes-panel-nueva"
+      [attr.aria-selected]="pestana() === 'nueva'" [attr.tabindex]="pestana() === 'nueva' ? 0 : -1"
+      (click)="seleccionar('nueva')">Nueva solicitud</button>
+  }
+</div>
+<section role="tabpanel" id="solicitudes-panel-mis-solicitudes" aria-labelledby="solicitudes-tab-mis-solicitudes"
+  [hidden]="pestana() !== 'mis-solicitudes'" tabindex="0">
+  @if (pestana() === 'mis-solicitudes') {
+    <app-bandeja-solicitudes bandeja="propias" titulo="Mis solicitudes" />
+  }
+</section>
+<section role="tabpanel" id="solicitudes-panel-nueva" [attr.aria-labelledby]="auth.tienePermiso('solicitudes.crear') ? 'solicitudes-tab-nueva' : null"
+  [hidden]="pestana() !== 'nueva'" tabindex="0">
+  @if (formularioVisitado()) {
+    <app-nueva-solicitud />
+  }
+</section>

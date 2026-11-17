@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/en-construccion/en-construccion.component.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n}\r\n\r\n.aviso {\r\n  max-width: 40rem;\r\n  background: var(--neutro-50);\r\n\r\n  p {\r\n    margin: 0;\r\n    color: var(--neutro-700);\r\n  }\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;;AAGF,CAAA;AACE,aAAA;AACA,cAAA,IAAA;;AAEA,CAJF,MAIE;AACE,UAAA;AACA,SAAA,IAAA;;",
+  "names": []
+}

@@ -1,0 +1,41 @@
+:host { display: block; min-width: 0; }
+.encabezado-revision { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); column-gap: .6rem; align-items: center; border-left: 3px solid var(--dorado-500, #c5a04a); padding-left: .6rem; overflow-wrap: anywhere; }
+.encabezado-revision h1 { color: #075a9b; font-size: 1.4rem; margin: 0; }
+.encabezado-revision p { grid-column: 2; margin-block: .2rem; }
+.regresar-beneficiarios { display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; padding: 0; border: 0; border-radius: .5rem; background: transparent; color: #075a9b; cursor: pointer; }
+.regresar-beneficiarios:hover { background: #075a9b0d; }
+.regresar-beneficiarios:focus-visible { outline: 2px solid #075a9b; outline-offset: 2px; }
+.regresar-beneficiarios:disabled { opacity: .5; cursor: default; }
+.pasos.pasos-beneficiario { margin-block: .85rem; gap: .5rem; }
+.acciones { display: flex; flex-wrap: wrap; gap: .5rem; }
+.editor-mensaje { display: block; width: 100%; resize: vertical; line-height: 1.7; min-height: 12rem; }
+.titulo-emision, .cabecera-sesion { display: flex; align-items: center; gap: .5rem; color: #075a9b; min-width: 0; }
+.titulo-emision app-page-title { flex: 1; min-width: 0; }
+.titulo-pendientes { text-align: right; font-size: 1rem; color: #075a9b; margin: 0 0 .85rem; }
+.cabecera-sesion { flex-wrap: wrap; margin-block: .75rem; }
+.cabecera-sesion h2 { flex: 1; min-width: 8rem; font-size: 1.1rem; margin: 0; overflow-wrap: anywhere; }
+.estado-sesion { margin-left: auto; border-radius: 1rem; padding: .2rem .65rem; background: #fff5db; color: #795b16; font-size: .8rem; font-weight: 600; }
+.estado-sesion.finalizada { background: #e8f5ec; color: #21643b; }
+.asistencia-indicadores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .6rem; margin-block: .75rem; }
+.asistencia-tarjeta { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .1rem .5rem; padding: .65rem; background: #f7f9fc; border: 1px solid #dfe6ef; border-radius: .5rem; min-width: 0; }
+.asistencia-tarjeta .material-symbols-outlined { grid-row: span 2; color: #075a9b; }
+.asistencia-tarjeta strong { font-size: 1.3rem; color: #075a9b; }
+.asistencia-tarjeta > span:last-child { font-size: .8rem; overflow-wrap: anywhere; }
+.aviso-asistencia { display: flex; gap: .35rem; align-items: center; color: #795b16; font-size: .8rem; }
+.aviso-asistencia .material-symbols-outlined { font-size: 1rem; }
+@media (max-width: 760px) { .asistencia-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.modalidades { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; dd { margin: .35rem 0 0; } dt { color: #075a9b; font-weight: 600; } }
+.contexto-certificacion h2 { font-size: 1.15rem; }
+.motivo-certificacion { font-size: .85rem; margin: .35rem 0; }
+.pendientes-certificacion, .beneficiarios-certificacion { min-width: 48rem; th, td { vertical-align: top; } }
+.pasos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); list-style: none; padding: 0; gap: .75rem; margin-block: 1.5rem; }
+.pasos li { display: flex; align-items: center; gap: .5rem; border-bottom: 3px solid var(--neutro-200); padding: .75rem; }
+.pasos span { border-radius: 50%; padding: .25rem .6rem; background: var(--neutro-100); }
+.pasos .actual { color: #075a9b; border-color: #075a9b; font-weight: 600; }
+.datos { display: grid; grid-template-columns: minmax(8rem, 1fr) 3fr; gap: .75rem; }
+dd { margin: 0; overflow-wrap: anywhere; } label { display: flex; align-items: start; gap: .75rem; margin-block: 1rem; }
+@media (max-width: 480px) { .datos { grid-template-columns: 1fr; } }
+
+.tabla { overflow-x: auto; max-width: 100%; }
+.filtros { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }
+.filtros label { flex: 1 1 10rem; display: grid; gap: .3rem; margin: 0; }

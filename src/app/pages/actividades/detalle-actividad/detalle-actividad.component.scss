@@ -1,0 +1,42 @@
+﻿:host { display: block; min-width: 0; }
+.encabezado, .titulo-panel, .acciones-sesion, .indicadores, .pie-asistencia { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.encabezado { margin-bottom: 1rem; }
+.identidad { flex: 1; h1 { font-size: 1.35rem; margin: 0 0 .3rem; overflow-wrap: anywhere; } }
+.volver-actividad { width: 2.25rem; height: 2.25rem; padding: .25rem; color: #075a9b; }
+.tarjetas-detalle { display: grid; gap: 1rem; }
+.panel, .tarjeta-sesion { min-width: 0; border: 1px solid var(--neutro-200); border-radius: var(--radio-lg); background: var(--neutro-0); padding: 1rem; }
+.titulo-panel { justify-content: space-between; margin-bottom: .6rem; h2, h3 { margin: 0; font-size: 1.05rem; overflow-wrap: anywhere; } }
+.lista-sesiones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; list-style: none; margin: 0; padding: 0; }
+.tarjeta-sesion { display: flex; flex-direction: column; gap: .4rem; p { margin: 0; font-size: .9rem; } }
+.acciones-sesion { gap: .45rem; margin-top: .5rem; .btn { width: 2.75rem; height: 2.75rem; padding: .5rem; color: #075a9b; } svg { width: 1.4rem; height: 1.4rem; fill: none; stroke: currentColor; stroke-width: 1.8; } .asistencia-principal { color: white; background: #075a9b; } }
+.informacion { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: 0; }
+.resumen-actividad .informacion { grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); font-size: .9rem; }
+dt { color: var(--neutro-500); font-weight: 600; } dd { margin: .2rem 0 0; overflow-wrap: anywhere; }
+.indicadores { margin: .8rem 0 0; div { display: flex; align-items: baseline; gap: .5rem; background: #eef5fb; border-radius: .5rem; padding: .4rem .7rem; } dt { font-size: .8rem; } dd { font-size: 1.1rem; font-weight: 700; color: #075a9b; } }
+.accion-principal { background: #d6ad4a; color: #192b3c; border-color: #b38a2c; }
+.cierre-sesion { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: auto; padding-top: .6rem; .btn { font-size: .8rem; padding: .35rem .5rem; } small { color: #52677b; } }
+.resumen-sesion { color: #52677b; line-height: 1.5; }
+.tarjeta-sesion .badge { font-size: .75rem; border-radius: 1rem; padding: .2rem .6rem; }
+.tarjeta-sesion .badge-exito { background: #e8f5ec; color: #21643b; }
+.acciones-sesion .btn { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; }
+:host ::ng-deep app-dialogo.modal-detalle-sesion > dialog.dialogo { width: min(38rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; > h2 { padding-right: 2.5rem; } }
+@media (max-width: 1200px) { .lista-sesiones { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .lista-sesiones { grid-template-columns: minmax(0, 1fr); } .resumen-actividad .informacion { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Detalle institucional compacto. */
+.encabezado { padding-bottom: .8rem; border-bottom: 2px solid #d6ad4a; }
+.identidad { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .8rem; h1 { margin: 0; color: #174567; } }
+.resumen-actividad { border-top: 3px solid #075a9b; }
+.informacion-adicional { margin-top: .8rem; padding-top: .8rem; border-top: 1px solid var(--neutro-200); }
+.sesiones { background: #f7fafd; }
+.sesiones > .titulo-panel { margin-bottom: .9rem; }
+.tarjeta-sesion { border-radius: .65rem; padding: .8rem; gap: .45rem; }
+.tarjeta-sesion .titulo-panel { align-items: flex-start; flex-wrap: nowrap; gap: .5rem; margin-bottom: .15rem; h3 { min-width: 0; font-size: .95rem; } .badge { flex-shrink: 0; max-width: 45%; overflow-wrap: anywhere; } }
+.acciones-sesion { margin-top: .25rem; }
+.acciones-sesion .btn { flex: 0 0 2.4rem; }
+footer { display: flex; justify-content: flex-end; }
+@media (max-width: 420px) { .resumen-actividad .informacion { grid-template-columns: minmax(0, 1fr); } .panel { padding: .8rem; } .indicadores div { flex-wrap: wrap; } }
+
+.identidad-sesion { min-width: 0; }
+:host ::ng-deep app-dialogo.modal-ponentes-sesion > dialog.dialogo { width: min(44rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; overflow-x: hidden; box-sizing: border-box; }
+.numero-sesion { display: block; margin-bottom: .2rem; color: #52677b; font-size: .75rem; }

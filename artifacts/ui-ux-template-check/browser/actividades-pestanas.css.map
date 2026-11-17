@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/actividades/listar-actividades/actividades-pestanas.scss"],
+  "sourcesContent": [".ayuda-pestana { position: relative; display: inline-flex; }\r\n.tooltip-detalles { position: absolute; top: calc(100% + .35rem); right: 0; z-index: 5; width: max-content; max-width: min(18rem, 80vw); padding: .5rem .75rem; border-radius: .4rem; color: #fff; background: #075a9b; font-size: .85rem; pointer-events: none; visibility: hidden; }\r\n.ayuda-pestana:hover .tooltip-detalles, .ayuda-pestana:focus-within .tooltip-detalles { visibility: visible; }\r\n.ayuda-pestana:focus-visible { outline: 2px solid #075a9b; outline-offset: 2px; }\r\n"],
+  "mappings": ";AAAA,CAAA;AAAiB,YAAA;AAAoB,WAAA;;AACrC,CAAA;AAAoB,YAAA;AAAoB,OAAA,KAAA,KAAA,EAAA;AAA0B,SAAA;AAAU,WAAA;AAAY,SAAA;AAAoB,aAAA,IAAA,KAAA,EAAA;AAA6B,WAAA,OAAA;AAAuB,iBAAA;AAAsB,SAAA;AAAa,cAAA;AAAqB,aAAA;AAAmB,kBAAA;AAAsB,cAAA;;AACjQ,CAFA,aAEA,OAAA,CADA;AACA,CAFA,aAEA,cAAA,CADA;AACwF,cAAA;;AACxF,CAHA,aAGA;AAA+B,WAAA,IAAA,MAAA;AAA4B,kBAAA;;",
+  "names": []
+}

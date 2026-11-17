@@ -1,0 +1,75 @@
+@if (!integrado()) { <app-page-title [title]="editarId ? 'Editar certificado' : 'Preparar certificado'" />
+<a class="btn" routerLink="/certificaciones/certificados">Volver al listado</a> }
+
+@if (cargando()) { <p role="status">Cargando tipos de certificado…</p> }
+@if (error()) { <p class="alert alert-error" role="alert">{{ error() }}</p> }
+@if (mensajesValidacion().length) { <div class="alert alert-error" role="alert"><p>Laravel rechazó algunos datos:</p><ul>@for (mensaje of mensajesValidacion(); track $index) { <li>{{ mensaje }}</li> }</ul></div> }
+
+@if (!escrituraAutorizada) { <p class="alert alert-advertencia" role="status">{{ bloqueoEscritura }}</p> }
+@if (accesible()) {
+  @if (integrado() || !revision()) {
+    <form class="card formulario" [formGroup]="formulario" (ngSubmit)="integrado() && paso() === 1 ? siguienteOrigen() : prepararRevision()" novalidate>
+      <h2>{{ integrado() && paso() === 1 ? "Seleccionar origen y registro" : "Preparar certificado" }}</h2>
+<div [hidden]="integrado() && paso() !== 1">
+      <label for="origen">Origen del certificado</label>
+      <select id="origen" class="input" formControlName="origen">
+        <option value="">Selecciona un origen</option>
+        @if (auth.tienePermiso('participantes.ver')) { <option value="participacion">Participación</option> }
+        @if (auth.tienePermiso('practicantes.ver')) { <option value="practica">Práctica</option> }
+        @if (auth.tienePermiso('reconocimientos.ver')) { <option value="reconocimiento">Reconocimiento</option> }
+      </select>
+      @if (formulario.controls.origen.touched && formulario.controls.origen.invalid) { <small>Selecciona un origen.</small> }
+
+      @if (formulario.controls.origen.value) {
+        <label for="buscar-beneficiario">Buscar beneficiario entre los registros de origen</label>
+        <input id="buscar-beneficiario" class="input" type="search" [formControl]="busquedaBeneficiario" />
+        <button class="btn" type="button" [disabled]="buscandoPersonas() || !auth.tienePermiso('personas.verpersonas')" (click)="buscarBeneficiario()">{{ buscandoPersonas() ? 'Buscando…' : 'Buscar beneficiario' }}</button>
+        @if (!auth.tienePermiso('personas.verpersonas')) { <p class="nota">La búsqueda por nombre requiere permiso de consulta de Personas. Puedes seleccionar un registro de origen autorizado.</p> }
+        <label for="registro">Registro existente</label>
+        @if (cargandoOrigen()) { <p role="status">Consultando registros autorizados…</p> }
+        <select id="registro" class="input" formControlName="registro">
+          <option [ngValue]="null">Selecciona un registro</option>
+          @for (opcion of opcionesVisibles(); track opcion.id) { <option [ngValue]="opcion.id">{{ opcion.titulo }} · {{ opcion.idPersona ? nombresOrigen().get(opcion.idPersona) : '' }} · #{{ opcion.id }}</option> }
+        </select>
+        @if (!cargandoOrigen() && !opcionesVisibles().length) { <p role="status">No hay registros autorizados que coincidan con los criterios.</p> }
+        @if (beneficiario()) { <p class="card"><strong>Beneficiario:</strong> {{ beneficiario() }}</p> }
+        @else if (formulario.controls.registro.value) { <p role="status">Validando el beneficiario asociado…</p> }
+      }
+
+      </div>
+<div [hidden]="integrado() && paso() !== 2">
+@if (integrado()) { <p><strong>{{ beneficiario() }}</strong> &middot; {{ nombreOrigen(formulario.controls.origen.value) }} &middot; {{ tituloSeleccionado() }}</p> }
+      <label for="tipo">Tipo de certificado</label>
+      <select id="tipo" class="input" formControlName="tipo">
+        <option [ngValue]="null">Selecciona un tipo</option>
+        @for (tipo of tipos(); track tipo.id_tipo_certificado) { <option [ngValue]="tipo.id_tipo_certificado">{{ tipo.nombre_tipo }}</option> }
+      </select>
+      @if (!cargando() && tipos().length === 0) { <p>No hay tipos activos disponibles.</p> }
+
+      <label for="fecha">Fecha de emisión (opcional)</label>
+      <input id="fecha" class="input" type="date" formControlName="fechaEmision" />
+      @if (formulario.controls.fechaEmision.touched && formulario.controls.fechaEmision.invalid) { <small class="error-text" role="alert">Indica una fecha de calendario válida.</small> }
+      @if (formulario.controls.tipo.touched && formulario.controls.tipo.invalid) { <small class="error-text" role="alert">Selecciona un tipo de certificado.</small> }
+      @if (formulario.controls.registro.touched && formulario.controls.registro.invalid) { <small class="error-text" role="alert">Selecciona un registro de origen.</small> }
+      <label for="estado-preparacion">Estado administrativo</label><select id="estado-preparacion" class="input" formControlName="estado"><option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option></select>
+      @if (erroresValidacion()['fecha_emision']; as mensajes) { <small>{{ mensajes.join(' ') }}</small> }
+
+      <p class="nota">Se registra el certificado sin generar un documento oficial. Laravel aún no expone la elegibilidad para emisión: la asistencia, aprobación o culminación del origen no quedan acreditadas por este registro.</p>
+      </div>
+      <div class="acciones">@if (integrado() && paso() === 2) { <button class="btn" type="button" (click)="cambioPaso.emit(1)">Anterior</button> }<button class="btn btn-primary" type="submit" [disabled]="cargando() || cargandoOrigen() || comprobando()">{{ comprobando() ? 'Comprobando duplicados…' : integrado() ? 'Siguiente' : 'Revisar datos' }}</button><button class="btn" type="button" (click)="cancelar()">Cancelar</button></div>
+    </form>
+  } @else {
+    <section class="card">
+      <h2>Revisa antes de registrar</h2>
+      <dl>
+        <dt>Origen</dt><dd>{{ nombreOrigen(formulario.controls.origen.value) }}</dd>
+        <dt>Registro</dt><dd>{{ tituloSeleccionado() }} · #{{ formulario.controls.registro.value }}</dd>
+        <dt>Beneficiario</dt><dd>{{ beneficiario() }}</dd>
+        <dt>Tipo de certificado</dt><dd>{{ nombreTipo(formulario.controls.tipo.value) }}</dd>
+        <dt>Fecha de emisión</dt><dd>{{ formulario.controls.fechaEmision.value }}</dd>
+        <dt>Estado administrativo</dt><dd>{{ formulario.controls.estado.value ? 'Activo' : 'Inactivo' }}</dd>
+      </dl>
+      <div class="acciones"><button class="btn btn-primary" type="button" (click)="guardar()" [disabled]="guardando() || !escrituraAutorizada">{{ guardando() ? 'Guardando…' : editarId ? 'Guardar cambios' : 'Registrar certificado' }}</button><button class="btn" type="button" (click)="volverEditar()">Volver a editar</button></div>
+    </section>
+  }
+}

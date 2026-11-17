@@ -1,0 +1,5 @@
+<app-page-title [title]="id() === null ? 'Registrar reconocimiento' : 'Editar reconocimiento'" />
+<p class="nota">Selecciona un trabajador ya registrado en Gestión. Este formulario registra únicamente el reconocimiento.</p>
+@if (id() === null || (id()! > 0 && id()! % 1 === 0)) {
+<app-formulario-emision recurso="reconocimientos" [id]="id()" (guardado)="guardado()" (cancelar)="volver()" />
+} @else { <p class="alert alert-error" role="alert">El identificador no es válido.</p> }

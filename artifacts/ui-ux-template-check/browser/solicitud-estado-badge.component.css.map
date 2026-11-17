@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/solicitudes/compartidos/solicitud-estado-badge.component.scss"],
+  "sourcesContent": [".estado { display: inline-block; padding: .25rem .65rem; border-radius: 1rem; font-size: .85rem; font-weight: 600; background: #eef1f5; color: #344454; }\n.estado[data-estado='Enviada'], .estado[data-estado='En revisión'] { background: #e5f1ff; color: #075a9b; }\n.estado[data-estado='Pendiente de aprobación'] { background: #eee8fa; color: #65408a; }\n.estado[data-estado='Observada'] { background: #fff3d3; color: #79551a; }\n.estado[data-estado='Aprobada'] { background: #e4f4eb; color: #236641; }\n.estado[data-estado='Rechazada'] { background: #fce9e9; color: #9b3030; }\n"],
+  "mappings": ";;;AAAA,CAAA;AAAU,WAAA;AAAuB,WAAA,QAAA;AAAwB,iBAAA;AAAqB,aAAA;AAAmB,eAAA;AAAkB,cAAA;AAAqB,SAAA;;AACxI,CADA,MACA,CAAA;AAAA,CADA,MACA,CAAA;AAAqE,cAAA;AAAqB,SAAA;;AAC1F,CAFA,MAEA,CAAA;AAAiD,cAAA;AAAqB,SAAA;;AACtE,CAHA,MAGA,CAAA;AAAmC,cAAA;AAAqB,SAAA;;AACxD,CAJA,MAIA,CAAA;AAAkC,cAAA;AAAqB,SAAA;;AACvD,CALA,MAKA,CAAA;AAAmC,cAAA;AAAqB,SAAA;;",
+  "names": []
+}

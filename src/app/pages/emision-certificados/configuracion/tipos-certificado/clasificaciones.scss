@@ -1,0 +1,21 @@
+:host(.clasificacion) {
+  .encabezado-registro { align-items: baseline; justify-content: space-between; gap: var(--espacio-3); }
+  .encabezado-registro .btn { margin-left: auto; }
+  .filtros-clasificacion {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--espacio-3);
+    .form-field { margin: 0; }
+    .input, .btn { height: var(--alto-control); box-sizing: border-box; }
+  }
+  .tabla { border: 1px solid var(--neutro-200); border-radius: var(--radio-lg); }
+  .table td, .table th { padding-block: var(--espacio-3); }
+  .table { min-width: 40rem; }
+  .acciones .btn { white-space: nowrap; }
+  .paginacion { justify-content: flex-end; }
+  .cantidad-sesiones { margin-right: auto; }
+}
+@media (max-width: 48rem) {
+  :host(.clasificacion) .filtros-clasificacion { grid-template-columns: minmax(0, 1fr); }
+}

@@ -1,0 +1,46 @@
+<section class="reporte">
+  <header>
+    <p class="eyebrow">GESTIÓN MUNICIPAL · REPORTES</p>
+    <h1>Indicadores generales</h1>
+    <p class="subtitulo">Totales de registros existentes dentro del alcance que tu usuario tiene permiso para consultar.</p>
+  </header>
+  <div class="acciones" aria-label="Acciones de indicadores">
+    <button class="btn btn-primario" (click)="consultar()" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>Consultar</button>
+    <button class="btn btn-secundario" (click)="consultar()" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">tune</span>Actualizar</button>
+    @if (auth.tienePermiso('reportes.exportar')) {
+      <button class="btn btn-exportar" (click)="exportar()" [disabled]="!puedeExportar()"><span class="material-symbols-outlined" aria-hidden="true">download</span>Exportar totales CSV</button>
+    }
+  </div>
+  <div class="tarjetas" aria-label="Indicadores de registros" [attr.aria-busy]="cargando()">
+    @for (item of indicadores(); track item.clave) {
+      <article class="tarjeta">
+        <span class="icono-indicador material-symbols-outlined" aria-hidden="true">{{ item.icono }}</span>
+        <h2>{{ item.nombre }}</h2>
+        @switch (item.estado) {
+          @case ('cargando') { <div role="status" [attr.aria-label]="'Consultando ' + item.nombre"><div class="skeleton" aria-hidden="true"></div></div> }
+          @case ('exito') { <strong class="valor" aria-live="polite">{{ item.valor }}</strong><p>Registros existentes</p> }
+          @case ('error') { <p class="error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>{{ item.error }}</p> }
+          @case ('sin-permiso') { <span class="sin-dato">Sin permiso de lectura</span><p>Requiere {{ item.permiso }} y reportes.ver.</p> }
+          @default { <span class="sin-dato">Sin consultar</span><p>Usa Consultar para obtener el total.</p> }
+        }
+      </article>
+    }
+  </div>
+  <section class="panel" aria-labelledby="titulo-evolucion">
+    <h2 id="titulo-evolucion">Evolución mensual</h2>
+    <form class="acciones" (ngSubmit)="cargarSeries()"><label>Año<input type="number" name="anio" [(ngModel)]="anio" min="1900" max="2100" required [disabled]="cargandoSeries()"></label><button class="btn btn-primario" type="submit" [disabled]="cargandoSeries()">Consultar evolución</button></form>
+    <p class="subtitulo">Meses del año seleccionado. Los certificados sin fecha de emisión registrada no forman parte de esta serie.</p>
+    @if (cargandoSeries()) { <p role="status">Consultando evolución mensual…</p> }
+    @if (errorAnio()) { <p class="error" role="alert">{{ errorAnio() }}</p> }
+    <div class="series">
+      @for (serie of series(); track serie.nombre) {
+        <article><h3>{{ serie.nombre }}</h3>
+          @if (serie.error) { <p class="error" role="alert">{{ serie.error }}</p> }
+          @if (serie.datos; as datos) {
+            <table class="tabla-serie"><caption>{{ datos.anio }} · conteos mensuales</caption><thead><tr><th scope="col">Mes</th><th scope="col">Total</th><th scope="col">Distribución</th></tr></thead><tbody>@for (mes of datos.meses; track mes.mes; let indice = $index) { <tr><th scope="row">{{ meses[indice] }}</th><td>{{ mes.total }}</td><td class="pista"><span class="barra" [style.width.%]="anchoBarra(datos, mes.total)" aria-hidden="true"></span></td></tr> }</tbody></table>
+          }
+        </article>
+      }
+    </div>
+  </section>
+</section>

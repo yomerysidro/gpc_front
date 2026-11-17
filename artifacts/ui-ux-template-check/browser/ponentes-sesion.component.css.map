@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["ponentes-sesion.component.ts"],
+  "sourcesContent": ["\n    :host { display: block; min-width: 0; margin-top: 1.25rem; }\n    .cabecera-grupo { display: flex; align-items: baseline; gap: .5rem; }\n    h2 { margin: 0 0 .5rem; color: #075a9b; font-size: 1.05rem; }\n    .cabecera-grupo small { color: #53657a; }\n    .tabla { overflow-x: auto; }\n    .table { min-width: 44rem; }\n    th, td { vertical-align: top; }\n    td small, th small { display: block; color: #53657a; font-size: .82rem; margin-top: .15rem; }\n    .sin-ponentes { margin: .25rem 0; color: #53657a; }\n    .motivos { font-size: .85rem; color: #53657a; }\n  "],
+  "mappings": ";AACI;AAAQ,WAAA;AAAgB,aAAA;AAAc,cAAA;;AACtC,CAAA;AAAkB,WAAA;AAAe,eAAA;AAAuB,OAAA;;AACxD;AAAK,UAAA,EAAA,EAAA;AAAmB,SAAA;AAAgB,aAAA;;AACxC,CAFA,eAEA;AAAwB,SAAA;;AACxB,CAAA;AAAS,cAAA;;AACT,CAAA;AAAS,aAAA;;AACT;AAAA;AAAS,kBAAA;;AACT,GAAA;AAAA,GAAA;AAAqB,WAAA;AAAgB,SAAA;AAAgB,aAAA;AAAmB,cAAA;;AACxE,CAAA;AAAgB,UAAA,QAAA;AAAkB,SAAA;;AAClC,CAAA;AAAW,aAAA;AAAmB,SAAA;;",
+  "names": []
+}

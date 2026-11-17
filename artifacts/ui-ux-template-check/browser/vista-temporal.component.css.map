@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["vista-temporal.component.ts"],
+  "sourcesContent": [":host { display: block; min-height: 100%; background: var(--neutro-0); }"],
+  "mappings": ";AAAA;AAAQ,WAAA;AAAgB,cAAA;AAAkB,cAAA,IAAA;;",
+  "names": []
+}

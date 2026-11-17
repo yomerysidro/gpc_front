@@ -1,0 +1,104 @@
+@if (!permitido) {
+  <p class="alert alert-error" role="alert">No tienes permiso para realizar esta operación.</p>
+} @else if (cargando()) {
+  <p role="status">Cargando registro…</p>
+} @else if (errorCarga()) {
+  <p class="alert alert-error" role="alert">{{ errorCarga() }}</p>
+  <button class="btn" type="button" (click)="cargar()">Reintentar</button>
+} @else {
+  @if (config.aviso) { <p class="nota">{{ config.aviso }}</p> }
+  @if (errorGeneral(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
+  <form [formGroup]="form()" (ngSubmit)="guardar()" [attr.aria-busy]="enviando()">
+    <fieldset [disabled]="enviando()" class="card">
+      <legend [class.sr-only]="enDialogo()">{{ id() === null ? 'Nuevo registro' : 'Editar registro #' + id() }}</legend>
+      <div class="grid">
+        @for (campo of config.campos; track campo.nombre) {
+          <div class="form-field">
+            <label [for]="recurso() + '-' + campo.nombre">{{ campo.titulo }}{{ opcional(campo) ? ' (opcional)' : '' }}</label>
+            @if (clasificacion() && recurso() === 'tipos-certificado' && campo.nombre === 'estado') {
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
+                @for (estado of estadosClasificaciones; track estado.valor) { <option [value]="estado.valor">{{ estado.etiqueta }}</option> }
+              </select>
+            } @else if (recurso() === 'attendance' && campo.nombre === 'estado') {
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
+                @if (estadoHistorico() !== null) { <option value="" disabled>Seleccionar estado</option> }
+                @for (estado of estadosAsistencias; track estado.valor) { <option [value]="estado.valor">{{ estado.etiqueta }}</option> }
+              </select>
+              @if (estadoHistorico()) { <small class="nota">Estado actual sin clasificación. Selecciona un estado de asistencia para regularizarlo.</small> }
+            } @else if (campo.tipo === 'booleano') {
+              <input [id]="recurso() + '-' + campo.nombre" type="checkbox" [formControlName]="campo.nombre" />
+            } @else if (recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador') {
+              <label for="buscar-trabajador-form">Buscar por nombre, apellido, cargo o ID de trabajador</label>
+              <input class="input" id="buscar-trabajador-form" type="search" [value]="busquedaTrabajador()" (input)="busquedaTrabajador.set($any($event.target).value)" />
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
+                <option value="">Seleccionar trabajador registrado</option>
+                @if (trabajadorSinOpcion(); as actual) { <option [value]="actual">Trabajador #{{ actual }} · selección actual</option> }
+                @for (opcion of opcionesTrabajador(); track opcion.id) { <option [value]="opcion.id">{{ opcion.texto }}</option> }
+              </select>
+              @if (!puedeLeerTrabajadores) { <p class="nota">Se requiere el permiso institucional de lectura de trabajadores para seleccionar uno. No se pueden registrar personas desde este formulario.</p> }
+              @else if (!cargandoRelacion().has(campo.nombre) && !errorRelacion()[campo.nombre] && !opcionesTrabajador().length) { <p class="nota" role="status">No hay trabajadores con esta búsqueda. Los trabajadores se registran exclusivamente desde Gestión.</p> }
+            } @else if (recurso() === 'reconocimientos' && campo.nombre === 'estado') {
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre" [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
+                <option value="">Seleccionar estado registrado</option>
+                @for (estado of estadosReconocimiento(); track estado) { <option [value]="estado">{{ estado }}</option> }
+              </select>
+              @if (cargandoEstados()) { <small role="status">Consultando estados…</small> }
+              @if (errorEstados(); as error) { <small class="errores" role="alert">{{ error }}</small><button type="button" class="btn" (click)="cargarEstados()">Reintentar estados</button> }
+              @else if (!cargandoEstados() && !estadosReconocimiento().length) { <small role="status">No hay estados registrados. Se requiere definir el catálogo institucional en Laravel antes de registrar el primer reconocimiento.</small> }
+            } @else if (campo.opciones) {
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
+                <option value="">Seleccionar</option>
+                @for (opcion of campo.opciones; track opcion) { <option [value]="opcion">{{ opcion }}</option> }
+              </select>
+            } @else if (campo.tipo === 'multilinea') {
+              <textarea class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [attr.maxlength]="campo.max" [attr.aria-invalid]="!!errorCampo(campo)"
+                [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'"></textarea>
+            } @else if (campo.relacion) {
+              <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre" [attr.autofocus]="enDialogo() && campo === config.campos[0] ? true : null">
+                <option value="">Seleccionar registro existente</option>
+                @for (opcion of opciones()[campo.nombre] ?? []; track opcion.id) { <option [value]="opcion.id">{{ opcion.texto }}</option> }
+              </select>
+            } @else {
+              <input class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
+                [type]="campo.tipo === 'secreto' ? 'password' : campo.tipo === 'numero' ? 'number' : campo.tipo === 'fecha' ? 'date' : campo.tipo === 'hora' ? 'time' : campo.tipo === 'fecha-hora' ? 'datetime-local' : 'text'"
+                [attr.min]="campo.tipo === 'numero' ? 1 : null" [attr.maxlength]="campo.max"
+                [attr.autocomplete]="campo.tipo === 'secreto' ? 'new-password' : 'off'"
+                [attr.list]="campo.relacion ? recurso() + '-' + campo.nombre + '-opciones' : null"
+                [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'" />
+            }
+            @if (campo.relacion && !(recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador')) {
+              @if (!(actividadContexto() && campo.nombre === 'id_actividad')) {
+              <button type="button" class="btn btn-consulta" [disabled]="cargandoRelacion().has(campo.nombre)"
+                (click)="cargarOpciones(campo)">{{ cargandoRelacion().has(campo.nombre) ? 'Cargando…' : 'Ver registros disponibles' }}</button>
+              }
+              @if (!enDialogo()) { <datalist [id]="recurso() + '-' + campo.nombre + '-opciones'">
+                @for (opcion of opciones()[campo.nombre] ?? []; track opcion.id) {
+                  <option [value]="opcion.id">{{ opcion.texto }}</option>
+                }
+              </datalist> }
+              <small class="nota">Selecciona un registro existente. Los catálogos se administran en su módulo de origen.</small>
+              @if (errorRelacion()[campo.nombre]; as error) { <small class="errores" role="alert">{{ error }}</small> }
+            }
+            @if (recurso() === 'reconocimientos' && campo.nombre === 'id_persona_trabajador') {
+              @if (advertenciaTrabajador(); as advertencia) { <p class="nota" role="status">{{ advertencia }}</p> }
+              @if (cargandoRelacion().has(campo.nombre)) { <p role="status">Cargando trabajadores…</p> }
+              @if (errorRelacion()[campo.nombre]; as error) {
+                <p class="errores" role="alert">{{ error }}</p><button class="btn btn-consulta" type="button" (click)="cargarOpciones(campo)">Reintentar</button>
+              }
+            }
+            <small class="errores" [id]="recurso() + '-' + campo.nombre + '-error'">{{ errorCampo(campo) }}</small>
+          </div>
+        }
+      </div>
+      <div class="acciones">
+        <button type="submit" class="btn btn-primary" [disabled]="enviando()">{{ enviando() ? 'Guardando…' : recurso() === 'reconocimientos' && id() === null ? 'Registrar reconocimiento' : 'Guardar' }}</button>
+        <button type="button" class="btn" [disabled]="enviando()" (click)="cancelar.emit()">Cancelar</button>
+      </div>
+    </fieldset>
+  </form>
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["ver-documento.component.ts"],
+  "sourcesContent": [":host{display:block;min-width:0}header{display:flex;align-items:center;gap:1rem}h1,h2{margin:.5rem 0}h2{font-size:1.1rem}p{margin:.5rem 0 1rem}"],
+  "mappings": ";AAAA;AAAM,WAAA;AAAc,aAAA;;AAAY;AAAO,WAAA;AAAa,eAAA;AAAmB,OAAA;;AAAS;AAAA;AAAM,UAAA,OAAA;;AAAe;AAAG,aAAA;;AAAiB;AAAE,UAAA,OAAA,EAAA;;",
+  "names": []
+}

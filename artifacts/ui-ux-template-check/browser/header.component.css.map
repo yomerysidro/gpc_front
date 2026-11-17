@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/components/header/header.component.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n  border-bottom: 3px solid var(--dorado-accion);\r\n  background: var(--azul-institucional);\r\n  color: #fff;\r\n}\r\n\r\nheader {\r\n  display: flex;\r\n  align-items: center;\r\n  gap: var(--espacio-3);\r\n  min-height: var(--alto-header);\r\n  padding: var(--espacio-2) var(--espacio-5);\r\n}\r\n\r\n@media (max-width: 768px) {\r\n  header {\r\n    gap: var(--espacio-2);\r\n    padding: var(--espacio-2) var(--espacio-3);\r\n  }\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;AACA,iBAAA,IAAA,MAAA,IAAA;AACA,cAAA,IAAA;AACA,SAAA;;AAGF;AACE,WAAA;AACA,eAAA;AACA,OAAA,IAAA;AACA,cAAA,IAAA;AACA,WAAA,IAAA,aAAA,IAAA;;AAGF,OAAA,CAAA,SAAA,EAAA;AACE;AACE,SAAA,IAAA;AACA,aAAA,IAAA,aAAA,IAAA;;;",
+  "names": []
+}

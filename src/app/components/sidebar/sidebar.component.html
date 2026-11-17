@@ -1,7 +1,38 @@
 <aside>
-  <nav aria-label="Navegación principal">
-    @for (item of items(); track item.path) {
-      <a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">{{ item.label }}</a>
+  <nav aria-label="Navegación principal" (keydown)="alTeclear($event)">
+    @if (dashboard(); as entrada) {
+      <a [routerLink]="entrada.path" [class.active]="entradaActiva() === entrada.id"
+        [attr.aria-current]="entradaActiva() === entrada.id ? 'page' : null"
+        [attr.aria-label]="entrada.label" [attr.title]="contraido() ? entrada.label : null">
+        <span class="material-symbols-outlined" aria-hidden="true">{{ entrada.icon }}</span>
+        <span class="texto-enlace">{{ entrada.label }}</span>
+      </a>
+    }
+    @for (grupo of grupos(); track grupo.id) {
+      <button type="button" class="modulo" [class.active]="grupoActivo() === grupo.id"
+        [attr.aria-label]="grupo.label" [attr.title]="contraido() ? grupo.label : null"
+        [attr.aria-expanded]="!contraido() && expandidos().has(grupo.id)"
+        [attr.aria-controls]="'submenu-' + grupo.id" (click)="alternarGrupo($event, grupo.id)">
+        <span class="material-symbols-outlined" aria-hidden="true">{{ grupo.icon }}</span>
+        <span class="titulo-modulo">{{ grupo.label }}</span>
+        <span class="material-symbols-outlined flecha" [class.expandida]="expandidos().has(grupo.id)" aria-hidden="true">expand_more</span>
+      </button>
+      <div [id]="'submenu-' + grupo.id" class="submenu" [hidden]="contraido() || !expandidos().has(grupo.id)">
+        @for (entrada of grupo.hijos; track entrada.id) {
+          <a [routerLink]="entrada.path" [queryParams]="entrada.queryParams ?? null"
+            [class.active]="entradaActiva() === entrada.id" [attr.aria-current]="entradaActiva() === entrada.id ? 'page' : null">
+            <span class="material-symbols-outlined" aria-hidden="true">{{ entrada.icon }}</span>
+              <span class="texto-enlace">{{ entrada.label }}@if (entrada.pendiente && !entrada.interfazDisponible) { <small class="etiqueta-desarrollo">En desarrollo</small> }</span>
+          </a>
+        }
+      </div>
+    }
+    <a routerLink="/portal-certificados" aria-label="Portal público" [attr.title]="contraido() ? 'Portal público' : null" class="portal-publico">
+      <span class="material-symbols-outlined" aria-hidden="true">verified</span>
+      <span class="texto-enlace">Portal público</span>
+    </a>
+    @if (!dashboard() && !grupos().length) {
+      <p class="sin-opciones" role="status">No hay opciones habilitadas para tus permisos actuales.</p>
     }
   </nav>
 </aside>

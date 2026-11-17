@@ -1,0 +1,191 @@
+@if (!contextoIntegrado()) {
+<section aria-label="Gestión de participantes">
+    <div class="encabezado">
+      <div><app-page-title title="Participantes" /><p class="descripcion">Administra las inscripciones de participantes a las actividades institucionales.</p></div>
+      <button #botonInscribir type="button" class="btn btn-primary" (click)="abrirFormulario(null)" [disabled]="guardandoEstado() || formularioAbierto() || !puedeInscribir()">
+        <span class="material-symbols-outlined" aria-hidden="true">add</span>Inscribir participante
+      </button>
+    </div>
+    @if (cargandoContexto()) { <p role="status">Consultando actividad seleccionada...</p> }
+    @if (errorContexto()) { <p class="alert alert-error" role="alert">{{ errorContexto() }}</p> }
+    @if (actividadContexto(); as actividad) {
+      <p class="contexto-actividad">Actividad: <strong>{{ actividad.nombre }}</strong></p>
+      @if (sesionContexto().cargando) { <p role="status">Consultando sesión…</p> }
+      @if (sesionContexto().error) { <p role="alert">{{ sesionContexto().error }}</p> }
+      @if (sesionContexto().sesion; as sesion) { <p>Sesión: <strong>{{ sesion.nombre }}</strong>. Se muestran las inscripciones de la actividad; estar inscrito no confirma asistencia.</p> }
+      <a class="btn" routerLink="/certificaciones/actividades" [queryParams]="{ id_actividad: actividad.id_actividad }"><span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>Volver a actividad</a>
+      @if (!sesionContexto().cargando && !sesionContexto().error) {
+        <a *appHasPermission="'participantes.ver'" class="btn btn-primary" routerLink="/certificaciones/sesiones-asistencia" [queryParams]="{ id_actividad: actividad.id_actividad, id_sesion: sesionContexto().sesion?.id, pestana: 'asistencias' }"><span class="material-symbols-outlined" aria-hidden="true">how_to_reg</span>Controlar asistencia</a>
+      }
+    }
+    <div role="status">
+      @if (aviso(); as mensaje) { <div class="alert" [class.alert-exito]="mensaje.tipo === 'exito'" [class.alert-error]="mensaje.tipo === 'error'">{{ mensaje.texto }}</div> }
+    </div>
+
+  @if (avisosCatalogos().length) {
+    <div class="form-ayuda aviso-catalogos" role="status">
+      @for (aviso of avisosCatalogos(); track aviso[0]) { <p>{{ etiquetas[aviso[0]] }} no disponibles. {{ aviso[1] }}</p> }
+      <button type="button" class="btn" (click)="cargarCatalogos()" [disabled]="cargandoAlgunCatalogo()">Reintentar catálogos</button>
+    </div>
+  }
+
+    <div class="filtros" role="search" aria-label="Filtrar participantes">
+      <div class="form-field buscador">
+        <label for="buscar-participante">Buscar participante</label>
+        <input #busqueda id="buscar-participante" class="input" type="search" placeholder="Nombre o documento disponible" [value]="filtros().busqueda" (input)="filtrar('busqueda', busqueda.value)" />
+      </div>
+      <div class="form-field">
+        <label for="filtro-actividad">Actividad</label>
+        <select #actividadFiltro id="filtro-actividad" class="input" [disabled]="parametroContexto() !== null" [value]="filtros().actividad" (change)="filtrar('actividad', actividadFiltro.value)">
+          <option value="">Todas las actividades</option>
+          @for (actividad of actividadesDisponibles(); track actividad.id_actividad) { <option [value]="actividad.id_actividad" [selected]="filtros().actividad === actividad.id_actividad.toString()">{{ actividad.nombre }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="filtro-tipo">Tipo de participación</label>
+        <select #tipoFiltro id="filtro-tipo" class="input" [value]="filtros().tipo" (change)="filtrar('tipo', tipoFiltro.value)">
+          <option value="">Todos los tipos</option>
+          @for (tipo of tipos(); track tipo.id_tipo_participacion) { <option [value]="tipo.id_tipo_participacion">{{ tipo.nombre }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="filtro-estado">Estado</label>
+        <select #estadoFiltro id="filtro-estado" class="input" [value]="filtros().estado" (change)="filtrar('estado', estadoFiltro.value)">
+          <option value="">Todos los estados</option>
+          @for (estado of estados; track estado.valor) { <option [value]="estado.valor">{{ estado.etiqueta }}</option> }
+        </select>
+      </div>
+      <button type="button" class="btn limpiar" (click)="limpiarFiltros()">Limpiar filtros</button>
+    </div>
+    <div [attr.aria-busy]="cargando()">
+      @if (errorCarga(); as error) { <p class="form-ayuda" role="status">No se pudo cargar el listado de participantes. {{ error }}</p><button type="button" class="btn" (click)="cargar()">Reintentar listado</button> }
+      <div class="tabla-caja" tabindex="0" role="region" aria-label="Listado de participantes con desplazamiento horizontal">
+        <table class="table">
+          <caption class="sr-only">Inscripciones de participantes</caption>
+          <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th scope="col">Participante</th><th scope="col">Documento</th><th scope="col">Actividad</th><th scope="col">Tipo de participación</th><th scope="col" class="col-centro">Fecha de inscripción</th><th scope="col" class="col-centro">Estado</th><th scope="col" class="col-centro">Acciones</th></tr></thead>
+          <tbody>
+            @for (item of visibles(); track item.id_participacion; let numeroVisual = $index) {
+              <tr><td class="col-centro col-numero" data-label="N.º">{{ (paginaActual() - 1) * porPagina() + numeroVisual + 1 }}</td><th scope="row" class="nombre">{{ nombrePersona(item.id_persona) }}</th><td>{{ documentoPersona(item.id_persona) || 'No disponible' }}</td><td>{{ nombreActividad(item.id_actividad) }}</td><td>{{ nombreTipo(item.id_tipo_participacion) }}</td><td class="col-centro dato">{{ fecha(item.fecha_inscripcion) }}</td><td class="col-centro"><span class="badge" [attr.data-estado]="etiquetaEstado(item.estado)">{{ etiquetaEstado(item.estado) }}</span></td>
+                <td class="col-centro"><div class="acciones-fila">
+                  <button *appHasPermission="'participantes.ver'" type="button" class="btn btn-icono btn-sin-borde" title="Ver detalle" [attr.aria-label]="'Ver inscripción de ' + nombrePersona(item.id_persona)" (click)="verDetalle(item)"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver detalle</span></button>
+                  <button *appHasPermission="'participantes.editar'" type="button" class="btn btn-icono btn-sin-borde" title="Editar inscripción" [attr.aria-label]="'Editar inscripción de ' + nombrePersona(item.id_persona)" (click)="abrirFormulario(item)" [disabled]="guardandoEstado()"><span class="material-symbols-outlined" aria-hidden="true" data-icon="edit"></span><span class="sr-only">Editar inscripción</span></button>
+                  <button *appHasPermission="'participantes.editar'" type="button" class="btn btn-icono btn-sin-borde" title="Cambiar estado" [attr.aria-label]="'Cambiar estado de ' + nombrePersona(item.id_persona)" (click)="abrirEstado(item)" [disabled]="guardandoEstado()"><span class="material-symbols-outlined" aria-hidden="true">toggle_on</span></button>
+                </div></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="8" class="estado-vacio">
+                @if (cargando()) { Cargando participantes… }
+                @else if (errorCarga()) { Datos del listado no disponibles. }
+                @else if (!inscripciones().length) { Aún no hay participantes inscritos. }
+                @else { No se encontraron participantes con esos filtros. }
+              </td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <nav class="paginacion" aria-label="Paginación de participantes">
+        <p class="dato" role="status">@if (errorCarga()) { Total no disponible } @else if (cargando()) { Cargando total… } @else { {{ rango().desde }}–{{ rango().hasta }} de {{ rango().total }} }</p>
+        <div class="tamano-pagina"><label for="tamano-participantes">Registros por página</label><select #tamano id="tamano-participantes" class="input" [value]="porPagina()" (change)="cambiarTamano(tamano.value)"><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></div>
+        <div class="paginacion-botones">
+          <button type="button" class="btn" [disabled]="paginaActual() <= 1" (click)="pagina.set(paginaActual() - 1)"><span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>Anterior</button>
+          <button type="button" class="btn" [disabled]="paginaActual() >= totalPaginas()" (click)="pagina.set(paginaActual() + 1)">Siguiente<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button>
+        </div>
+      </nav>
+    </div>
+</section>
+
+}
+<app-dialogo #dialogoFormulario class="modal-participante" [titulo]="editando() === null ? 'Inscribir participante' : 'Editar inscripción'" [mostrarCerrar]="!!contextoIntegrado()" [cierreControlado]="!!contextoIntegrado()" (cierreSolicitado)="cerrarFormulario()" (cerrado)="alCerrarFormulario()">
+  @if (formularioAbierto()) {
+    @if (contextoIntegrado(); as contexto) { <p>Desde la sesión: <strong>{{ contexto.sesion.nombre }}</strong>. La inscripción corresponde a la actividad y no confirma asistencia.</p> }
+    @if (actividadContexto(); as actividad) { <p class="contexto-actividad">Inscribir participante en: <strong>{{ actividad.nombre }}</strong></p> }
+    <section class="formulario" [attr.aria-busy]="cargandoEdicion() || enviando()">
+      @if (errorFormulario(); as error) { <p class="alert alert-error" role="alert">{{ error }}</p> }
+      @if (cargandoEdicion()) {
+        <p role="status">Cargando inscripción…</p>
+        <button type="button" class="btn" (click)="cerrarFormulario()">Cancelar</button>
+      } @else {
+        <p class="form-ayuda">Los campos con * son obligatorios.</p>
+        @if (cargandoAlgunCatalogo()) { <p class="form-ayuda" role="status">Cargando catálogos…</p> }
+        @if (avisosFormulario().length) {
+          <div class="alert alert-error" role="alert">
+            @for (aviso of avisosFormulario(); track aviso[0]) { <p>No se pudo consultar {{ etiquetas[aviso[0]] }}. {{ aviso[1] }}</p> }
+            <button class="btn" type="button" (click)="cargarCatalogos()" [disabled]="cargandoAlgunCatalogo()">Reintentar catálogos</button>
+          </div>
+        }
+        @else if (!catalogosDisponibles()) { <p class="form-ayuda">El guardado requiere personas, actividades y tipos disponibles. Puedes completar los demás campos.</p> }
+        <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+          <div class="rejilla-formulario">
+            <div class="form-field ancho-completo">
+              <label for="inscripcion-persona">Participante *</label>
+              <select id="inscripcion-persona" class="input" autofocus formControlName="id_persona" aria-required="true" aria-describedby="inscripcion-persona-error" [attr.aria-invalid]="!!errorCampo('id_persona')">
+                <option value="" disabled>Selecciona una persona</option>
+                @for (persona of personas(); track persona.id_persona) {
+                  <option [value]="persona.id_persona">{{ nombrePersona(persona.id_persona) }}{{ documentoPersona(persona.id_persona) ? ' · ' + documentoPersona(persona.id_persona) : '' }}</option>
+                }
+              </select>
+              @if (errorCampo('id_persona'); as error) { <p id="inscripcion-persona-error" class="error-text">{{ error }}</p> }
+            </div>
+            <div class="form-field">
+              <label for="inscripcion-actividad">Actividad *</label>
+              <select id="inscripcion-actividad" class="input" formControlName="id_actividad" aria-required="true" aria-describedby="inscripcion-actividad-error" [attr.aria-invalid]="!!errorCampo('id_actividad')">
+                <option value="" disabled>Selecciona una actividad</option>
+                @for (actividad of actividadesDisponibles(); track actividad.id_actividad) { <option [value]="actividad.id_actividad">{{ actividad.nombre }}</option> }
+              </select>
+              @if (errorCampo('id_actividad'); as error) { <p id="inscripcion-actividad-error" class="error-text">{{ error }}</p> }
+            </div>
+            <div class="form-field">
+              <label for="inscripcion-tipo">Tipo de participación *</label>
+              <select id="inscripcion-tipo" class="input" formControlName="id_tipo_participacion" aria-required="true" aria-describedby="inscripcion-tipo-error" [attr.aria-invalid]="!!errorCampo('id_tipo_participacion')">
+                <option value="" disabled>Selecciona un tipo</option>
+                @for (tipo of tipos(); track tipo.id_tipo_participacion) { <option [value]="tipo.id_tipo_participacion">{{ tipo.nombre }}</option> }
+              </select>
+              @if (errorCampo('id_tipo_participacion'); as error) { <p id="inscripcion-tipo-error" class="error-text">{{ error }}</p> }
+            </div>
+            <div class="form-field">
+              <label for="inscripcion-fecha">Fecha de inscripción *</label>
+              <input id="inscripcion-fecha" class="input" type="date" formControlName="fecha_inscripcion" aria-required="true" aria-describedby="inscripcion-fecha-error" [attr.aria-invalid]="!!errorCampo('fecha_inscripcion')" />
+              @if (errorCampo('fecha_inscripcion'); as error) { <p id="inscripcion-fecha-error" class="error-text">{{ error }}</p> }
+            </div>
+            <div class="form-field">
+              <label for="inscripcion-estado">Estado *</label>
+              <select id="inscripcion-estado" class="input" formControlName="estado" aria-required="true" aria-describedby="estado-ayuda inscripcion-estado-error" [attr.aria-invalid]="!!errorCampo('estado')">
+                @for (estado of estados; track estado.valor) { <option [value]="estado.valor">{{ estado.etiqueta }}</option> }
+                @if (form.controls.estado.value && !esEstadoOfrecido(form.controls.estado.value)) {
+                  <option [value]="form.controls.estado.value">{{ etiquetaEstado(form.controls.estado.value) }} (valor actual)</option>
+                }
+              </select>
+              <p id="estado-ayuda" class="form-ayuda">Selecciona el estado de la inscripción. @if (form.controls.estado.value === 'sd') { El valor actual no tiene un significado definido; se conserva hasta que selecciones otro estado. }</p>
+              @if (errorCampo('estado'); as error) { <p id="inscripcion-estado-error" class="error-text">{{ error }}</p> }
+            </div>
+          </div>
+          <div class="acciones-formulario">
+            <button type="button" class="btn" (click)="cerrarFormulario()" [disabled]="enviando()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="enviando()" [attr.aria-busy]="enviando()">{{ enviando() ? 'Guardando…' : editando() === null ? 'Inscribir participante' : 'Guardar cambios' }}</button>
+          </div>
+        </form>
+      }
+    </section>
+  }
+</app-dialogo>
+
+<app-dialogo #dialogoDetalle titulo="Detalle de inscripción" (cerrado)="cerrarDetalle()">
+  @if (cargandoDetalle()) { <p role="status">Cargando inscripción…</p> }
+  @if (errorDetalle(); as error) { <p class="alert alert-error" role="alert">{{ error }}</p> }
+  @if (detalle(); as item) {
+    <dl class="detalle"><div><dt>Participante</dt><dd>{{ nombrePersona(item.id_persona) }}</dd></div><div><dt>Documento</dt><dd>{{ documentoPersona(item.id_persona) || 'No disponible' }}</dd></div><div><dt>Actividad</dt><dd>{{ nombreActividad(item.id_actividad) }}</dd></div><div><dt>Tipo de participación</dt><dd>{{ nombreTipo(item.id_tipo_participacion) }}</dd></div><div><dt>Fecha de inscripción</dt><dd>{{ fecha(item.fecha_inscripcion) }}</dd></div><div><dt>Estado</dt><dd>{{ etiquetaEstado(item.estado) }}</dd></div></dl>
+  }
+  <div class="dialogo-acciones"><button type="button" class="btn" (click)="dialogoDetalle.cerrar()">Cerrar</button></div>
+</app-dialogo>
+<app-dialogo #dialogoEstado titulo="Cambiar estado de inscripción">
+  <p>Confirma el nuevo estado de la inscripción de {{ porCambiarEstado() ? nombrePersona(porCambiarEstado()!.id_persona) : '' }}.</p>
+  <div class="form-field"><label for="nuevo-estado">Estado *</label><select id="nuevo-estado" class="input" [formControl]="nuevoEstado" [attr.disabled]="guardandoEstado() ? true : null" aria-describedby="nuevo-estado-ayuda nuevo-estado-error" [attr.aria-invalid]="nuevoEstado.touched && nuevoEstado.invalid">
+    @for (estado of estados; track estado.valor) { <option [value]="estado.valor">{{ estado.etiqueta }}</option> }
+    @if (nuevoEstado.value && !esEstadoOfrecido(nuevoEstado.value)) { <option [value]="nuevoEstado.value">{{ etiquetaEstado(nuevoEstado.value) }} (valor actual)</option> }
+  </select>
+    <p id="nuevo-estado-ayuda" class="form-ayuda">Selecciona el nuevo estado. @if (nuevoEstado.value === 'sd') { Estado sin descripción (sd): su significado no está definido. }</p>
+    @if (nuevoEstado.touched && nuevoEstado.invalid) { <p id="nuevo-estado-error" class="error-text">Escribe un estado de hasta 30 caracteres.</p> }
+  </div>
+  @if (errorEstado(); as error) { <p class="alert alert-error" role="alert">{{ error }}</p> }
+  <div class="dialogo-acciones"><button type="button" class="btn" (click)="dialogoEstado.cerrar()" [disabled]="guardandoEstado()">Cancelar</button><button type="button" class="btn btn-primary" (click)="confirmarEstado()" [disabled]="guardandoEstado()">{{ guardandoEstado() ? 'Guardando…' : 'Confirmar cambio' }}</button></div>
+</app-dialogo>

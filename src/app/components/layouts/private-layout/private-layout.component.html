@@ -1,0 +1,47 @@
+<app-main-layout [navigation]="navegacion()">
+  @if (inicioSesionExitoso()) {
+    <div layout-alert class="alert alert-exito aviso-sesion" role="status" aria-live="polite">
+      <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+      <span>Inicio de sesión exitoso.</span>
+      <button type="button" class="btn btn-icono btn-sin-borde cerrar-aviso" aria-label="Cerrar aviso de inicio de sesión" title="Cerrar aviso" (click)="inicioSesionExitoso.set(false)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+      </button>
+    </div>
+  }
+  <div layout-header class="barra">
+    <!-- Escudo provisional (regenerado a partir del logotipo): ver DESIGN.md, pendientes. -->
+    <span class="marca">
+      <img class="escudo" src="/marca/escudo-36.webp" srcset="/marca/escudo-36.webp 1x, /marca/escudo-72.webp 2x"
+        width="34" height="36" alt="">
+      <span class="sistema">Sistema de Certificados Digitales</span>
+    </span>
+    @if (auth.usuario(); as usuario) {
+      <div class="usuario" #menuUsuario (focusout)="cerrarAlSalir($event)">
+        <button #botonUsuario type="button" class="cuenta" (click)="menuAbierto.set(!menuAbierto())"
+          [attr.aria-expanded]="menuAbierto()" aria-controls="opciones-usuario" aria-label="Opciones de usuario">
+          <svg class="avatar" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+            <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z" />
+          </svg>
+          <span class="datos">
+            <span class="nombre">{{ usuario.nombre }}</span>
+            <span class="rol">{{ usuario.rol }}</span>
+          </span>
+          <span class="material-symbols-outlined flecha" [class.abierta]="menuAbierto()" aria-hidden="true">expand_more</span>
+        </button>
+        @if (menuAbierto()) {
+          <div class="opciones-usuario" id="opciones-usuario">
+            <div class="perfil-usuario">
+              <strong>{{ usuario.nombre }}</strong>
+              <span>{{ usuario.email }}</span>
+            </div>
+            <button type="button" class="cerrar-sesion" (click)="cerrarSesion()" [disabled]="saliendo()" [attr.aria-busy]="saliendo()">
+              <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+              {{ saliendo() ? 'Cerrando sesión…' : 'Cerrar sesión' }}
+            </button>
+            @if (errorSalida()) { <p class="error-salida" role="alert">No se pudo cerrar la sesión. Intenta nuevamente.</p> }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</app-main-layout>

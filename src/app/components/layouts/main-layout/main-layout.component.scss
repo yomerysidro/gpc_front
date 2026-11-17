@@ -1,3 +1,98 @@
 :host {
-  display: block;
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: var(--ancho-sidebar) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+app-header {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 100;
+  align-self: start;
+}
+
+.menu-toggle {
+  background: transparent;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: var(--azul-oscuro);
+    color: #fff;
+  }
+
+  &:focus-visible {
+    outline-color: #fff;
+  }
+}
+
+main {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: var(--espacio-6);
+  background: var(--neutro-50);
+  scrollbar-gutter: stable;
+}
+
+// Escritorio: el popover se comporta como columna normal del grid.
+@media (min-width: 769px) {
+  :host(.sidebar-contraido) {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+  }
+  app-sidebar[popover] {
+    position: static;
+    display: block;
+    inset: auto;
+    width: auto;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    color: inherit;
+  }
+
+}
+
+@media (max-width: 768px) {
+  :host {
+    grid-template-columns: 1fr;
+  }
+
+  main {
+    padding: var(--espacio-5) var(--espacio-4);
+  }
+
+  app-sidebar[popover] {
+    inset: var(--alto-header-real, 0px) auto 0 0;
+    width: min(calc(var(--ancho-sidebar) + var(--espacio-6)), 85vw);
+    height: calc(100dvh - var(--alto-header-real, 0px));
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: var(--sombra-lg);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  // El :host del sidebar declara display: block; sin esto el cajón cerrado seguiría visible.
+  app-sidebar[popover]:not(:popover-open) {
+    display: none;
+  }
+
+  app-sidebar::backdrop {
+    background: var(--color-velo);
+  }
 }

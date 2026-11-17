@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/solicitudes/revision-solicitudes/revision-solicitudes.component.ts"],
+  "sourcesContent": ["import { Component } from '@angular/core';\nimport { BandejaSolicitudesComponent } from '../compartidos/bandeja-solicitudes.component';\n@Component({ selector: 'app-revision-solicitudes', standalone: true, imports: [BandejaSolicitudesComponent],\n  template: '<app-bandeja-solicitudes bandeja=\"revision\" titulo=\"Revisión de solicitudes\" />' })\nexport class RevisionSolicitudesComponent {}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;AAIM,IAAO,+BAAP,MAAO,8BAA4B;;qCAA5B,+BAA4B;EAAA;yEAA5B,+BAA4B,WAAA,CAAA,CAAA,0BAAA,CAAA,GAAA,YAAA,MAAA,UAAA,CAAA,6BAAA,GAAA,OAAA,GAAA,MAAA,GAAA,QAAA,CAAA,CAAA,WAAA,YAAA,UAAA,4BAAA,CAAA,GAAA,UAAA,SAAA,sCAAA,IAAA,KAAA;AAAA,QAAA,KAAA,GAAA;AAD5B,MAAA,oBAAA,GAAA,2BAAA,CAAA;;oBADkE,2BAA2B,GAAA,eAAA,EAAA,CAAA;;;6EAE7F,8BAA4B,EAAA,WAAA,gCAAA,UAAA,yFAAA,YAAA,EAAA,CAAA;AAAA,GAAA;",
+  "names": []
+}

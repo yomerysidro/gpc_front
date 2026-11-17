@@ -1,0 +1,87 @@
+name: Frontend CI
+on:
+  push:
+    branches: [main, development, 'dev-*', 'dev/**', 'feature/**']
+  pull_request:
+    branches: [main, development]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: frontend-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  branch-policy:
+    name: Flujo de ramas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Comprobar origen del pull request
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: node scripts/check-branch-policy.cjs
+  validate:
+    name: TypeScript y pruebas
+    needs: branch-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: node --test scripts/check-branch-policy.test.cjs scripts/check-sidebar-icons.test.cjs
+      - run: npx tsc --project tsconfig.app.json --noEmit
+      - run: npx tsc --project tsconfig.spec.json --noEmit
+      - name: Localizar Chrome
+        run: |
+          chrome_bin="$(command -v google-chrome || command -v chromium || true)"
+          test -n "$chrome_bin" || { echo '::error::Chrome no disponible'; exit 1; }
+          echo "CHROME_BIN=$chrome_bin" >> "$GITHUB_ENV"
+      - run: npm test -- --watch=false --browsers=ChromeHeadless
+      - run: npm run build -- --configuration production
+      - run: test -f dist/gpc_front/browser/index.html && test -f dist/gpc_front/server/server.mjs
+  docker:
+    name: Build de producción
+    needs: branch-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: gpc-frontend:ci
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+      - name: Verificar SSR y puerto dinámico
+        run: |
+          docker run -d --name gpc-frontend-ci -e PORT=4321 -p 127.0.0.1:4321:4321 gpc-frontend:ci
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4321/healthz && break; sleep 2; done
+          curl -fsS http://127.0.0.1:4321/healthz
+          curl -fsS http://127.0.0.1:4321/portal-certificados -o "$RUNNER_TEMP/portal.html"
+          curl -fsS http://127.0.0.1:4321/login -o "$RUNNER_TEMP/login.html"
+          grep -q '<app-root' "$RUNNER_TEMP/portal.html"
+          grep -q '<app-root' "$RUNNER_TEMP/login.html"
+      - if: always()
+        run: docker logs gpc-frontend-ci || true
+      - if: always()
+        run: docker rm -f gpc-frontend-ci || true

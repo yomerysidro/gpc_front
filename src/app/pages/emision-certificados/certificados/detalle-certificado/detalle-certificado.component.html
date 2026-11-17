@@ -1,0 +1,73 @@
+<app-page-title title="Detalle de certificado" />
+<a class="btn" routerLink="/certificaciones/certificados">Volver a Certificados</a>
+@if (cargando()) { <p role="status">Cargando certificado…</p> }
+@if (error(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
+@if (errorRelaciones(); as mensaje) { <p class="alert alert-advertencia" role="alert">{{ mensaje }}</p> }
+@if (certificado(); as registro) {
+  @if (documentoId() !== null) { <p><a class="btn" [routerLink]="['/certificaciones/certificados', registro.id_certificado]">Volver al detalle del certificado</a></p> }
+  @if (!cargandoDocumentos() && !errorDocumentos()) {
+    @if (documentoSeleccionado(); as documentoActual) {
+      <app-visor-certificado [certificado]="registro" [beneficiario]="beneficiario()" [dni]="dni()" [lugar]="$any(actividadVisual()?.['sede'])" [fechaActividad]="$any(actividadVisual()?.['fecha_inicio'])" [documento]="documentoActual" [tipo]="tipoNombre()" [origen]="origenNombre()"
+        [reconocimiento]="reconocimiento()" [firmas]="firmasDocumento(documentoActual.id_certificado_documento)" [firmantes]="firmantes()" [errorFirmas]="errorFirmas()" [cargandoFirmas]="cargandoFirmas()" />
+    } @else if (documentoId() !== null) { <p class="alert alert-error" role="alert">El documento solicitado no existe entre los documentos autorizados de este certificado.</p> }
+    @else if (!documentos().length) {
+      <app-visor-certificado [certificado]="registro" [beneficiario]="beneficiario()" [dni]="dni()" [lugar]="$any(actividadVisual()?.['sede'])" [fechaActividad]="$any(actividadVisual()?.['fecha_inicio'])" [tipo]="tipoNombre()" [origen]="origenNombre()" [reconocimiento]="reconocimiento()" />
+    }
+  }
+  <section class="card detalle">
+    <h2>Certificado #{{ registro.id_certificado }}</h2>
+    <dl>
+      <dt>Persona beneficiaria</dt><dd>{{ nombreBeneficiario(registro.id_persona) }}</dd>
+      <dt>DNI</dt><dd>{{ dni() || 'No disponible' }}</dd>
+      <dt>Tipo de certificado</dt><dd>{{ nombreTipoCertificado(registro.id_tipo_certificado) }}</dd>
+      <dt>Origen</dt><dd>{{ nombreOrigenCertificado(registro) }}</dd>
+      <dt>Fecha de emisión</dt><dd>{{ registro.fecha_emision ?? '—' }}</dd>
+      <dt>Estado</dt><dd>{{ estadoRegistro(registro.estado) }}</dd>
+      <dt>Notificado</dt><dd>{{ registro.notificado ? 'Sí' : 'No' }}</dd>
+    </dl>
+    <div class="acciones">
+      <a class="btn" *appHasPermission="'emision.editar'" [routerLink]="['/certificaciones/certificados', registro.id_certificado, 'editar']">Editar certificado</a>
+      <a class="btn" *appHasPermission="'emision.ver'" routerLink="/certificaciones/certificados/documentos" [queryParams]="{ id_certificado: registro.id_certificado }">Ver documentos</a>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Documentos asociados e historial</h2>
+    @if (cargandoDocumentos()) { <p role="status">Cargando documentos y firmas…</p> }
+    @if (errorDocumentos(); as mensajeDocumentos) { <p class="alert alert-error" role="alert">{{ mensajeDocumentos }}</p> }
+    @if (errorFirmas(); as mensajeFirmas) { <p class="alert alert-error" role="alert">No se pudieron consultar las firmas: {{ mensajeFirmas }}</p> }
+    @if (errorFirmantes(); as mensajeFirmantes) { <p class="alert alert-error" role="alert">No se pudieron consultar los cargos de firmantes: {{ mensajeFirmantes }}</p> }
+    @if (errorConsultas(); as mensajeConsultas) { <p class="alert alert-error" role="alert">No se pudo consultar el historial: {{ mensajeConsultas }}</p> }
+    @if (tienePermisoDocumentos && !cargandoDocumentos() && !errorDocumentos() && !documentos().length) { <p>No hay documentos registrados para este certificado.</p> }
+    @if (documentos().length) {
+      <div class="tabla"><table class="table">
+        <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th>Código de verificación</th><th class="col-centro">Estado del documento</th><th class="col-centro">Fecha registrada</th><th>Reemisión</th><th>Firmas asociadas</th><th>Archivo y previsualización</th></tr></thead>
+        <tbody>@for (documento of documentos(); track documento.id_certificado_documento; let numeroVisual = $index) {
+          <tr><td class="col-centro col-numero" data-label="N.º">{{ numeroVisual + 1 }}</td>
+            <td>{{ documento.codigo_verificacion }}</td><td class="col-centro">{{ documento.estado }}</td><td class="col-centro">{{ documento.fecha_generacion }}</td>
+            <td>{{ documento.motivo_reemision || 'Documento inicial' }}</td>
+            <td>
+              @if (cargandoFirmas()) { Consultando firmas… }
+              @else if (errorFirmas()) { No se pudieron determinar las firmas }
+              @else if (firmasDocumento(documento.id_certificado_documento).length) {
+                @for (firma of firmasDocumento(documento.id_certificado_documento); track firma.id_certificado_firma) { <span>Firma #{{ firma.id_firma }} · orden {{ firma.orden_firma }} · {{ firma.fecha_firma }}<br /></span> }
+              } @else { Sin firmas registradas }
+            </td>
+            <td>
+              <a class="btn btn-consulta" [routerLink]="['/certificaciones/certificados', registro.id_certificado, 'documentos', documento.id_certificado_documento, 'visor']">Consultar documento y PDF</a>
+              <a class="btn" routerLink="/certificaciones/verificacion" [queryParams]="{ codigo: documento.codigo_verificacion }">Consultar código</a>
+            </td>
+          </tr>
+        }</tbody>
+      </table></div>
+      <h3>Historial de consultas</h3>
+      @if (!errorConsultas() && !tieneConsultasHistorial()) { <p>No hay consultas registradas para los documentos disponibles.</p> }
+      @for (documento of documentos(); track documento.id_certificado_documento) {
+        @for (consulta of consultasDocumento(documento.id_certificado_documento); track consulta.id_consulta_certificado) {
+          <p>{{ consulta.fecha_consulta }} · Documento {{ documento.codigo_verificacion }} · {{ consulta.resultado }}</p>
+        }
+      }
+      <p class="nota">El archivo se recupera mediante la API autenticada. Su disponibilidad e integridad las comprueba Laravel. Las firmas registradas no acreditan una firma criptográfica.</p>
+    }
+  </section>
+}

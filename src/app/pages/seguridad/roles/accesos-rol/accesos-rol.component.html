@@ -1,0 +1,119 @@
+<section class="accesos">
+  <a routerLink="/roles" class="volver">
+    <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+    Volver a roles
+  </a>
+  <app-page-title [title]="rol() ? 'Accesos del rol ' + rol()!.nombre : 'Accesos del rol'" />
+
+  @if (cargando()) {
+    <p class="sr-only" role="status">Cargando accesos…</p>
+    <div class="esqueleto" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+  } @else if (errorCarga()) {
+    <div class="alert alert-error" role="alert">
+      <span class="material-symbols-outlined" aria-hidden="true">error</span>
+      <span>{{ errorCarga() }}</span>
+    </div>
+  } @else {
+    @if (esAdministrador()) {
+      <div class="alert alert-advertencia">
+        <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+        <span>Algunos accesos de este rol están protegidos para no dejar el sistema sin administración.</span>
+      </div>
+    }
+
+    <div role="status">
+      @if (aviso(); as aviso) {
+        <div class="alert" [class.alert-exito]="aviso.tipo === 'exito'" [class.alert-error]="aviso.tipo === 'error'">
+          <span class="material-symbols-outlined" aria-hidden="true">{{ aviso.tipo === 'exito' ? 'check_circle' : 'error' }}</span>
+          <span>
+            {{ aviso.texto }}
+            @for (detalle of aviso.detalle; track $index) { <br />{{ detalle }} }
+          </span>
+        </div>
+      }
+    </div>
+
+    <p class="ayuda">
+      El acceso hace que el módulo aparezca en el menú del rol. Crear, editar y eliminar incluyen ver;
+      marcar un permiso concede también el acceso al módulo.
+    </p>
+
+    <table class="table matriz">
+      <caption class="sr-only">Accesos del rol {{ rol()?.nombre }} por módulo</caption>
+      <thead>
+        <tr>
+          <th scope="col">Módulo</th>
+          <th scope="col">Acceso</th>
+          @for (accion of acciones; track accion) {
+            <th scope="col">{{ titulos[accion] }}</th>
+          }
+          <th scope="col">Otros permisos</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (fila of filas(); track fila.modulo.id) {
+          <tr [class.sin-acceso]="!tieneModulo(fila.modulo)" [class.registro-inactivo]="!fila.modulo.estado">
+            <th scope="row" class="modulo">
+              <span class="modulo-nombre">{{ fila.modulo.nombre }}</span>
+              <span class="dato modulo-url">{{ fila.modulo.url }}</span>
+              @if (!fila.modulo.estado) { <span class="badge">Inactivo</span> }
+            </th>
+            <td class="celda-acceso">
+              <label class="casilla">
+                <input type="checkbox" role="switch" class="interruptor" [checked]="tieneModulo(fila.modulo)"
+                  (change)="alternarModulo(fila.modulo, $event)" />
+                <span class="etiqueta">Acceso al módulo</span><span class="sr-only"> {{ fila.modulo.nombre }}</span>
+              </label>
+            </td>
+            @for (accion of acciones; track accion) {
+              <td class="celda-permiso">
+                @if (fila.basicos[accion]; as permiso) {
+                  <label class="casilla" [class.registro-inactivo]="!permiso.estado">
+                    <input type="checkbox" [checked]="tienePermiso(permiso)"
+                      (change)="alternarPermiso(fila.modulo, permiso, $event)" />
+                    <span class="etiqueta">{{ titulos[accion] }}</span><span class="sr-only"> en {{ fila.modulo.nombre }}{{ permiso.estado ? '' : ' (inactivo)' }}</span>
+                  </label>
+                } @else {
+                  <span class="no-aplica" aria-hidden="true">—</span><span class="sr-only">{{ titulos[accion] }}: no aplica</span>
+                }
+              </td>
+            }
+            <td>
+              <div class="otros">
+              @for (permiso of fila.otros; track permiso.id) {
+                <label class="casilla" [class.registro-inactivo]="!permiso.estado">
+                  <input type="checkbox" [checked]="tienePermiso(permiso)"
+                    (change)="alternarPermiso(fila.modulo, permiso, $event)" />
+                  <span>{{ permiso.nombre }}</span><span class="sr-only"> en {{ fila.modulo.nombre }}{{ permiso.estado ? '' : ' (inactivo)' }}</span>
+                </label>
+              } @empty {
+                <span class="no-aplica" aria-hidden="true">—</span>
+              }
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="barra-acciones">
+      <p class="barra-acciones-estado" role="status">
+        @if (hayCambios()) {
+          <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+          Hay cambios sin guardar
+        } @else {
+          Sin cambios pendientes
+        }
+      </p>
+      <button type="button" class="btn" [disabled]="!hayCambios() || guardando()" (click)="descartar()">Descartar</button>
+      <button type="button" class="btn btn-primary" [disabled]="!hayCambios() || guardando()" [attr.aria-busy]="guardando()"
+        (click)="guardar()">
+        {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+      </button>
+    </div>
+  }
+</section>
+
+<app-dialogo-confirmacion titulo="Salir sin guardar"
+  [texto]="'Los cambios en los accesos del rol ' + (rol()?.nombre ?? '') + ' se perderán.'"
+  confirmar="Salir sin guardar" cancelar="Seguir editando" />

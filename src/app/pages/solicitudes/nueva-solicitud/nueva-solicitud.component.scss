@@ -1,0 +1,37 @@
+.pasos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); list-style: none; padding: 0; gap: .75rem; margin-block: 1.25rem; }
+.pasos li { display: flex; align-items: center; gap: .75rem; padding: 1rem; border: 1px solid #dde5ec; background: white; border-radius: .6rem; }
+.pasos li > span { border-radius: 50%; background: #edf2f6; padding: .3rem .7rem; }
+.pasos small { display: block; color: #64748b; font-weight: 400; }
+.pasos [aria-current='step'] { border-color: #075a9b; color: #075a9b; font-weight: 700; }
+.pasos [aria-current='step'] > span { background: #075a9b; color: white; }
+fieldset { min-width: 0; padding: 0; margin: .9rem 0; border: 0; border-top: 1px solid #e2e8f0; }
+legend { padding-right: .75rem; color: #075a9b; font-weight: 600; font-size: 1rem; }
+.pie-formulario { border-top: 1px solid #e2e8f0; padding-top: 1rem; justify-content: flex-end; }
+.pie-formulario > :first-child { margin-right: auto; }
+.input[aria-invalid='true'] { border-color: #a52d2d; }
+.formulario-solicitud { max-width: 64rem; }
+.formulario-solicitud .form-field { margin-bottom: 0; }
+.formulario-solicitud .encabezado { margin: .25rem 0 .75rem; }
+.formulario-solicitud .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem 1.5rem; margin: .75rem 0; align-items: start; }
+.formulario-solicitud .programacion { grid-template-columns: repeat(2, minmax(0, 15rem)); }
+.formulario-solicitud { container-type: inline-size; }
+.secciones-principales { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.secciones-principales fieldset { border: 1px solid #dde5ec; border-radius: .6rem; padding: .75rem; margin: .5rem 0; box-sizing: border-box; }
+.secciones-principales legend { padding-inline: .35rem; }
+.formulario-solicitud .secciones-principales .form-grid { grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-block: .5rem; }
+.formulario-solicitud .secciones-principales .programacion { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.programacion label { min-height: 2.6em; }
+.programacion input[type='date'] { font-size: .85rem; padding-inline: .35rem; width: 100%; min-width: 0; }
+.secciones-principales .input { box-sizing: border-box; max-width: 100%; }
+.secciones-principales input[type='date'] { max-width: 15rem; }
+@container (max-width: 800px) { .secciones-principales { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (max-width: 520px) { .secciones-principales { grid-template-columns: minmax(0, 1fr); } }
+.actualizar-catalogos { flex-shrink: 0; gap: .5rem; }
+.pasos { max-width: 64rem; margin-block: 1rem; }
+.pasos li { padding: .75rem; }
+@media (max-width: 600px) {
+  .pasos { grid-template-columns: 1fr; }
+  .formulario-solicitud .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .actualizar-catalogos { align-self: flex-start; }
+  .pie-formulario > :first-child { margin-right: 0; }
+}

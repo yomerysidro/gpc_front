@@ -1,0 +1,232 @@
+<div class="encabezado">
+  <p class="descripcion">Los módulos forman el menú lateral; sus permisos se asignan a cada rol en sus accesos.</p>
+  <button *appHasPermission="'roles.crear'" type="button" class="btn btn-primary" (click)="abrirModulo(null)">
+    <span class="material-symbols-outlined" aria-hidden="true">add</span>
+    Nuevo módulo
+  </button>
+</div>
+
+<div role="status">
+  @if (aviso(); as aviso) {
+    <div class="alert" [class.alert-exito]="aviso.tipo === 'exito'" [class.alert-error]="aviso.tipo === 'error'">
+      <span class="material-symbols-outlined" aria-hidden="true">{{ aviso.tipo === 'exito' ? 'check_circle' : 'error' }}</span>
+      <span>{{ aviso.texto }}</span>
+    </div>
+  }
+</div>
+
+<div [attr.aria-busy]="cargando()">
+  @if (errorCarga(); as mensaje) {
+    <div class="alert alert-error" role="alert">
+      <span class="material-symbols-outlined" aria-hidden="true">error</span>
+      <span>No se pudieron cargar los módulos. {{ mensaje }}</span>
+    </div>
+  } @else if (cargando()) {
+    <p class="sr-only" role="status">Cargando módulos…</p>
+    <div class="esqueleto" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  } @else if (!modulos().length) {
+    <div class="card estado-vacio"><p>Todavía no hay módulos.</p></div>
+  } @else {
+    <div class="modulos">
+      @for (modulo of modulos(); track modulo.id) {
+        <details class="modulo" [class.registro-inactivo]="!modulo.estado">
+          <summary>
+            <span class="icono-modulo" aria-hidden="true">
+              @if (iconoValido(modulo.imagen)) {
+                <span class="material-symbols-outlined">{{ modulo.imagen }}</span>
+              }
+            </span>
+            <span class="modulo-titulo">
+              <span class="modulo-nombre">{{ modulo.nombre }}</span>
+              <span class="dato modulo-url">{{ modulo.url }}</span>
+            </span>
+            <span class="badge" [class.badge-exito]="modulo.estado" [attr.data-estado]="modulo.estado ? 'Activo' : 'Inactivo'">{{ modulo.estado ? 'Activo' : 'Inactivo' }}</span>
+            <span class="modulo-conteo">{{ modulo.permisos.length }} {{ modulo.permisos.length === 1 ? 'permiso' : 'permisos' }}</span>
+            <span class="material-symbols-outlined desplegar" aria-hidden="true">expand_more</span>
+          </summary>
+
+          <div class="modulo-cuerpo">
+            <div class="modulo-acciones">
+              <ng-container *appHasPermission="'roles.editar'">
+                <button type="button" class="btn" (click)="abrirModulo(modulo)">
+                  <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                  Editar módulo<span class="sr-only"> {{ modulo.nombre }}</span>
+                </button>
+                <button type="button" class="btn" [disabled]="procesando() === 'm' + modulo.id" (click)="cambiarEstadoModulo(modulo)">
+                  <span class="material-symbols-outlined" aria-hidden="true">{{ modulo.estado ? 'toggle_off' : 'toggle_on' }}</span>
+                  {{ modulo.estado ? 'Desactivar' : 'Activar' }}<span class="sr-only"> el módulo {{ modulo.nombre }}</span>
+                </button>
+              </ng-container>
+              <button *appHasPermission="'roles.crear'" type="button" class="btn" (click)="abrirPermiso(modulo, null)">
+                <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                Nuevo permiso<span class="sr-only"> en {{ modulo.nombre }}</span>
+              </button>
+            </div>
+
+            @if (modulo.permisos.length) {
+              <table class="table table-apilable">
+                <caption class="sr-only">Permisos de {{ modulo.nombre }}</caption>
+                <thead>
+                  <tr><th scope="col" class="col-centro col-numero">N.º</th>
+                    <th scope="col">Permiso</th>
+                    <th scope="col">Clave</th>
+                    <th scope="col" class="col-centro">Estado</th>
+                    <th *appHasPermission="'roles.editar'" scope="col" class="col-centro"><span class="sr-only">Acciones</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (permiso of modulo.permisos; track permiso.id; let numeroVisual = $index) {
+                    <tr [class.registro-inactivo]="!permiso.estado"><td class="col-centro col-numero" data-label="N.º">{{ numeroVisual + 1 }}</td>
+                      <td>{{ permiso.nombre }}</td>
+                      <td class="dato">{{ permiso.clave }}</td>
+                      <td class="col-centro"><span class="badge" [class.badge-exito]="permiso.estado" [attr.data-estado]="permiso.estado ? 'Activo' : 'Inactivo'">{{ permiso.estado ? 'Activo' : 'Inactivo' }}</span></td>
+                      <td *appHasPermission="'roles.editar'" class="col-centro">
+                        <div class="acciones">
+                          <button type="button" class="btn btn-icono btn-sin-borde" (click)="abrirPermiso(modulo, permiso)"
+                            [attr.aria-label]="'Editar permiso ' + permiso.clave" title="Editar">
+                            <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                          </button>
+                          <button type="button" class="btn btn-icono btn-sin-borde" [disabled]="procesando() === 'p' + permiso.id"
+                            (click)="cambiarEstadoPermiso(permiso)"
+                            [attr.aria-label]="(permiso.estado ? 'Desactivar permiso ' : 'Activar permiso ') + permiso.clave"
+                            [attr.title]="permiso.estado ? 'Desactivar' : 'Activar'">
+                            <span class="material-symbols-outlined" aria-hidden="true">{{ permiso.estado ? 'toggle_off' : 'toggle_on' }}</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            } @else {
+              <p class="sin-permisos">Este módulo todavía no tiene permisos.</p>
+            }
+          </div>
+        </details>
+      }
+    </div>
+  }
+</div>
+
+<app-dialogo #dialogoModulo [titulo]="moduloEditando() ? 'Editar módulo' : 'Nuevo módulo'">
+  <form [formGroup]="formModulo" (ngSubmit)="guardarModulo()" novalidate>
+    <div role="alert">
+      @if (errorDialogo(); as mensaje) {
+        <div class="alert alert-error"><span class="material-symbols-outlined" aria-hidden="true">error</span><span>{{ mensaje }}</span></div>
+      }
+    </div>
+    <div class="form-field">
+      <label for="modulo-nombre">Nombre</label>
+      <input id="modulo-nombre" class="input" type="text" formControlName="nombre" autocomplete="off" autofocus
+        aria-required="true" aria-describedby="modulo-nombre-error" [attr.aria-invalid]="!!error(formModulo.controls.nombre, 'nombre')" />
+      <div id="modulo-nombre-error" aria-live="polite">
+        @if (error(formModulo.controls.nombre, 'nombre'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+      </div>
+    </div>
+    <div class="form-field">
+      <label for="modulo-url">URL</label>
+      <!-- Con permisos, la URL es de solo lectura: el backend no permite cambiarla (409). -->
+      <input id="modulo-url" class="input dato" type="text" formControlName="url" autocomplete="off" placeholder="/reportes"
+        [readOnly]="urlBloqueada()"
+        aria-required="true" aria-describedby="modulo-url-ayuda modulo-url-error" [attr.aria-invalid]="!!error(formModulo.controls.url, 'url')" />
+      <div id="modulo-url-error" aria-live="polite">
+        @if (error(formModulo.controls.url, 'url'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+      </div>
+      <p id="modulo-url-ayuda" class="form-ayuda">
+        {{ urlBloqueada()
+          ? 'No se puede cambiar porque las claves de sus permisos dependen de ella.'
+          : 'Ruta del menú lateral. Define también el prefijo de las claves de sus permisos.' }}
+      </p>
+    </div>
+    <div class="form-field">
+      <label for="modulo-imagen">Ícono</label>
+      <div class="selector-icono">
+        <select id="modulo-imagen" class="input" formControlName="imagen" aria-describedby="modulo-imagen-ayuda">
+          <option value="">Sin ícono</option>
+          @for (icono of iconos; track icono) {
+            <option [value]="icono">{{ icono }}</option>
+          }
+        </select>
+        <span class="icono-modulo vista-previa" aria-hidden="true">
+          @if (formModulo.controls.imagen.value) {
+            <span class="material-symbols-outlined">{{ formModulo.controls.imagen.value }}</span>
+          }
+        </span>
+      </div>
+      <p id="modulo-imagen-ayuda" class="form-ayuda">Se muestra junto al nombre en el menú lateral.</p>
+    </div>
+    <div class="dialogo-acciones">
+      <button type="button" class="btn" (click)="cerrarModulo()">Cancelar</button>
+      <button type="submit" class="btn btn-primary" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+        {{ enviando() ? 'Guardando…' : moduloEditando() ? 'Guardar' : 'Crear módulo' }}
+      </button>
+    </div>
+  </form>
+</app-dialogo>
+
+<app-dialogo #dialogoPermiso [titulo]="permisoEditando() ? 'Editar permiso' : 'Nuevo permiso'">
+  <form [formGroup]="formPermiso" (ngSubmit)="guardarPermiso()" novalidate>
+    <p>Módulo: <strong>{{ moduloDelPermiso()?.nombre }}</strong></p>
+    <div role="alert">
+      @if (errorDialogo(); as mensaje) {
+        <div class="alert alert-error"><span class="material-symbols-outlined" aria-hidden="true">error</span><span>{{ mensaje }}</span></div>
+      }
+    </div>
+    <div class="form-field">
+      <label for="permiso-nombre">Nombre</label>
+      <input id="permiso-nombre" class="input" type="text" formControlName="nombre" autocomplete="off" autofocus maxlength="50"
+        aria-required="true" aria-describedby="permiso-nombre-error" [attr.aria-invalid]="!!error(formPermiso.controls.nombre, 'nombre')" />
+      <div id="permiso-nombre-error" aria-live="polite">
+        @if (error(formPermiso.controls.nombre, 'nombre'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+      </div>
+    </div>
+    <div class="form-field">
+      <label for="permiso-accion">Clave</label>
+      <!-- El prefijo "<slug>." es fijo: solo se escribe la acción. -->
+      <div class="input-con-prefijo">
+        <span id="permiso-prefijo" class="prefijo dato"><span class="sr-only">Prefijo fijo: </span>{{ prefijoClave() }}</span>
+        <input id="permiso-accion" class="input dato" type="text" formControlName="accion" autocomplete="off"
+          (input)="alEditarAccion()" aria-required="true"
+          aria-describedby="permiso-prefijo permiso-clave-ayuda permiso-clave-error"
+          [attr.aria-invalid]="!!error(formPermiso.controls.accion, 'accion', 'clave')" />
+      </div>
+      <div id="permiso-clave-error" aria-live="polite">
+        @if (error(formPermiso.controls.accion, 'accion', 'clave'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+      </div>
+      <p id="permiso-clave-ayuda" class="form-ayuda">Escribe solo la acción (p. ej. exportar). Se sugiere a partir del nombre.</p>
+    </div>
+    <div class="fila">
+      <div class="form-field">
+        <label for="permiso-valor">Valor <span class="opcional">(opcional)</span></label>
+        <input id="permiso-valor" class="input" type="text" formControlName="valor" autocomplete="off" maxlength="50"
+          aria-describedby="permiso-valor-error" [attr.aria-invalid]="!!error(formPermiso.controls.valor, 'valor')" />
+        <div id="permiso-valor-error" aria-live="polite">
+          @if (error(formPermiso.controls.valor, 'valor'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="permiso-comentario">Comentario <span class="opcional">(opcional)</span></label>
+        <input id="permiso-comentario" class="input" type="text" formControlName="comentario" autocomplete="off" maxlength="50"
+          aria-describedby="permiso-comentario-error" [attr.aria-invalid]="!!error(formPermiso.controls.comentario, 'comentario')" />
+        <div id="permiso-comentario-error" aria-live="polite">
+          @if (error(formPermiso.controls.comentario, 'comentario'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+        </div>
+      </div>
+    </div>
+    <div class="dialogo-acciones">
+      <button type="button" class="btn" (click)="cerrarPermiso()">Cancelar</button>
+      <button type="submit" class="btn btn-primary" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+        {{ enviando() ? 'Guardando…' : permisoEditando() ? 'Guardar' : 'Crear permiso' }}
+      </button>
+    </div>
+  </form>
+</app-dialogo>
+
+<app-dialogo-confirmacion
+  [titulo]="(porConfirmar()?.estado ? 'Desactivar' : 'Activar') + ' el ' + (porConfirmar()?.tipo ?? '') + ' ' + (porConfirmar()?.nombre ?? '')"
+  [texto]="porConfirmar()?.estado
+    ? (porConfirmar()?.tipo === 'módulo'
+      ? 'Dejará de aparecer en el menú de los roles que lo tienen asignado.'
+      : 'Los roles que lo tienen dejarán de poder usarlo.')
+    : 'Volverá a estar disponible para los roles que lo tienen asignado.'"
+  [confirmar]="porConfirmar()?.estado ? 'Desactivar' : 'Activar'" />

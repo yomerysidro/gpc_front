@@ -1,0 +1,85 @@
+{
+  "fecha": "2026-11-17T05:12:52.618Z",
+  "fuente": {
+    "servidor": "http://localhost:4200/",
+    "chunks": 70,
+    "componentes": [
+      {
+        "archivo": "chunk-JHQQRLFI.js",
+        "editorActual": false,
+        "consultaLigera": false,
+        "avisoAntiguo": false,
+        "permisoAdministrativo": false
+      },
+      {
+        "archivo": "chunk-QKIJSG72.js",
+        "editorActual": true,
+        "consultaLigera": true,
+        "avisoAntiguo": false,
+        "permisoAdministrativo": true
+      }
+    ]
+  },
+  "visual": {
+    "paginas": [
+      {
+        "solicitada": "certificaciones/generar-emitir?origen_documental=reconocimiento",
+        "ruta": "/login?returnUrl=%2Fcertificaciones%2Fgenerar-emitir%3Forigen_documental%3Dreconocimiento",
+        "titulo": "Sistema de Certificados - Municipalidad de Morales",
+        "listo": "complete",
+        "encabezados": [
+          "Iniciar sesión"
+        ],
+        "login": true,
+        "editor": false,
+        "editable": false,
+        "avisoAntiguo": false,
+        "captura": "municipales-real-listado.png"
+      },
+      {
+        "solicitada": "certificaciones/generar-emitir/reconocimientos/individual/28",
+        "ruta": "/login?returnUrl=%2Fcertificaciones%2Fgenerar-emitir%2Freconocimientos%2Findividual%2F28",
+        "titulo": "Sistema de Certificados - Municipalidad de Morales",
+        "listo": "complete",
+        "encabezados": [
+          "Iniciar sesión"
+        ],
+        "login": true,
+        "editor": false,
+        "editable": false,
+        "avisoAntiguo": false,
+        "captura": "municipales-real-mensaje-28.png"
+      },
+      {
+        "solicitada": "certificaciones/generar-emitir/reconocimientos/documento-original/24",
+        "ruta": "/login?returnUrl=%2Fcertificaciones%2Fgenerar-emitir%2Freconocimientos%2Fdocumento-original%2F24",
+        "titulo": "Sistema de Certificados - Municipalidad de Morales",
+        "listo": "complete",
+        "encabezados": [
+          "Iniciar sesión"
+        ],
+        "login": true,
+        "editor": false,
+        "editable": false,
+        "avisoAntiguo": false,
+        "captura": "municipales-real-documento-24.png"
+      }
+    ],
+    "respuestas": [
+      {
+        "ruta": "/api/auth/me",
+        "http": 401
+      },
+      {
+        "ruta": "/api/auth/me",
+        "http": 401
+      },
+      {
+        "ruta": "/api/auth/me",
+        "http": 401
+      }
+    ]
+  },
+  "integracionAutenticada": false,
+  "nota": "No se simulan autenticación ni respuestas de Laravel; las redirecciones a login se reportan como bloqueo, no como validación del módulo."
+}

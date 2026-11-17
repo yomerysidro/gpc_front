@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/dialogo/dialogo.component.scss"],
+  "sourcesContent": [":host {\r\n  display: contents;\r\n}\r\n.con-cierre { padding-right: 2.5rem; }\r\n.dialogo-cerrar { position: absolute; top: .75rem; right: .75rem; display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border: 0; border-radius: var(--radio-sm); background: var(--neutro-50); color: var(--color-primario); cursor: pointer; svg { width: 1.25rem; fill: none; stroke: currentColor; stroke-width: 2; } &:hover { background: var(--color-primario-claro); } &:focus-visible { outline: 3px solid var(--color-primario); } }\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;;AAEF,CAAA;AAAc,iBAAA;;AACd,CAAA;AAAkB,YAAA;AAAoB,OAAA;AAAa,SAAA;AAAe,WAAA;AAAe,eAAA;AAAqB,SAAA;AAAe,UAAA;AAAgB,UAAA;AAAW,iBAAA,IAAA;AAAgC,cAAA,IAAA;AAA8B,SAAA,IAAA;AAA8B,UAAA;;AAAiB,CAA7P,eAA6P;AAAM,SAAA;AAAgB,QAAA;AAAY,UAAA;AAAsB,gBAAA;;AAAmB,CAAxU,cAAwU;AAAU,cAAA,IAAA;;AAA2C,CAA7X,cAA6X;AAAkB,WAAA,IAAA,MAAA,IAAA;;",
+  "names": []
+}
