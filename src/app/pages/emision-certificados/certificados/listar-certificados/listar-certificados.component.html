@@ -30,7 +30,7 @@
       </div>
       <footer>@if (seleccionable()) { <button class="btn btn-primary" type="button" (click)="seleccionar(item)">Seleccionar certificado</button> }
       <a class="btn btn-consulta" [routerLink]="['/certificaciones/certificados', item.registro.id_certificado]">Ver detalle e historial</a>
-      @if (auth.tienePermiso('emision.editar') && !item.documentos.length && !item.errorDocumentos) { <a class="btn" [routerLink]="['/certificaciones/certificados', item.registro.id_certificado, 'editar']">Editar</a> } </footer>
+      @if (auth.tienePermiso('emision.editar') && !item.documentos.length && !item.errorDocumentos) { <a class="btn btn-icono" [routerLink]="['/certificaciones/certificados', item.registro.id_certificado, 'editar']" aria-label="Editar" title="Editar"><span class="material-symbols-outlined" aria-hidden="true" data-icon="edit"></span><span class="sr-only">Editar</span></a> } </footer>
     </article>
   }
   </div>

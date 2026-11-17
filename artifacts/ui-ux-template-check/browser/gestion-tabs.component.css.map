@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/gestion-tabs/gestion-tabs.component.scss"],
+  "sourcesContent": [":host { display: block; min-width: 0; }\r\n.pestanas { max-width: 100%; overflow-x: auto; }\r\n[role='tab'] { flex-shrink: 0; }\r\n"],
+  "mappings": ";AAAA;AAAQ,WAAA;AAAgB,aAAA;;AACxB,CAAA;AAAY,aAAA;AAAiB,cAAA;;AAC7B,CAAA;AAAe,eAAA;;",
+  "names": []
+}

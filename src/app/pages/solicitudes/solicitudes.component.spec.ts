@@ -78,16 +78,17 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
     expect(error instanceof IntegracionSolicitudesPendiente).toBeTrue(); expect(gateway.listar).not.toHaveBeenCalled(); http.expectNone(() => true);
   });
 
-  it('Mis solicitudes separa siete columnas y abre el detalle con el ojo sin mostrar datos de revisión', async () => {
+  it('Mis solicitudes separa el correlativo y el número de solicitud y abre el detalle con el ojo', async () => {
     configurar(); gateway.listar.and.returnValue(of({ ...pagina, registros: [{ ...solicitud, id: '1', idSolicitudActividad: 1, numero: 'Solicitud 1' }] }));
     await navegar('/solicitudes/mis-solicitudes');
-    expect(Array.from(vista().querySelectorAll('thead th'), celda => celda.textContent?.trim())).toEqual(['N°', 'Actividad', 'Área solicitante', 'Responsable', 'Fecha', 'Estado', 'Acciones']);
+    expect(Array.from(vista().querySelectorAll('thead th'), celda => celda.textContent?.trim())).toEqual(['N.º', 'Solicitud', 'Actividad', 'Área solicitante', 'Responsable', 'Fecha', 'Estado', 'Acciones']);
     const celdas = vista().querySelectorAll('tbody tr:first-child > td');
-    expect(celdas.length).toBe(7); expect(celdas[0].textContent?.trim()).toBe('1');
-    expect(celdas[1].textContent?.trim()).toBe(solicitud.nombre); expect(celdas[2].textContent?.trim()).toBe(solicitud.area);
-    expect(celdas[3].textContent?.trim()).toBe(solicitud.responsable); expect(celdas[4].textContent?.trim()).toBe('02/11/2026');
-    expect(celdas[5].textContent?.trim()).toBe(solicitud.estado); expect(vista().querySelector('tbody')?.textContent).not.toContain(solicitud.revisor!);
-    expect(celdas[6].querySelector('[aria-label="Ver detalle"] .material-symbols-outlined')?.textContent).toBe('visibility');
+    expect(celdas.length).toBe(8); expect(celdas[0].textContent?.trim()).toBe('1');
+    expect(celdas[1].textContent?.trim()).toBe('1');
+    expect(celdas[2].textContent?.trim()).toBe(solicitud.nombre); expect(celdas[3].textContent?.trim()).toBe(solicitud.area);
+    expect(celdas[4].textContent?.trim()).toBe(solicitud.responsable); expect(celdas[5].textContent?.trim()).toBe('02/11/2026');
+    expect(celdas[6].textContent?.trim()).toBe(solicitud.estado); expect(vista().querySelector('tbody')?.textContent).not.toContain(solicitud.revisor!);
+    expect(celdas[7].querySelector('[aria-label="Ver detalle"] .material-symbols-outlined')?.textContent).toBe('visibility');
     await pulsar('Ver detalle'); expect(gateway.detalle).toHaveBeenCalledWith('1', false);
     expect(vista().querySelector('app-solicitud-detalle')?.textContent).toContain(solicitud.revisor!);
   });

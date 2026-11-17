@@ -24,7 +24,7 @@
     </section>
   </div>
     <footer>
-      <button class="btn btn-consulta" type="button" (click)="consultar.emit()">Ver detalle</button>
+      <button class="btn btn-consulta btn-icono" type="button" (click)="consultar.emit()" aria-label="Ver detalle" title="Ver detalle"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver detalle</span></button>
       @if (puedeEditar()) { <button class="btn" type="button" [disabled]="ocupado()" (click)="administrar.emit()">Administrar credencial</button> }
       @if (puedeEliminar()) { <button class="btn btn-danger" type="button" [disabled]="ocupado()" (click)="eliminar.emit()">Eliminar registro</button> }
     </footer>

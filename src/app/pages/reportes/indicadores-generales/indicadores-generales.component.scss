@@ -1,5 +1,6 @@
 @use '../reportes';
 @include reportes.base;
+@include reportes.filtros;
 
 .tarjetas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .tarjeta { --acento: #2563eb; --suave: #eff6ff; border-top: 3px solid var(--acento); }
@@ -16,3 +17,9 @@
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
 @container (max-width: 1050px) { .tarjetas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @container (max-width: 560px) { .tarjetas { grid-template-columns: 1fr; } }
+.series { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 28px; }
+.tabla-serie { width: 100%; border-collapse: collapse; font-size: .85rem; text-align: left; }
+.tabla-serie caption { text-align: left; padding: 10px 0; }
+.tabla-serie :is(th, td) { padding: 8px; border-bottom: 1px solid #e8eef5; }
+.pista { width: 55%; }
+.barra { display: block; height: 12px; background: #075a9b; border-radius: 3px; }

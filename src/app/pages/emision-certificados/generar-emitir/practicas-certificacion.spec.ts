@@ -121,6 +121,7 @@ describe('Asistente de prácticas: continuidad y envío explícito', () => {
     beneficiario: { id_persona: 4 }, estado_certificado: 'PREPARADO', facultades: { remitir: true } };
   beforeEach(() => {
     docs = jasmine.createSpyObj('Documentos', ['revisarOrigen', 'guardarOrigen', 'consultarPractica', 'archivo', 'obtenerRevisionEnvio', 'confirmarEnvio']);
+    revision.expiresAt = new Date(Date.now() + 60000).toISOString();
     docs.revisarOrigen.and.returnValue(of(revision)); docs.guardarOrigen.and.returnValue(of(documento));
     docs.consultarPractica.and.returnValue(of(documento)); docs.archivo.and.returnValue(of(archivo));
     docs.obtenerRevisionEnvio.and.returnValue(of(revision));

@@ -28,17 +28,17 @@
       <div class="tabla-caja" role="region" [attr.aria-label]="'Tabla de ' + titulo()" tabindex="0">
         <table class="table">
           <caption class="sr-only">{{ titulo() }}</caption>
-          <thead><tr>
-            @for (columna of columnas(); track columna.clave) { <th scope="col">{{ encabezadoNumerado() && columna.clave === clavePrimaria() && columna.etiqueta === 'ID' ? 'Nº' : columna.etiqueta }}</th> }
-            <th scope="col">Acciones</th>
+          <thead><tr><th scope="col" class="col-numero">N.º</th>
+            @for (columna of columnas(); track columna.clave) { <th scope="col" [class.col-centro]="columna.formato === 'fecha' || columna.formato === 'booleano' || columna.clave === clavePrimaria()">{{ columna.etiqueta }}</th> }
+            <th scope="col" class="col-centro">Acciones</th>
           </tr></thead>
           <tbody>
-            @for (registro of filtrados(); track registro[clavePrimaria()]) {
-              <tr>
+            @for (registro of filtrados(); track registro[clavePrimaria()]; let numeroVisual = $index) {
+              <tr><td class="col-numero" data-label="N.º">{{ numeroVisual + 1 }}</td>
                 @for (columna of columnas(); track columna.clave) {
-                  <td [attr.data-label]="columna.etiqueta">
+                  <td [attr.data-label]="columna.etiqueta" [class.col-centro]="columna.formato === 'fecha' || columna.formato === 'booleano' || columna.clave === clavePrimaria()">
                     @if (columna.formato === 'booleano') {
-                      <span class="badge" [class.badge-exito]="registro[columna.clave] === true">{{ mostrar(registro, columna) }}</span>
+                      <span class="badge" [class.badge-exito]="registro[columna.clave] === true" [attr.data-estado]="mostrar(registro, columna)">{{ mostrar(registro, columna) }}</span>
                     } @else { {{ mostrar(registro, columna) }} }
                   </td>
                 }
@@ -47,15 +47,13 @@
    @if (practicaFinalizada(registro)) { <span>Finalizado</span> }
    @else { <button type="button" class="btn" [disabled]="!puede('editar') || finalizandoPractica() !== null" (click)="finalizarPractica(registro)">{{ finalizandoPractica() === registro['id_practica'] ? 'Finalizando…' : 'Finalizar práctica' }}</button> }
  }
-                  <button type="button" class="btn" [disabled]="!puede('ver') || guardando()" (click)="ver(registro)" [attr.aria-label]="'Ver registro ' + registro[clavePrimaria()]">
-                    <span class="material-symbols-outlined" aria-hidden="true">visibility</span>Ver
-                  </button>
-                  <button type="button" class="btn" [disabled]="!puede('editar') || guardando()" (click)="abrirFormulario('editar', registro)">Editar</button>
-                  <button type="button" class="btn" [disabled]="!puede('eliminar') || guardando()" (click)="solicitarEliminar(registro)">Eliminar</button>
+                  <button type="button" class="btn btn-icono" [disabled]="!puede('ver') || guardando()" (click)="ver(registro)" [attr.aria-label]="'Ver registro ' + registro[clavePrimaria()]" title="Ver"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver</span></button>
+                  <button type="button" class="btn btn-icono" [disabled]="!puede('editar') || guardando()" (click)="abrirFormulario('editar', registro)" aria-label="Editar" title="Editar"><span class="material-symbols-outlined" aria-hidden="true" data-icon="edit"></span><span class="sr-only">Editar</span></button>
+                  <button type="button" class="btn btn-icono" [disabled]="!puede('eliminar') || guardando()" (click)="solicitarEliminar(registro)" aria-label="Eliminar" title="Eliminar"><span class="material-symbols-outlined" aria-hidden="true" data-icon="delete"></span><span class="sr-only">Eliminar</span></button>
                 </div></td>
               </tr>
             } @empty {
-              <tr><td [attr.colspan]="columnas().length + 1" class="estado" role="status">
+              <tr><td [attr.colspan]="columnas().length + 2" class="estado" role="status">
                 @if (!puede('ver')) { No tienes acceso autorizado a este listado. }
                 @else if (errorCarga()) { No hay datos disponibles para mostrar. }
                 @else if (!registros().length) { No hay registros disponibles. }

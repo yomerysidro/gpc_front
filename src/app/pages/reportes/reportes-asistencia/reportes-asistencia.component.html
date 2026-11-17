@@ -1,14 +1,36 @@
 <section class="reporte">
-  <header><p class="eyebrow">GESTIÓN MUNICIPAL · REPORTES</p><h1>Reportes de asistencia</h1><span class="etiqueta">En desarrollo · requiere backend</span><p class="subtitulo">El reporte por actividad y sesión todavía no cuenta con una consulta acotada.</p></header>
-  <aside class="aviso"><span class="material-symbols-outlined" aria-hidden="true">warning</span><h2>Datos no disponibles para este reporte</h2><p>Los endpoints actuales de actividades, sesiones y asistencias devuelven listas completas sin filtros ni paginación. Para proteger el rendimiento y el alcance de datos, esta pantalla no descarga esas listas ni muestra una tabla vacía como resultado de una consulta real.</p></aside>
-  <form class="panel filtros" (ngSubmit)="consultar()">
-    <h2><span class="material-symbols-outlined" aria-hidden="true">tune</span>Filtros de consulta</h2>
-    <label>Actividad<select disabled aria-describedby="dependencia-asistencia"><option>Requiere selector paginado del backend</option></select></label>
-    <label>Sesión<select disabled aria-describedby="dependencia-asistencia"><option>Requiere sesiones filtradas por actividad</option></select></label>
-    <label>Fecha de sesión desde<input type="date" name="inicio" [(ngModel)]="inicio"></label>
-    <label>Fecha de sesión hasta<input type="date" name="fin" [(ngModel)]="fin"></label>
-    <div class="acciones"><button class="btn btn-primario" type="submit"><span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>Consultar</button><button class="btn btn-neutro" type="button" (click)="limpiar()"><span class="material-symbols-outlined" aria-hidden="true">toggle_off</span>Limpiar filtros</button><button class="btn btn-secundario" type="button" (click)="consultar()"><span class="material-symbols-outlined" aria-hidden="true">tune</span>Actualizar</button><button class="btn btn-secundario" type="button" disabled>CSV no disponible</button></div>
+  <header><p class="eyebrow">REPORTES</p><h1>Asistencia</h1></header>
+  <form class="panel filtros filtros-compactos" (ngSubmit)="consultar()" aria-label="Buscar asistencias">
+    <label class="campo-busqueda">Buscar asistencia<div class="buscador"><span class="material-symbols-outlined" aria-hidden="true">search</span><input type="search" name="busqueda" [(ngModel)]="busqueda" maxlength="100" [disabled]="cargando() || exportando()" placeholder="Participante, actividad o sesión"></div></label>
+    @if (auth.tienePermiso('actividades.ver')) {
+      <label>Actividad<select name="actividad" [(ngModel)]="actividad" (ngModelChange)="seleccionarActividad()" [disabled]="cargando() || exportando() || cargandoActividades() || cargandoSesiones()"><option value="">Todas las actividades</option>@for (opcion of opcionesActividades(); track opcion.id_actividad) { <option [value]="opcion.id_actividad">{{ opcion.nombre }}</option> }</select></label>
+      @if (actividades(); as opciones) { @if (opciones.last_page > 1) { <div class="catalogo-paginacion"><small>Actividades {{ opciones.current_page }} de {{ opciones.last_page }}</small><button type="button" class="btn" (click)="cargarActividades(opciones.current_page - 1)" [disabled]="opciones.current_page <= 1 || cargandoActividades()">Anteriores</button><button type="button" class="btn" (click)="cargarActividades(opciones.current_page + 1)" [disabled]="opciones.current_page >= opciones.last_page || cargandoActividades()">Más actividades</button></div> } }
+      @if (errorCatalogo()) { <p class="error" role="alert">{{ errorCatalogo() }} <button type="button" class="btn" (click)="cargarActividades()">Reintentar actividades</button></p> }
+    }
+    <label>Estado<input name="estado" [(ngModel)]="estado" maxlength="40" placeholder="Todos los estados" [disabled]="cargando() || exportando()" list="estados-asistencia"><datalist id="estados-asistencia"><option value="PRESENTE"></option><option value="AUSENTE"></option><option value="JUSTIFICADO"></option></datalist></label>
+    <button class="btn btn-primario btn-buscar" type="submit" [disabled]="cargando() || exportando() || cargandoSesiones()">{{ cargando() ? 'Consultando…' : 'Consultar' }}</button>
+    @if (actividad) { <label class="sesion-contextual">Sesión<select name="sesion" [(ngModel)]="sesion" (ngModelChange)="seleccionarSesion()" [disabled]="cargandoSesiones() || cargando() || exportando()"><option value="">Todas las sesiones</option>@for (opcion of opcionesSesiones(); track opcion.id_actividad_sesion) { <option [value]="opcion.id_actividad_sesion">{{ opcion.nombre }}</option> }</select></label> }
+    @if (sesiones(); as opciones) { @if (opciones.last_page > 1) { <div class="catalogo-paginacion"><small>Sesiones {{ opciones.current_page }} de {{ opciones.last_page }}</small><button type="button" class="btn" (click)="cargarSesiones(opciones.current_page - 1)" [disabled]="opciones.current_page <= 1 || cargandoSesiones()">Anteriores</button><button type="button" class="btn" (click)="cargarSesiones(opciones.current_page + 1)" [disabled]="opciones.current_page >= opciones.last_page || cargandoSesiones()">Más sesiones</button></div> } }
+    @if (cargandoSesiones()) { <p role="status">Cargando sesiones…</p> }
+    @if (errorSesiones()) { <p class="error" role="alert">{{ errorSesiones() }} <button type="button" class="btn" (click)="cargarSesiones()">Reintentar sesiones</button></p> }
   </form>
-  @if (mensaje()) { <p class="aviso" role="status">{{ mensaje() }}</p> }
-  <section class="panel" id="dependencia-asistencia"><h2>Qué necesita la consulta</h2><p>Una lista paginada de actividades por nombre, sesiones de la actividad seleccionada y registros de asistencia con nombre del participante, fecha de sesión, entrada, salida y estado real.</p><p>No se calculan ausencias ni porcentajes. Se requiere confirmar qué participaciones se esperan por sesión y cómo se trata su vigencia, las cancelaciones y los estados. La falta de una marca no equivale por sí sola a ausencia.</p><p>Una vez confirmada esa regla: porcentaje de asistencia = personas esperadas con asistencia válida ÷ personas esperadas × 100. Con denominador cero debe mostrarse «No aplicable».</p></section>
+  @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+  @if (cargando()) { <p class="estado" role="status">Consultando asistencias…</p> }
+  @if (pagina(); as resultado) {
+    <section class="panel" aria-label="Resultado del reporte">
+      <div class="encabezado-resultados">
+        <h2>Resultados de asistencia</h2>
+        @if (auth.tienePermiso('reportes.exportar')) { <button class="btn btn-exportar" (click)="exportar()" [disabled]="!resultado.total || exportando()"><span class="material-symbols-outlined" aria-hidden="true">download</span>{{ exportando() ? 'Exportando…' : 'Exportar CSV' }}</button> }
+      </div>
+      <div class="resumen-asistencia" aria-label="Resumen de asistencia">
+        <article class="indicador-asistencia"><span class="icono-resumen material-symbols-outlined" aria-hidden="true">fact_check</span><div><span class="etiqueta-resumen">Asistencias</span><strong>{{ resultado.total }}</strong></div></article>
+        <article class="indicador-asistencia"><span class="icono-resumen material-symbols-outlined" aria-hidden="true">group</span><div><span class="etiqueta-resumen">Personas</span><strong>{{ resultado.resumen['personas_unicas'] }}</strong></div></article>
+        <article class="indicador-asistencia"><span class="icono-resumen material-symbols-outlined" aria-hidden="true">how_to_reg</span><div><span class="etiqueta-resumen">Presentes</span><strong>{{ resultado.resumen['presentes'] }}</strong></div></article>
+      </div>
+      @if (errorExportacion()) { <p class="error" role="alert">{{ errorExportacion() }}</p> }
+      @if (!resultado.data.length) { <p class="estado" role="status">No hay asistencias para esta consulta.</p> }
+      @else { <div class="tabla" tabindex="0" role="region" aria-label="Tabla de asistencias"><table><caption>Asistencias · página {{ resultado.current_page }} de {{ resultado.last_page }}</caption><thead><tr><th scope="col">Código</th><th scope="col">Participante</th><th scope="col">Actividad</th><th scope="col">Sesión</th><th scope="col">Fecha</th><th scope="col">Entrada</th><th scope="col">Salida</th><th scope="col">Estado</th></tr></thead><tbody>@for (fila of resultado.data; track fila.id_asistencia) { <tr><td>{{ fila.id_asistencia }}</td><td>{{ fila.participante || 'Sin nombre registrado' }}</td><td>{{ fila.actividad }}</td><td>{{ fila.sesion }}</td><td>{{ fila.fecha_sesion }}</td><td>{{ fila.hora_entrada || '—' }}</td><td>{{ fila.hora_salida || '—' }}</td><td><span class="badge" [class.badge-exito]="fila.estado === 'PRESENTE'">{{ fila.estado }}</span></td></tr> }</tbody></table></div> }
+      <div class="paginacion"><span>Página {{ resultado.current_page }} de {{ resultado.last_page }} · {{ resultado.total }} registros</span><div class="acciones"><button class="btn" (click)="cargar(resultado.current_page - 1)" [disabled]="resultado.current_page <= 1 || exportando()">Anterior</button><button class="btn" (click)="cargar(resultado.current_page + 1)" [disabled]="resultado.current_page >= resultado.last_page || exportando()">Siguiente</button></div></div>
+    </section>
+  }
 </section>

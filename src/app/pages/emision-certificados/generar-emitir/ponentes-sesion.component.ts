@@ -25,10 +25,10 @@ import { Router } from '@angular/router';
         <p class="sin-ponentes" role="status">No hay ponentes asignados</p>
       } @else {
         <div class="tabla"><table class="table"><caption class="sr-only">Ponentes vinculados a esta sesión</caption>
-          <thead><tr><th>Ponente</th><th>Actividad</th><th>Sesión acreditada</th><th>Elegibilidad</th><th>Preparación</th><th>Acción</th></tr></thead>
+          <thead><tr><th scope="col" class="col-numero">N.º</th><th>Ponente</th><th>Actividad</th><th>Sesión acreditada</th><th>Elegibilidad</th><th>Preparación</th><th>Acción</th></tr></thead>
           <tbody>
-            @for (p of d.ponentes_sesion; track p.id_actividad_ponente) {
-              <tr>
+            @for (p of d.ponentes_sesion; track p.id_actividad_ponente; let numeroVisual = $index) {
+              <tr><td class="col-numero">{{ numeroVisual + 1 }}</td>
                 <th scope="row">{{ nombre(p) }}
                   @if (p.cargo || p.institucion) { <small>{{ p.cargo || '' }}{{ p.cargo && p.institucion ? ' · ' : '' }}{{ p.institucion || '' }}</small> }
                 </th>

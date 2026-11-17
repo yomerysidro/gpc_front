@@ -1,8 +1,9 @@
 import { afterNextRender, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
 import { catchError, forkJoin, map, of } from 'rxjs';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
-import { IndicadorRegistrado, ReportesService } from '../../../core/services/reportes/reportes.service';
+import { IndicadorRegistrado, ReportesService, SerieMensual } from '../../../core/services/reportes/reportes.service';
 import { descargarCsv, mensajeReporte } from '../reportes.utils';
 
 type TarjetaIndicador = {
@@ -12,7 +13,7 @@ type TarjetaIndicador = {
 };
 
 @Component({
-  selector: 'app-indicadores-generales', standalone: true,
+  selector: 'app-indicadores-generales', standalone: true, imports: [FormsModule],
   templateUrl: './indicadores-generales.component.html', styleUrl: './indicadores-generales.component.scss',
 })
 export class IndicadoresGeneralesComponent {
@@ -21,6 +22,11 @@ export class IndicadoresGeneralesComponent {
   readonly auth = inject(AuthService);
   readonly cargando = signal(false);
   readonly consultado = signal(false);
+  anio = new Date().getFullYear();
+  readonly cargandoSeries = signal(false);
+  readonly errorAnio = signal('');
+  readonly series = signal<readonly { nombre: string; datos: SerieMensual | null; error: string }[]>([]);
+  readonly meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   private readonly definiciones = [
     { clave: 'actividades', nombre: 'Actividades registradas', permiso: 'actividades.ver', icono: 'event', regla: 'Total de registros de certificado.actividad, todos los estados y fechas; cada actividad cuenta una vez.' },
     { clave: 'certificados', nombre: 'Certificados registrados', permiso: 'emision.ver', icono: 'workspace_premium', regla: 'Total de registros de certificado.certificado, todos los estados y fechas. No exige documento generado, firma ni entrega y no cuenta documentos de reemisión.' },
@@ -55,6 +61,27 @@ export class IndicadoresGeneralesComponent {
 
   limpiar(): void {
     if (!this.cargando()) { this.indicadores.set(this.tarjetasIniciales()); this.consultado.set(false); }
+  }
+
+  cargarSeries(): void {
+    if (this.cargandoSeries()) return;
+    this.errorAnio.set(''); this.series.set([]);
+    if (!Number.isInteger(this.anio) || this.anio < 1900 || this.anio > 2100) { this.errorAnio.set('Ingresa un año entre 1900 y 2100.'); return; }
+    const definiciones = [
+      { clave: 'actividades' as const, permiso: 'actividades.ver', nombre: 'Actividades por fecha de inicio' },
+      { clave: 'certificados' as const, permiso: 'emision.ver', nombre: 'Certificados por fecha de emisión registrada' },
+    ].filter(item => this.auth.tienePermiso('reportes.ver') && this.auth.tienePermiso(item.permiso));
+    if (!definiciones.length) { this.errorAnio.set('No tienes permisos para consultar las series de actividades o certificados.'); return; }
+    this.cargandoSeries.set(true);
+    forkJoin(definiciones.map(item => this.servicio.serie(item.clave, this.anio).pipe(
+      map(datos => ({ nombre: item.nombre, datos, error: '' })),
+      catchError(error => of({ nombre: item.nombre, datos: null, error: mensajeReporte(error) })),
+    ))).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(series => { this.series.set(series); this.cargandoSeries.set(false); });
+  }
+
+  anchoBarra(serie: SerieMensual, total: number): number {
+    const maximo = Math.max(...serie.meses.map(mes => mes.total));
+    return maximo ? total / maximo * 100 : 0;
   }
 
   puedeExportar(): boolean { return !this.cargando() && this.indicadores().some(item => item.estado === 'exito'); }

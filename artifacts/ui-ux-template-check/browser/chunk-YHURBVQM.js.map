@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/page-title/page-title.component.ts", "src/app/shared/components/page-title/page-title.component.html"],
+  "sourcesContent": ["import { Component, input } from '@angular/core';\n\n\n@Component({\n  selector: 'app-page-title',\n  standalone: true,\n  imports: [],\n  templateUrl: './page-title.component.html',\n  styleUrl: './page-title.component.scss',\n})\nexport class PageTitleComponent {\n  readonly title = input.required<string>();\n}\n", "<h1>{{ title() }}</h1>\n"],
+  "mappings": ";;;;;;;;;;;;;AAUM,IAAO,qBAAP,MAAO,oBAAkB;EACpB,QAAQ,MAAM,SAAQ;;qCADpB,qBAAkB;EAAA;yEAAlB,qBAAkB,WAAA,CAAA,CAAA,gBAAA,CAAA,GAAA,QAAA,EAAA,OAAA,CAAA,GAAA,OAAA,EAAA,GAAA,YAAA,MAAA,UAAA,CAAA,6BAAA,GAAA,OAAA,GAAA,MAAA,GAAA,UAAA,SAAA,4BAAA,IAAA,KAAA;AAAA,QAAA,KAAA,GAAA;ACV/B,MAAA,yBAAA,GAAA,IAAA;AAAI,MAAA,iBAAA,CAAA;AAAa,MAAA,uBAAA;;;AAAb,MAAA,oBAAA;AAAA,MAAA,4BAAA,IAAA,MAAA,CAAA;;;;;6EDUS,oBAAkB,EAAA,WAAA,sBAAA,UAAA,qEAAA,YAAA,GAAA,CAAA;AAAA,GAAA;",
+  "names": []
+}

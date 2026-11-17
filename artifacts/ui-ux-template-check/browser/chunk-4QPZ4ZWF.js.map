@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/components/sidebar/catalogos-configuracion.ts"],
+  "sourcesContent": ["/** Capacidades existentes de cada catálogo; agruparlos no concede nuevos permisos. */\r\nexport const CATALOGOS_INSTITUCIONALES = [\r\n  { id: 'areas', etiqueta: 'Áreas municipales', permiso: 'areas.ver' },\r\n  { id: 'tipos-documento', etiqueta: 'Tipos de documento', permiso: 'tipos-documento.ver' },\r\n  { id: 'instituciones', etiqueta: 'Instituciones', permiso: 'instituciones.ver' },\r\n] as const;\r\n\r\nexport const CATALOGOS_CLASIFICACIONES = [\r\n  { id: 'tipos-actividad', etiqueta: 'Tipos de actividad', permiso: 'actividades.ver' },\r\n  { id: 'tipos-participacion', etiqueta: 'Tipos de participación', permiso: 'participantes.ver' },\r\n  { id: 'tipos-certificado', etiqueta: 'Tipos de certificado', permiso: 'emision.ver' },\r\n] as const;\r\n"],
+  "mappings": ";AACO,IAAM,4BAA4B;EACvC,EAAE,IAAI,SAAS,UAAU,wBAAqB,SAAS,YAAW;EAClE,EAAE,IAAI,mBAAmB,UAAU,sBAAsB,SAAS,sBAAqB;EACvF,EAAE,IAAI,iBAAiB,UAAU,iBAAiB,SAAS,oBAAmB;;AAGzE,IAAM,4BAA4B;EACvC,EAAE,IAAI,mBAAmB,UAAU,sBAAsB,SAAS,kBAAiB;EACnF,EAAE,IAAI,uBAAuB,UAAU,6BAA0B,SAAS,oBAAmB;EAC7F,EAAE,IAAI,qBAAqB,UAAU,wBAAwB,SAAS,cAAa;;",
+  "names": []
+}

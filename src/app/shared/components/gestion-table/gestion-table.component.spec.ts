@@ -94,7 +94,8 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
     expect(componente.nombreRelacion({ id_persona: 2 }, 'id_persona')).toBe('Persona del test');
     expect(componente.nombreRelacion({ id_area: 4 }, 'id_area')).toBe('Registro');
     expect(componente.nombreRelacion({ id_practica: 9, codigo: 'P01' }, 'id_practica')).toBe('P01');
-    expect(vista().querySelector('tbody td')?.textContent?.trim()).toBe('7');
+    expect(vista().querySelector('tbody td.col-numero')?.textContent?.trim()).toBe('1');
+    expect(vista().querySelector('tbody td:nth-child(2)')?.textContent?.trim()).toBe('7');
   });
 
   it('lista, filtra y conecta Ver al detalle real del servicio', () => {

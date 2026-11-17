@@ -46,7 +46,7 @@ export class LoginComponent {
         this.enviando.set(false);
 
         if (resultado.tipo === 'exito') {
-          void this.router.navigateByUrl(this.destino());
+          void this.router.navigateByUrl(this.destino(), { info: { inicioSesionExitoso: true } });
         } else {
           this.resultado.set(resultado);
         }

@@ -19,7 +19,9 @@ describe('Reportes: CSV, fechas y estados reales', () => {
   it('no transforma el booleano de certificados en emitido, pendiente o anulado', () => {
     expect(estadoCertificado(true)).toBe('Activo');
     expect(estadoCertificado('0')).toBe('Inactivo');
-    expect(estadoCertificado('ANULADO')).toBe('Estado no reconocido');
+    expect(estadoCertificado('ANULADO')).toBe('Anulado');
+    expect(estadoCertificado('FIRMADO')).toBe('Firmado');
+    expect(estadoCertificado('Estado histórico')).toBe('Estado histórico');
   });
   it('diferencia sesión vencida, autorización y errores del servidor', () => {
     expect(mensajeReporte(new HttpErrorResponse({ status: 401 }))).toContain('sesión venció');

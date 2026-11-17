@@ -68,28 +68,28 @@
         <table class="table">
           <caption class="sr-only">Usuarios del sistema</caption>
           <thead>
-            <tr>
+            <tr><th scope="col" class="col-centro col-numero">N.º</th>
               <th scope="col">Nombre</th>
               <th scope="col">DNI</th>
               <th scope="col">Correo</th>
               <th scope="col">Rol</th>
-              <th scope="col">Estado</th>
+              <th scope="col" class="col-centro">Estado</th>
               <th scope="col">Último acceso</th>
-              <th *appHasPermission="'usuarios.editar'" scope="col"><span class="sr-only">Acciones</span></th>
+              <th *appHasPermission="'usuarios.editar'" scope="col" class="col-centro"><span class="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody>
-            @for (usuario of usuarios(); track usuario.id) {
-              <tr [class.registro-inactivo]="!usuario.estado">
+            @for (usuario of usuarios(); track usuario.id; let numeroVisual = $index) {
+              <tr [class.registro-inactivo]="!usuario.estado"><td class="col-centro col-numero" data-label="N.º">{{ ((meta()?.page ?? 1) - 1) * (meta()?.perPage ?? 0) + numeroVisual + 1 }}</td>
                 <td class="nombre">{{ usuario.nombre }}</td>
                 <td class="dato">{{ usuario.dni }}</td>
                 <td class="correo">{{ usuario.correo }}</td>
                 <td>{{ usuario.rol?.nombre ?? 'Sin rol' }}</td>
-                <td><ng-container *ngTemplateOutlet="estado; context: { $implicit: usuario }" /></td>
+                <td class="col-centro"><ng-container *ngTemplateOutlet="estado; context: { $implicit: usuario }" /></td>
                 <td class="dato">
                   {{ usuario.ultimoAcceso ? (usuario.ultimoAcceso | date: 'dd/MM/yyyy HH:mm' : zonaLima) : 'Nunca' }}
                 </td>
-                <td *appHasPermission="'usuarios.editar'">
+                <td *appHasPermission="'usuarios.editar'" class="col-centro">
                   <ng-container *ngTemplateOutlet="acciones; context: { $implicit: usuario, conTexto: false }" />
                 </td>
               </tr>
@@ -142,7 +142,7 @@
 
 <ng-template #estado let-usuario>
   <span class="badges">
-    <span class="badge" [class.badge-exito]="usuario.estado">{{ usuario.estado ? 'Activo' : 'Inactivo' }}</span>
+    <span class="badge" [class.badge-exito]="usuario.estado" [attr.data-estado]="usuario.estado ? 'Activo' : 'Inactivo'">{{ usuario.estado ? 'Activo' : 'Inactivo' }}</span>
     @if (usuario.bloqueado) {
       <span class="badge badge-advertencia">Bloqueado</span>
     }

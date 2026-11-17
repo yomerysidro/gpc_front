@@ -76,3 +76,11 @@ test('se conservan las ligaduras previas utilizadas por las pantallas existentes
     assert.ok(ligatures.has(name), `Ligadura anterior ausente: ${name}`);
   }
 });
+
+test('todos los iconos del dashboard existen en la fuente local', () => {
+  const html = fs.readFileSync(path.join(root, 'src/app/pages/home/home.component.html'), 'utf8');
+  const component = fs.readFileSync(path.join(root, 'src/app/pages/home/home.component.ts'), 'utf8');
+  const names = [...html.matchAll(/aria-hidden="true">([a-z_]+)<\/span>/g), ...component.matchAll(/icono: '([^']+)'/g)].map(m => m[1]);
+  assert.ok(names.length >= 8);
+  for (const name of names) assert.ok(ligatures.has(name), `Glifo ausente en dashboard: ${name}`);
+});

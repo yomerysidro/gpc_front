@@ -18,6 +18,12 @@ import { forkJoin, map, of, Subscription, switchMap } from 'rxjs';
   styles: `.pestanas-gerencia{display:flex;gap:.25rem;border-bottom:1px solid #d5dee8;margin-bottom:1rem;flex-wrap:wrap}.pestanas-gerencia button{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem .8rem;background:transparent;border:0;border-bottom:3px solid transparent;color:#52677b;cursor:pointer;font:inherit;font-size:.9rem}.pestanas-gerencia [aria-selected=true]{color:#075a9b;border-bottom-color:#d6ad4a;font-weight:600}.pestanas-gerencia .material-symbols-outlined{font-size:1.2rem}.estado-listo{display:inline-block;color:#21643b;background:#e8f5ec;border-radius:1rem;padding:.2rem .6rem;font-size:.85rem}[hidden]{display:none!important}.aviso-exito{color:#21643b;margin-bottom:.75rem}@media(max-width:600px){.pestanas-gerencia button{flex:1;font-size:.85rem;justify-content:center}}`,
 })
 export class DocumentosPorFirmarComponent implements OnInit {
+  protected numeroPendiente(datos: { current_page: number; per_page?: number; from?: number }, indice: number): number | null {
+    if (Number.isSafeInteger(datos.from) && datos.from! > 0) return datos.from! + indice;
+    if (Number.isSafeInteger(datos.per_page) && datos.per_page! > 0) return (datos.current_page - 1) * datos.per_page! + indice + 1;
+    // Sin metadatos no se inventa el tamaño de las páginas del servidor.
+    return datos.current_page === 1 ? indice + 1 : null;
+  }
   private readonly api = inject(DocumentosDigitalesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);

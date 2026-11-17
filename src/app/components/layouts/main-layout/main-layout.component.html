@@ -1,13 +1,9 @@
 <app-header #headerLayout>
-    <button type="button" class="btn btn-icono btn-sin-borde menu-toggle menu-movil" popovertarget="menu-principal"
-      aria-label="Menú de navegación" aria-controls="menu-principal" [attr.aria-expanded]="menuMovilAbierto()">
-      <span class="material-symbols-outlined" aria-hidden="true">menu</span>
-    </button>
-    <button type="button" class="btn btn-icono btn-sin-borde menu-toggle menu-escritorio"
-      [attr.aria-label]="sidebarContraido() ? 'Expandir menú lateral' : 'Contraer menú lateral'"
-      [attr.title]="sidebarContraido() ? 'Expandir menú lateral' : 'Contraer menú lateral'"
-      aria-controls="menu-principal" [attr.aria-expanded]="!sidebarContraido()"
-      (click)="sidebarContraido.set(!sidebarContraido())">
+    <button type="button" class="btn btn-icono btn-sin-borde menu-toggle" popovertarget="menu-principal"
+      [attr.aria-label]="pantallaMovil() ? 'Menú de navegación' : sidebarContraido() ? 'Expandir menú lateral' : 'Contraer menú lateral'"
+      [attr.title]="pantallaMovil() ? 'Menú de navegación' : sidebarContraido() ? 'Expandir menú lateral' : 'Contraer menú lateral'"
+      aria-controls="menu-principal" [attr.aria-expanded]="pantallaMovil() ? menuMovilAbierto() : !sidebarContraido()"
+      (click)="alternarMenu($event)">
       <span class="material-symbols-outlined" aria-hidden="true">menu</span>
     </button>
   <ng-content select="[layout-header]" />
@@ -17,5 +13,6 @@
   [(contraido)]="sidebarContraido" (toggle)="actualizarMenuMovil($event)"
   (click)="$any($event.currentTarget).hidePopover()" />
 <main>
+  <ng-content select="[layout-alert]" />
   <router-outlet />
 </main>

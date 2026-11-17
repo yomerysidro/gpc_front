@@ -71,10 +71,10 @@ export const SIDEBAR_CONFIG: readonly GrupoSidebar[] = [
     { id: 'documentos-firmar', label: 'Certificados por firmar', icon: 'draw', habilitado: true, path: '/pendientes/documentos-firmar', permiso: 'emision.ver' },
   ] },
   { id: 'reportes', label: 'REPORTES', icon: 'bar_chart', hijos: [
-    { id: 'indicadores', label: 'Indicadores generales', icon: 'monitoring', habilitado: true, path: '/reportes/indicadores', permiso: 'reportes.ver', pendiente: 'Agregados generales y series mensuales pendientes del backend.' },
+    { id: 'indicadores', label: 'Indicadores generales', icon: 'monitoring', habilitado: true, path: '/reportes/indicadores', permiso: 'reportes.ver' },
     { id: 'reportes-actividades', label: 'Reportes de actividades', icon: 'event_note', habilitado: true, path: '/reportes/actividades', permiso: 'reportes.ver' },
-    { id: 'reportes-certificados', label: 'Reportes de certificados', icon: 'analytics', habilitado: true, path: '/reportes/certificados', permiso: 'reportes.ver', pendiente: 'Consulta paginada disponible; relaciones y filtros globales pendientes del backend.' },
-    { id: 'reportes-asistencia', label: 'Reportes de asistencia', icon: 'fact_check', habilitado: true, path: '/reportes/asistencia', permiso: 'reportes.ver', pendiente: 'Consulta por actividad y sesión pendiente del backend.' },
+    { id: 'reportes-certificados', label: 'Reportes de certificados', icon: 'analytics', habilitado: true, path: '/reportes/certificados', permiso: 'reportes.ver' },
+    { id: 'reportes-asistencia', label: 'Reportes de asistencia', icon: 'fact_check', habilitado: true, path: '/reportes/asistencia', permiso: 'reportes.ver' },
   ] },
   { id: 'configuracion', label: 'CONFIGURACIÓN GENERAL', icon: 'settings', hijos: [
     { id: 'firmantes-municipales', label: 'Firmantes municipales', icon: 'draw', path: '/gestion/firmantes-municipales', permiso: 'emision.ver', permisos: ['ponentes-firmantes.editar'], aliases: ['/certificaciones/firmas', '/firmas'], rutasActivas: ['/certificaciones/firmas/aplicadas'], habilitado: true },

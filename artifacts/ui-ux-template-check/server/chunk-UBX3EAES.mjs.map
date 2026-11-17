@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/emision-certificados/compartidos/estado-emision.ts"],
+  "sourcesContent": ["/** Compatibilidad de lectura: las migraciones y los Data de Laravel difieren. */\r\nexport function estadoActivo(valor: unknown): boolean {\r\n  return valor === true || valor === 1 || ['1', 'true', 'activo', 'activa'].includes(String(valor).trim().toLowerCase());\r\n}\r\n\r\nexport function documentoAnulado(estado: string | undefined): boolean {\r\n  return estado?.trim().toUpperCase() === 'ANULADO';\r\n}\r\n\r\nexport function etiquetaEstado(valor: unknown): string {\r\n  if (typeof valor === 'boolean' || valor === 0 || valor === 1) return estadoActivo(valor) ? 'Activo' : 'Inactivo';\r\n  return valor === null || valor === undefined || valor === '' ? 'No informado' : String(valor);\r\n}\r\n"],
+  "mappings": ";;;AACM,SAAU,aAAa,OAAc;AACzC,SAAO,UAAU,QAAQ,UAAU,KAAK,CAAC,KAAK,QAAQ,UAAU,QAAQ,EAAE,SAAS,OAAO,KAAK,EAAE,KAAI,EAAG,YAAW,CAAE;AACvH;AAEM,SAAU,iBAAiB,QAA0B;AACzD,SAAO,QAAQ,KAAI,EAAG,YAAW,MAAO;AAC1C;AAEM,SAAU,eAAe,OAAc;AAC3C,MAAI,OAAO,UAAU,aAAa,UAAU,KAAK,UAAU;AAAG,WAAO,aAAa,KAAK,IAAI,WAAW;AACtG,SAAO,UAAU,QAAQ,UAAU,UAAa,UAAU,KAAK,iBAAiB,OAAO,KAAK;AAC9F;",
+  "names": []
+}

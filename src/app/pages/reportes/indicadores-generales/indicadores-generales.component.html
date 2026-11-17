@@ -7,9 +7,8 @@
   <div class="acciones" aria-label="Acciones de indicadores">
     <button class="btn btn-primario" (click)="consultar()" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>Consultar</button>
     <button class="btn btn-secundario" (click)="consultar()" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">tune</span>Actualizar</button>
-    <button class="btn btn-neutro" (click)="limpiar()" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">toggle_off</span>Limpiar filtros</button>
     @if (auth.tienePermiso('reportes.exportar')) {
-      <button class="btn btn-exportar" (click)="exportar()" [disabled]="!puedeExportar()"><span class="material-symbols-outlined" aria-hidden="true">forward_to_inbox</span>Exportar CSV</button>
+      <button class="btn btn-exportar" (click)="exportar()" [disabled]="!puedeExportar()"><span class="material-symbols-outlined" aria-hidden="true">download</span>Exportar totales CSV</button>
     }
   </div>
   <div class="tarjetas" aria-label="Indicadores de registros" [attr.aria-busy]="cargando()">
@@ -24,14 +23,24 @@
           @case ('sin-permiso') { <span class="sin-dato">Sin permiso de lectura</span><p>Requiere {{ item.permiso }} y reportes.ver.</p> }
           @default { <span class="sin-dato">Sin consultar</span><p>Usa Consultar para obtener el total.</p> }
         }
-        <details><summary>Qué cuenta</summary><p>{{ item.regla }}</p></details>
       </article>
     }
   </div>
-  <aside class="aviso informacion">
-    <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>
-    <h2>Total general · sin filtros</h2>
-    <p>Incluye todas las fechas y estados de los registros autorizados. Cada registro principal cuenta una sola vez; los totales no dependen de la paginación.</p>
-    <p>Los filtros de Actividades, Certificados y Asistencia no afectan estas tarjetas. El CSV incluye solo los conteos consultados correctamente, también cuando su valor es 0.</p>
-  </aside>
+  <section class="panel" aria-labelledby="titulo-evolucion">
+    <h2 id="titulo-evolucion">Evolución mensual</h2>
+    <form class="acciones" (ngSubmit)="cargarSeries()"><label>Año<input type="number" name="anio" [(ngModel)]="anio" min="1900" max="2100" required [disabled]="cargandoSeries()"></label><button class="btn btn-primario" type="submit" [disabled]="cargandoSeries()">Consultar evolución</button></form>
+    <p class="subtitulo">Meses del año seleccionado. Los certificados sin fecha de emisión registrada no forman parte de esta serie.</p>
+    @if (cargandoSeries()) { <p role="status">Consultando evolución mensual…</p> }
+    @if (errorAnio()) { <p class="error" role="alert">{{ errorAnio() }}</p> }
+    <div class="series">
+      @for (serie of series(); track serie.nombre) {
+        <article><h3>{{ serie.nombre }}</h3>
+          @if (serie.error) { <p class="error" role="alert">{{ serie.error }}</p> }
+          @if (serie.datos; as datos) {
+            <table class="tabla-serie"><caption>{{ datos.anio }} · conteos mensuales</caption><thead><tr><th scope="col">Mes</th><th scope="col">Total</th><th scope="col">Distribución</th></tr></thead><tbody>@for (mes of datos.meses; track mes.mes; let indice = $index) { <tr><th scope="row">{{ meses[indice] }}</th><td>{{ mes.total }}</td><td class="pista"><span class="barra" [style.width.%]="anchoBarra(datos, mes.total)" aria-hidden="true"></span></td></tr> }</tbody></table>
+          }
+        </article>
+      }
+    </div>
+  </section>
 </section>

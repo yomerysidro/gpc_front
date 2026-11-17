@@ -10,12 +10,12 @@
   @if (pagina(); as datos) {
     @if (datos.data.length) {
       <div class="tabla-scroll" role="region" tabindex="0" aria-label="Pendientes de firma"><table class="table">
-        <thead><tr><th>Beneficiario</th><th>Origen / actividad o periodo</th><th>Tipo</th><th>Estado</th><th>Firmantes</th><th>Acción</th></tr></thead>
-        <tbody>@for (doc of datos.data; track doc.id_certificado_documento) {
-          <tr><td>{{ beneficiario(doc) }}</td><td>{{ doc.origen === 'practica' ? 'Registro de prácticas' : doc.origen === 'reconocimiento' ? 'Reconocimiento municipal' : (doc.actividad || doc.contexto?.actividad || 'Origen no informado') }}@if (doc.sesion || doc.contexto?.sesion) { <small>{{ doc.sesion || doc.contexto?.sesion }}</small> }</td>
-            <td>{{ doc.tipo_certificado || doc.contexto?.tipo_certificado }}</td><td>{{ estado(doc) }}</td>
+        <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th>Beneficiario</th><th>Origen / actividad o periodo</th><th>Tipo</th><th class="col-centro">Estado</th><th>Firmantes</th><th class="col-centro">Acción</th></tr></thead>
+        <tbody>@for (doc of datos.data; track doc.id_certificado_documento; let numeroVisual = $index) {
+          <tr><td class="col-centro col-numero">{{ numeroPendiente(datos, numeroVisual) ?? '—' }}</td><td>{{ beneficiario(doc) }}</td><td>{{ doc.origen === 'practica' ? 'Registro de prácticas' : doc.origen === 'reconocimiento' ? 'Reconocimiento municipal' : (doc.actividad || doc.contexto?.actividad || 'Origen no informado') }}@if (doc.sesion || doc.contexto?.sesion) { <small>{{ doc.sesion || doc.contexto?.sesion }}</small> }</td>
+            <td>{{ doc.tipo_certificado || doc.contexto?.tipo_certificado }}</td><td class="col-centro">{{ estado(doc) }}</td>
             <td>@for (firmante of doc.firmantes; track $index) { <div>{{ firmante.nombre || firmante.nombre_aprobado }}</div> } @empty { Asignación de firmantes pendiente. }</td>
-            <td><a class="btn" [routerLink]="['/pendientes/documentos-firmar', doc.id_certificado_documento]" [queryParams]="{ page: datos.current_page }">Ver documento</a></td></tr>
+            <td><a class="btn btn-icono" [routerLink]="['/pendientes/documentos-firmar', doc.id_certificado_documento]" [queryParams]="{ page: datos.current_page }" aria-label="Ver documento" title="Ver documento"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver documento</span></a></td></tr>
         }</tbody>
       </table></div>
     } @else if (!cargando() && !error()) { <p role="status">No hay certificados pendientes de firma.</p> }
@@ -30,12 +30,12 @@
   @if (!cargandoPreparados() && preparados(); as documentos) {
     @if (documentos.length) {
       <div class="tabla-scroll" role="region" tabindex="0" aria-label="Certificados preparados"><table class="table">
-        <thead><tr><th>Beneficiario</th><th>Origen / actividad o periodo</th><th>Tipo</th><th>Firmantes</th><th>Estado</th><th>Acción</th></tr></thead>
-        <tbody>@for (doc of preparadosVisibles(); track doc.id_certificado + ':' + doc.id_certificado_documento) {
-          <tr><td>{{ doc.nombre_completo }}</td><td>{{ doc.origen === 'reconocimiento' || doc.id_reconocimiento ? (doc.titulo_reconocimiento || 'Reconocimiento municipal') : doc.origen === 'practica' || doc.id_practica ? 'Prácticas' : doc.actividad }}@if (doc.sesion) { <small>{{ doc.sesion }}</small> }@if (doc.fecha_inicio_practica) { <small>{{ doc.fecha_inicio_practica }} – {{ doc.fecha_fin_practica }}</small> }</td><td>{{ doc.tipo_certificado }}</td>
+        <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th>Beneficiario</th><th>Origen / actividad o periodo</th><th>Tipo</th><th>Firmantes</th><th class="col-centro">Estado</th><th class="col-centro">Acción</th></tr></thead>
+        <tbody>@for (doc of preparadosVisibles(); track doc.id_certificado + ':' + doc.id_certificado_documento; let numeroVisual = $index) {
+          <tr><td class="col-centro col-numero" data-label="N.º">{{ (paginaPreparadosActual() - 1) * 20 + numeroVisual + 1 }}</td><td>{{ doc.nombre_completo }}</td><td>{{ doc.origen === 'reconocimiento' || doc.id_reconocimiento ? (doc.titulo_reconocimiento || 'Reconocimiento municipal') : doc.origen === 'practica' || doc.id_practica ? 'Prácticas' : doc.actividad }}@if (doc.sesion) { <small>{{ doc.sesion }}</small> }@if (doc.fecha_inicio_practica) { <small>{{ doc.fecha_inicio_practica }} – {{ doc.fecha_fin_practica }}</small> }</td><td>{{ doc.tipo_certificado }}</td>
             <td>@for (responsable of doc.responsables_administrativos; track $index) { <div>{{ responsable.nombre }}<small>{{ responsable.cargo }}</small></div> } @empty { No informados }</td>
-            <td><span class="estado-listo">{{ estadoPreparado(doc) }}</span></td>
-            <td>@if (doc.hash_pdf && doc.codigo_verificacion) { <a class="btn" [routerLink]="['/certificaciones/certificados', doc.id_certificado, 'documentos', doc.id_certificado_documento, 'visor']" [queryParams]="{ origen: 'gerencia', page: paginaPreparadosActual() }">Ver documento</a> } @else { Sin PDF disponible }</td></tr>
+            <td class="col-centro"><span class="estado-listo" [attr.data-estado]="estadoPreparado(doc)">{{ estadoPreparado(doc) }}</span></td>
+            <td>@if (doc.hash_pdf && doc.codigo_verificacion) { <a class="btn btn-icono" [routerLink]="['/certificaciones/certificados', doc.id_certificado, 'documentos', doc.id_certificado_documento, 'visor']" [queryParams]="{ origen: 'gerencia', page: paginaPreparadosActual() }" aria-label="Ver documento" title="Ver documento"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver documento</span></a> } @else { Sin PDF disponible }</td></tr>
         }</tbody>
       </table></div>
       @if (paginasPreparados() > 1) {

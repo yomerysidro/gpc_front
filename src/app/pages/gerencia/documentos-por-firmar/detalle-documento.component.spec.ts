@@ -260,8 +260,13 @@ describe('Gerencia: detalle completo y consultas Etapa B', () => {
     http.expectOne(base + '/31/firma/firmantes-asignados').flush({ success: true, data: { ...confirmado, pdf_confirmado: true } });
     http.expectOne(base + '/31/firma/pdf-autorizado').flush(new Blob([]), { status: 503, statusText: 'Unavailable' });
     // El servicio lee asíncronamente los errores de descarga binaria antes de normalizarlos.
-    await new Promise(r => setTimeout(r, 20));
-    http.expectOne(base + '/31/firma/progreso').flush({ success: true, data: { ...confirmado, pdf_confirmado: true } });
+    let progreso = http.match(base + '/31/firma/progreso')[0];
+    for (let i = 0; i < 100 && !progreso; i++) {
+      await new Promise(r => setTimeout(r, 10));
+      progreso = http.match(base + '/31/firma/progreso')[0];
+    }
+    expect(progreso).toBeDefined();
+    progreso.flush({ success: true, data: { ...confirmado, pdf_confirmado: true } });
     http.expectOne(base + '/31/firma/pdf-autorizado').flush(new Blob([]), { status: 503, statusText: 'Unavailable' });
     for (let i = 0; i < 100 && c.cargas().has('guardar'); i++) await new Promise(r => setTimeout(r, 10));
     expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled(); expect(c.requiereActualizar()).toBeTrue(); expect(c.revision()).not.toBeNull();

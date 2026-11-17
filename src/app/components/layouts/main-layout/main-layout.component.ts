@@ -18,8 +18,16 @@ export class MainLayoutComponent {
   private readonly destroyRef = inject(DestroyRef);
   constructor() {
     afterNextRender(() => {
+      const consulta = window.matchMedia('(max-width: 768px)');
+      const actualizarPantalla = () => this.pantallaMovil.set(consulta.matches);
+      actualizarPantalla();
+      consulta.addEventListener('change', actualizarPantalla);
+      this.destroyRef.onDestroy(() => consulta.removeEventListener('change', actualizarPantalla));
       const cabecera = this.header().nativeElement;
-      const medir = () => this.elemento.nativeElement.style.setProperty('--alto-header-real', `${cabecera.getBoundingClientRect().height}px`);
+      const medir = () => {
+        this.elemento.nativeElement.style.setProperty('--alto-header-real', `${cabecera.getBoundingClientRect().height}px`);
+        this.pantallaMovil.set(this.elemento.nativeElement.ownerDocument.defaultView!.matchMedia('(max-width: 768px)').matches);
+      };
       medir();
       const observador = new ResizeObserver(medir);
       observador.observe(cabecera);
@@ -29,6 +37,14 @@ export class MainLayoutComponent {
   readonly navigation = input<readonly NavigationItem[]>([]);
   protected readonly sidebarContraido = signal(false);
   protected readonly menuMovilAbierto = signal(false);
+  protected readonly pantallaMovil = signal(false);
+
+  protected alternarMenu(evento: MouseEvent): void {
+    if (!this.elemento.nativeElement.ownerDocument.defaultView!.matchMedia('(max-width: 768px)').matches) {
+      evento.preventDefault();
+      this.sidebarContraido.set(!this.sidebarContraido());
+    }
+  }
 
   protected actualizarMenuMovil(event: Event): void {
     this.menuMovilAbierto.set((event as Event & { newState: string }).newState === 'open');

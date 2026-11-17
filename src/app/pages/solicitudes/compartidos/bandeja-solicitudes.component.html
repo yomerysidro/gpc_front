@@ -40,13 +40,13 @@
   @if (pagina(); as datos) {
     @if (datos.registros.length) {
       <div class="tabla-scroll" tabindex="0" role="region" aria-label="Resultados de solicitudes"><table class="table" [class.tabla-propias]="bandeja() === 'propias'" [attr.aria-busy]="cargando()"><caption>Lista deSolicitudes</caption>
-        <thead><tr>@if (bandeja() === 'propias') {
-          <th scope="col">N°</th><th scope="col">Actividad</th><th scope="col">Área solicitante</th><th scope="col">Responsable</th><th scope="col">Fecha</th><th scope="col">Estado</th><th scope="col">Acciones</th>
+        <thead><tr><th scope="col" class="col-centro col-numero">N.º</th>@if (bandeja() === 'propias') {
+          <th scope="col">Solicitud</th><th scope="col">Actividad</th><th scope="col">Área solicitante</th><th scope="col">Responsable</th><th scope="col" class="col-centro">Fecha</th><th scope="col" class="col-centro">Estado</th><th scope="col" class="col-centro">Acciones</th>
         } @else if (bandeja() === 'gerencia') {
-          <th scope="col">N.º de solicitud</th><th scope="col">{{ pestanaGerencia() === 'aprobadas' ? 'Actividad' : 'Actividad solicitada' }}</th><th scope="col">Solicitante o área</th><th scope="col">{{ pestanaGerencia() === 'aprobadas' ? 'Fecha de aprobación' : 'Fecha' }}</th><th scope="col">Estado</th><th scope="col">Acción</th>
-        } @else { <th scope="col">Solicitud y actividad</th><th scope="col">Área / responsable</th><th scope="col">Fechas</th><th scope="col">Estado y revisión</th><th scope="col">Acciones</th> }</tr></thead>
-        <tbody>@for (fila of datos.registros; track fila.id) {
-          <tr>@if (bandeja() === 'propias') {
+          <th scope="col" class="col-centro">N.º de solicitud</th><th scope="col">{{ pestanaGerencia() === 'aprobadas' ? 'Actividad' : 'Actividad solicitada' }}</th><th scope="col">Solicitante o área</th><th scope="col">{{ pestanaGerencia() === 'aprobadas' ? 'Fecha de aprobación' : 'Fecha' }}</th><th scope="col" class="col-centro">Estado</th><th scope="col" class="col-centro">Acción</th>
+        } @else { <th scope="col">Solicitud y actividad</th><th scope="col">Área / responsable</th><th scope="col" class="col-centro">Fechas</th><th scope="col" class="col-centro">Estado y revisión</th><th scope="col" class="col-centro">Acciones</th> }</tr></thead>
+        <tbody>@for (fila of datos.registros; track fila.id; let numeroVisual = $index) {
+          <tr><td class="col-numero">{{ (datos.pagina - 1) * 20 + numeroVisual + 1 }}</td>@if (bandeja() === 'propias') {
             <td><strong>{{ fila.idSolicitudActividad ?? fila.id }}</strong></td><td class="nombre-actividad">{{ fila.nombre }}</td><td>{{ fila.area }}</td><td>{{ fila.responsable }}</td><td>{{ fila.fecha | date:'dd/MM/yyyy' }}</td><td><app-solicitud-estado-badge [estado]="fila.estado" /></td>
           } @else if (bandeja() === 'gerencia') {
             <td>{{ fila.numero }}</td><td>{{ fila.nombre }}</td><td>{{ fila.area }}<small>{{ fila.responsable }}</small></td><td>@if (pestanaGerencia() === 'aprobadas') { {{ fila.fechaAprobacion ? (fila.fechaAprobacion | date:'dd/MM/yyyy') : 'No disponible' }} } @else { {{ fila.fecha | date:'dd/MM/yyyy' }} }</td><td><app-solicitud-estado-badge [estado]="fila.estado" /></td>
@@ -70,7 +70,7 @@
               @if (bandeja() === 'propias') {
                 <button class="btn accion-icono accion-detalle" type="button" title="Ver detalle" aria-label="Ver detalle" [disabled]="ocupado() || fila.puedeVerDetalle === false" (click)="ver(fila)"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button>
               } @else {
-                <button class="btn" type="button" [disabled]="ocupado() || fila.puedeVerDetalle === false" [attr.title]="fila.puedeVerDetalle === false ? 'La consulta del detalle requiere autorización del servidor para esta solicitud.' : null" (click)="ver(fila)">Ver detalle</button>
+                <button class="btn btn-icono" type="button" [disabled]="ocupado() || fila.puedeVerDetalle === false" [attr.title]="fila.puedeVerDetalle === false ? 'La consulta del detalle requiere autorización del servidor para esta solicitud.' : null" (click)="ver(fila)" aria-label="Ver detalle"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver</span></button>
               }
               @if (bandeja() === 'propias' && fila.puedeEditar) { <a class="btn" routerLink="/solicitudes/nueva" [queryParams]="{ editar: fila.id }">{{ fila.estado === 'Observada' ? 'Corregir solicitud' : 'Editar borrador' }}</a> }
               @for (accion of acciones(fila); track accion) { <button class="btn" type="button" [class.btn-primary]="accion === 'Aprobar' || accion === 'Derivar'" [disabled]="ocupado() || !operativo()" (click)="modal().abrir(accion, fila)">{{ accion === 'Derivar' ? 'Derivar a Gerencia' : accion }}</button> }

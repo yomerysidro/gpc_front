@@ -168,3 +168,42 @@ chunk-IKW2OSOY.mjs      | preparar-practica-component      |  39.30 kB |
 Application bundle generation complete. [2.019 seconds]
 
 Page reload sent to client(s).
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Browser bundles    
+Initial chunk files | Names                                    |  Raw size
+main.js             | main                                     | 256.27 kB | 
+
+Lazy chunk files    | Names                                    |  Raw size
+chunk-NPKGMTSR.js   | generar-emitir-component                 | 292.78 kB | 
+chunk-QQHALXU4.js   | -                                        | 133.47 kB | 
+chunk-KFFSWOJB.js   | detalle-documento-component              |  66.77 kB | 
+chunk-QFMUEIOL.js   | -                                        |  47.51 kB | 
+chunk-MKMMVII2.js   | documentos-por-firmar-component          |  40.69 kB | 
+chunk-OCXKCSLR.js   | preparar-practica-component              |  39.25 kB | 
+chunk-DPICHZBQ.js   | detalle-certificado-component            |  36.34 kB | 
+chunk-DYKOIWTT.js   | -                                        |  35.49 kB | 
+chunk-EAK2GAFX.js   | -                                        |  32.24 kB | 
+chunk-RAY7WENG.js   | listar-documentos-component              |  20.30 kB | 
+chunk-TWGRFJAM.js   | -                                        |  19.82 kB | 
+chunk-QRYF7CZY.js   | preparar-municipal-component             |  16.59 kB | 
+chunk-R757JSXS.js   | preparar-reconocimiento-sesion-component |  10.21 kB | 
+chunk-JCVQMD5N.js   | ver-documento-component                  |   8.67 kB | 
+chunk-H6CWFVY7.js   | preparar-reconocimiento-component        |   6.89 kB | 
+...and 2 more lazy chunks files. Use "--verbose" to show all the files.
+
+
+Server bundles     
+Initial chunk files | Names                                    |  Raw size
+main.server.mjs     | main.server                              | 256.81 kB | 
+
+Lazy chunk files    | Names                                    |  Raw size
+chunk-2P4NIYEC.mjs  | generar-emitir-component                 | 292.83 kB | 
+chunk-7SL3WCD6.mjs  | -                                        | 133.51 kB | 
+chunk-VYSJJXPE.mjs  | preparar-municipal-component             |  16.63 kB | 
+chunk-2U4C22U4.mjs  | preparar-reconocimiento-sesion-component |  10.26 kB | 
+chunk-HG3T7SEU.mjs  | preparar-reconocimiento-component        |   6.94 kB | 
+
+Application bundle generation complete. [7.747 seconds]
+
+Page reload sent to client(s).

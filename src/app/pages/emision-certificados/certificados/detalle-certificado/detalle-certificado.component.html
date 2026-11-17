@@ -41,10 +41,10 @@
     @if (tienePermisoDocumentos && !cargandoDocumentos() && !errorDocumentos() && !documentos().length) { <p>No hay documentos registrados para este certificado.</p> }
     @if (documentos().length) {
       <div class="tabla"><table class="table">
-        <thead><tr><th>Código de verificación</th><th>Estado del documento</th><th>Fecha registrada</th><th>Reemisión</th><th>Firmas asociadas</th><th>Archivo y previsualización</th></tr></thead>
-        <tbody>@for (documento of documentos(); track documento.id_certificado_documento) {
-          <tr>
-            <td>{{ documento.codigo_verificacion }}</td><td>{{ documento.estado }}</td><td>{{ documento.fecha_generacion }}</td>
+        <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th>Código de verificación</th><th class="col-centro">Estado del documento</th><th class="col-centro">Fecha registrada</th><th>Reemisión</th><th>Firmas asociadas</th><th>Archivo y previsualización</th></tr></thead>
+        <tbody>@for (documento of documentos(); track documento.id_certificado_documento; let numeroVisual = $index) {
+          <tr><td class="col-centro col-numero" data-label="N.º">{{ numeroVisual + 1 }}</td>
+            <td>{{ documento.codigo_verificacion }}</td><td class="col-centro">{{ documento.estado }}</td><td class="col-centro">{{ documento.fecha_generacion }}</td>
             <td>{{ documento.motivo_reemision || 'Documento inicial' }}</td>
             <td>
               @if (cargandoFirmas()) { Consultando firmas… }

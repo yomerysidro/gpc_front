@@ -31,27 +31,27 @@
       <table class="table table-apilable">
         <caption class="sr-only">Roles del sistema</caption>
         <thead>
-          <tr>
+          <tr><th scope="col" class="col-centro col-numero">N.º</th>
             <th scope="col">Nombre</th>
-            <th scope="col">Estado</th>
-            <th scope="col">Usuarios</th>
-            <th *appHasPermission="'roles.editar'" scope="col"><span class="sr-only">Acciones</span></th>
+            <th scope="col" class="col-centro">Estado</th>
+            <th scope="col" class="col-centro">Usuarios</th>
+            <th *appHasPermission="'roles.editar'" scope="col" class="col-centro"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
-          @for (rol of roles(); track rol.id) {
-            <tr [class.registro-inactivo]="!rol.estado">
+          @for (rol of roles(); track rol.id; let numeroVisual = $index) {
+            <tr [class.registro-inactivo]="!rol.estado"><td class="col-centro col-numero" data-label="N.º">{{ numeroVisual + 1 }}</td>
               <th scope="row" class="rol-nombre">
                 {{ rol.nombre }}
                 @if (esAdministrador(rol)) { <span class="rol-sistema">Rol del sistema</span> }
               </th>
-              <td><span class="badge" [class.badge-exito]="rol.estado">{{ rol.estado ? 'Activo' : 'Inactivo' }}</span></td>
-              <td class="dato">{{ rol.usuarios }}<span class="etiqueta-movil"> {{ rol.usuarios === 1 ? 'usuario' : 'usuarios' }}</span></td>
-              <td *appHasPermission="'roles.editar'">
+              <td class="col-centro"><span class="badge" [class.badge-exito]="rol.estado" [attr.data-estado]="rol.estado ? 'Activo' : 'Inactivo'">{{ rol.estado ? 'Activo' : 'Inactivo' }}</span></td>
+              <td class="col-centro dato">{{ rol.usuarios }}<span class="etiqueta-movil"> {{ rol.usuarios === 1 ? 'usuario' : 'usuarios' }}</span></td>
+              <td *appHasPermission="'roles.editar'" class="col-centro">
                 <div class="rol-acciones">
-                  <a class="btn" [routerLink]="['/roles', rol.id, 'accesos']">
+                  <a class="btn btn-icono" [routerLink]="['/roles', rol.id, 'accesos']" [attr.aria-label]="'Configurar accesos de ' + rol.nombre" title="Configurar accesos">
                     <span class="material-symbols-outlined" aria-hidden="true">tune</span>
-                    Configurar accesos<span class="sr-only"> de {{ rol.nombre }}</span>
+                    <span class="sr-only">Configurar accesos de {{ rol.nombre }}</span>
                   </a>
                   <!-- Administrador es un rol del sistema: el backend no permite renombrarlo ni desactivarlo (409). -->
                   @if (!esAdministrador(rol)) {

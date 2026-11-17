@@ -7,6 +7,7 @@ import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of } from 'rxjs';
 import { routes } from '../../app.routes';
+import { ReportesService } from '../../core/services/reportes/reportes.service';
 import { AuthService } from '../../core/services/autenticacion/auth.service';
 import { EmisionCertificadosService } from '../../core/services/emision-certificados/emision-certificados.service';
 import { DASHBOARD_SIDEBAR, resolverGruposSidebar, SIDEBAR_CONFIG } from './modulos-navegacion';
@@ -225,6 +226,7 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
     autenticado = true;
     TestBed.configureTestingModule({ providers: [
       provideRouter(routes), provideHttpClient(), provideHttpClientTesting(),
+      { provide: ReportesService, useValue: { totalRegistrados: () => of(0) } },
       { provide: AuthService, useValue: {
         isAuthenticated: () => autenticado,
         cargarSesion: () => of(autenticado), capacidadesSolicitudes: computed(() => permisos().includes('solicitudes.consultar') ? CAPACIDADES_ADMIN_SOLICITUDES_TEST : SIN_CAPACIDADES_SOLICITUDES_TEST), tienePermiso: (clave: string) => permisos().includes(clave),
@@ -352,16 +354,17 @@ describe('Rutas reales reutilizadas por el Sidebar', () => {
   });
 
   it('conserva el cajón móvil al abrir un grupo y permite cerrarlo por el control existente', async () => {
+    spyOn(window, 'matchMedia').and.callFake(media => ({ matches: true, media, addEventListener() {}, removeEventListener() {} } as unknown as MediaQueryList));
     const harness = await RouterTestingHarness.create('/inicio');
     const vista = harness.routeNativeElement!;
     const sidebar = vista.querySelector<HTMLElement>('app-sidebar')!;
-    vista.querySelector<HTMLButtonElement>('.menu-movil')!.click();
+    vista.querySelector<HTMLButtonElement>('.menu-toggle')!.click();
     harness.detectChanges();
     expect(sidebar.matches(':popover-open')).toBeTrue();
     sidebar.querySelector<HTMLButtonElement>('button.modulo')!.click();
     harness.detectChanges();
     expect(sidebar.matches(':popover-open')).toBeTrue();
-    sidebar.querySelector<HTMLButtonElement>('.cerrar-menu')!.click();
+    vista.querySelector<HTMLButtonElement>('.menu-toggle')!.click();
     harness.detectChanges();
     expect(sidebar.matches(':popover-open')).toBeFalse();
   });

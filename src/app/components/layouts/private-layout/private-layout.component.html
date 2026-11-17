@@ -1,4 +1,13 @@
 <app-main-layout [navigation]="navegacion()">
+  @if (inicioSesionExitoso()) {
+    <div layout-alert class="alert alert-exito aviso-sesion" role="status" aria-live="polite">
+      <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+      <span>Inicio de sesión exitoso.</span>
+      <button type="button" class="btn btn-icono btn-sin-borde cerrar-aviso" aria-label="Cerrar aviso de inicio de sesión" title="Cerrar aviso" (click)="inicioSesionExitoso.set(false)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+      </button>
+    </div>
+  }
   <div layout-header class="barra">
     <!-- Escudo provisional (regenerado a partir del logotipo): ver DESIGN.md, pendientes. -->
     <span class="marca">

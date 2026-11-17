@@ -21,9 +21,9 @@ import { mensajeEtapaA } from '../../../core/services/emision-certificados/docum
       @if (error()) { <p role="alert">{{ error() }}</p> }
       @if (actividadSeleccionada()) { <button class="btn" type="button" [disabled]="cargando()" (click)="cargarActividad(actividadSeleccionada()!)">Actualizar reconocimientos</button> }
       @if (filas().length) {
-        <div class="tabla"><table class="table"><thead><tr><th>Beneficiario</th><th>Actividad</th><th>Tipo de reconocimiento</th><th>Elegibilidad</th><th>Preparación</th><th>Acción</th></tr></thead><tbody>
-          @for (p of filas(); track p.id_actividad_ponente) {
-            <tr><th scope="row">{{ nombre(p) }}</th><td>{{ p.reconocimiento.actividad || nombreActividad() }}</td>
+        <div class="tabla"><table class="table"><thead><tr><th scope="col" class="col-numero">N.º</th><th>Beneficiario</th><th>Actividad</th><th>Tipo de reconocimiento</th><th>Elegibilidad</th><th>Preparación</th><th>Acción</th></tr></thead><tbody>
+          @for (p of filas(); track p.id_actividad_ponente; let numeroVisual = $index) {
+            <tr><td class="col-numero">{{ numeroVisual + 1 }}</td><th scope="row">{{ nombre(p) }}</th><td>{{ p.reconocimiento.actividad || nombreActividad() }}</td>
               <td>{{ p.reconocimiento.tipo_certificado || 'No determinado' }}<small>Reconocimiento por actividad</small></td>
               <td>{{ p.reconocimiento.estado_elegibilidad }}@for (motivo of p.reconocimiento.motivos_bloqueo; track motivo) { <p>{{ motivo }}</p> }</td>
               <td>{{ p.reconocimiento.puede_consultar_certificado_existente ? 'Preparación existente' : p.reconocimiento.puede_preparar ? 'Pendiente de preparación' : 'Pendiente de validación' }}</td>

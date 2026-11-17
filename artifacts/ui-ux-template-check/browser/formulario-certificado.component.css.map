@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/emision-certificados/certificados/formulario-certificado/formulario-certificado.component.scss"],
+  "sourcesContent": [":host { display: block; min-width: 0; }\n.formulario label { display: block; margin: 1rem 0 .4rem; font-weight: 600; }\n.formulario small { display: block; margin-top: .35rem; color: var(--color-error); }\n.formulario .input { width: 100%; }\n.formulario h2 { color: #075a9b; }\n"],
+  "mappings": ";AAAA;AAAQ,WAAA;AAAgB,aAAA;;AACxB,CAAA,WAAA;AAAoB,WAAA;AAAgB,UAAA,KAAA,EAAA;AAAsB,eAAA;;AAC1D,CADA,WACA;AAAoB,WAAA;AAAgB,cAAA;AAAoB,SAAA,IAAA;;AACxD,CAFA,WAEA,CAAA;AAAqB,SAAA;;AACrB,CAHA,WAGA;AAAiB,SAAA;;",
+  "names": []
+}

@@ -1,3 +1,6 @@
 :host {
   display: block;
+  min-width: 0;
 }
+
+h1 { color: var(--azul-oscuro); font-size: clamp(1.35rem, 1.7vw, 1.8rem); overflow-wrap: anywhere; }

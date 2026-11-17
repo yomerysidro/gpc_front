@@ -137,12 +137,12 @@
         </div>
       }
       <div class="tabla"><table class="table tabla-presencia"><caption class="sr-only">Asistencia de los inscritos por sesión</caption>
-        <thead><tr><th scope="col">N.º</th><th scope="col">Participante</th><th scope="col">Presente</th><th scope="col">Ausente</th><th scope="col">Resultado</th><th scope="col">Horas / Regularización</th></tr></thead>
+        <thead><tr><th scope="col" class="col-centro">N.º</th><th scope="col">Participante</th><th scope="col" class="col-centro">Presente</th><th scope="col" class="col-centro">Ausente</th><th scope="col" class="col-centro">Resultado</th><th scope="col">Horas / Regularización</th></tr></thead>
         <tbody>@for (fila of paginaActual.data; track fila['id_participacion']; let indice = $index) {
-          <tr [attr.aria-busy]="guardandoMarca() === fila['id_participacion']"><td>{{ inicioRango(paginaActual) + indice }}</td><th scope="row">{{ fila['participanteNombre'] }}</th>
-            <td><button type="button" class="circulo-asistencia circulo-presente" title="Marcar presente" [attr.aria-label]="'Marcar presente a ' + fila['participanteNombre']" [attr.aria-pressed]="presenciaMostrada(fila) === 'presente'" [class.seleccionado]="presenciaMostrada(fila) === 'presente'" [disabled]="(!enDetalle() && !!fila['id_asistencia']) || !!fila['duplicada'] || guardandoMarca() !== null || requiereActualizar() || soloLecturaSesion() || !permitido(fila['id_asistencia'] ? 'editar' : 'crear')" (click)="marcarPresencia(fila, 'PRESENTE')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></button></td>
-            <td><button type="button" class="circulo-asistencia circulo-ausente" title="Marcar ausente" [attr.aria-label]="'Marcar ausente a ' + fila['participanteNombre']" [attr.aria-pressed]="presenciaMostrada(fila) === 'ausente'" [class.seleccionado]="presenciaMostrada(fila) === 'ausente'" [disabled]="(!enDetalle() && !!fila['id_asistencia']) || !!fila['duplicada'] || guardandoMarca() !== null || requiereActualizar() || soloLecturaSesion() || !permitido(fila['id_asistencia'] ? 'editar' : 'crear')" (click)="marcarPresencia(fila, 'AUSENTE')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button></td>
-            <td><span role="status">{{ guardandoMarca() === fila['id_participacion'] ? 'Guardando…' : resultadoAsistencia(fila) }}</span>
+          <tr [attr.aria-busy]="guardandoMarca() === fila['id_participacion']"><td class="col-centro">{{ inicioRango(paginaActual) + indice }}</td><th scope="row">{{ fila['participanteNombre'] }}</th>
+            <td class="col-centro"><button type="button" class="circulo-asistencia circulo-presente" title="Marcar presente" [attr.aria-label]="'Marcar presente a ' + fila['participanteNombre']" [attr.aria-pressed]="presenciaMostrada(fila) === 'presente'" [class.seleccionado]="presenciaMostrada(fila) === 'presente'" [disabled]="(!enDetalle() && !!fila['id_asistencia']) || !!fila['duplicada'] || guardandoMarca() !== null || requiereActualizar() || soloLecturaSesion() || !permitido(fila['id_asistencia'] ? 'editar' : 'crear')" (click)="marcarPresencia(fila, 'PRESENTE')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></button></td>
+            <td class="col-centro"><button type="button" class="circulo-asistencia circulo-ausente" title="Marcar ausente" [attr.aria-label]="'Marcar ausente a ' + fila['participanteNombre']" [attr.aria-pressed]="presenciaMostrada(fila) === 'ausente'" [class.seleccionado]="presenciaMostrada(fila) === 'ausente'" [disabled]="(!enDetalle() && !!fila['id_asistencia']) || !!fila['duplicada'] || guardandoMarca() !== null || requiereActualizar() || soloLecturaSesion() || !permitido(fila['id_asistencia'] ? 'editar' : 'crear')" (click)="marcarPresencia(fila, 'AUSENTE')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button></td>
+            <td class="col-centro"><span role="status">{{ guardandoMarca() === fila['id_participacion'] ? 'Guardando…' : resultadoAsistencia(fila) }}</span>
               @if (fila['hora_entrada'] && !fila['hora_salida']) { <small class="salida-pendiente"> · Salida pendiente</small> }
               @if (errorMarca(fila); as mensaje) { <p class="error-text" role="alert">{{ mensaje }}</p> }
             </td><td>
@@ -161,36 +161,36 @@
       <div class="tabla">
         <table class="table">
           <caption class="sr-only">{{ config().titulo }}</caption>
-          <thead><tr><th scope="col">{{ usaModal() || esClasificacion() ? 'N.º' : 'ID' }}</th>
-            @for (campo of config().columnas; track campo.nombre) { <th scope="col">{{ tituloColumna(campo.nombre, campo.titulo) }}</th> }
-            <th scope="col">Acciones</th>
+          <thead><tr><th scope="col" class="col-numero">N.º</th>
+            @for (campo of config().columnas; track campo.nombre) { <th scope="col" [class.col-centro]="campo.nombre === 'estado' || campo.nombre.startsWith('fecha')">{{ tituloColumna(campo.nombre, campo.titulo) }}</th> }
+            <th scope="col" class="col-centro">Acciones</th>
           </tr></thead>
           <tbody>
             @for (registro of paginaActual.data; track identificar(registro); let indice = $index) {
-              <tr><th scope="row">{{ usaModal() || esClasificacion() ? inicioRango(paginaActual) + indice : identificar(registro) }}</th>
+              <tr><th scope="row" class="col-numero">{{ inicioRango(paginaActual) + indice }}</th>
                 @for (campo of config().columnas; track campo.nombre) {
-                  <td>
+                  <td [class.col-centro]="campo.nombre === 'estado' || campo.nombre.startsWith('fecha')">
                     @if ((usaModal() || esClasificacion()) && campo.nombre === 'estado') {
-                      <span class="badge" [class.badge-exito]="mostrarCampo(registro, campo.nombre) === 'Activo'">{{ mostrarCampo(registro, campo.nombre) }}</span>
+                      <span class="badge" [class.badge-exito]="mostrarCampo(registro, campo.nombre) === 'Activo'" [attr.data-estado]="mostrarCampo(registro, campo.nombre)">{{ mostrarCampo(registro, campo.nombre) }}</span>
                     } @else { {{ mostrarCampo(registro, campo.nombre) }} }
                   </td>
                 }
                 <td><div class="acciones">
                   @if (recurso() === 'activity-session') { <button class="btn" type="button" (click)="controlarAsistencia(registro)">Controlar asistencia</button> }
                   @if (detalleBase(); as base) {
-                    <a class="btn" [routerLink]="[base, identificar(registro)]">Ver detalle</a>
+                    <a class="btn btn-icono" [routerLink]="[base, identificar(registro)]" aria-label="Ver detalle" title="Ver detalle"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver detalle</span></a>
                   } @else {
-                    <button class="btn" type="button" (click)="verDetalle(registro)">Ver detalle</button>
+                    <button class="btn btn-icono" type="button" (click)="verDetalle(registro)" aria-label="Ver detalle" title="Ver detalle"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver detalle</span></button>
                   }
                   @if (!soloLecturaSesion() && editable() && permitido('editar')) {
                     @if (editarBase(); as base) {
-                      <a class="btn" [routerLink]="[base, identificar(registro), 'editar']">Editar</a>
+                      <a class="btn btn-icono" [routerLink]="[base, identificar(registro), 'editar']" aria-label="Editar" title="Editar"><span class="material-symbols-outlined" aria-hidden="true" data-icon="edit"></span><span class="sr-only">Editar</span></a>
                     } @else {
-                      <button class="btn" type="button" (click)="abrirFormulario(identificar(registro), $event)">Editar</button>
+                      <button class="btn btn-icono" type="button" (click)="abrirFormulario(identificar(registro), $event)" aria-label="Editar" title="Editar"><span class="material-symbols-outlined" aria-hidden="true" data-icon="edit"></span><span class="sr-only">Editar</span></button>
                     }
                   }
                   @if (puedeEliminar()) {
-                    <button class="btn btn-danger" type="button" [disabled]="eliminando()" (click)="eliminar(registro)">Eliminar</button>
+                    <button class="btn btn-danger btn-icono" type="button" [disabled]="eliminando()" (click)="eliminar(registro)" aria-label="Eliminar" title="Eliminar"><span class="material-symbols-outlined" aria-hidden="true" data-icon="delete"></span><span class="sr-only">Eliminar</span></button>
                   }
                 </div></td>
               </tr>

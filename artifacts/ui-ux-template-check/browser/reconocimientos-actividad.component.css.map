@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["reconocimientos-actividad.component.ts"],
+  "sourcesContent": [":host{display:block;min-width:0}h3{color:#075a9b}label{display:grid;gap:.3rem;max-width:28rem;margin-bottom:.7rem}.tabla{overflow-x:auto}.table{min-width:45rem}th,td{vertical-align:top}small{display:block}td p{font-size:.85rem;margin:.3rem 0}"],
+  "mappings": ";AAAA;AAAM,WAAA;AAAc,aAAA;;AAAY;AAAG,SAAA;;AAAc;AAAM,WAAA;AAAa,OAAA;AAAU,aAAA;AAAgB,iBAAA;;AAAoB,CAAA;AAAO,cAAA;;AAAgB,CAAA;AAAO,aAAA;;AAAgB;AAAA;AAAM,kBAAA;;AAAmB;AAAM,WAAA;;AAAc,GAAA;AAAK,aAAA;AAAiB,UAAA,OAAA;;",
+  "names": []
+}

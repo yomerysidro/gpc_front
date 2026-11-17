@@ -17,10 +17,10 @@
     @if (cargando()) { <p role="status">Consultando trabajadores...</p> }
     @if (guardando() !== null) { <p role="status">Guardando habilitación...</p> }
     <table class="table tabla-firmantes">
-      <thead><tr><th scope="col">Nombre completo</th><th scope="col">Cargo</th><th scope="col">Área municipal</th><th scope="col">Estado laboral</th><th scope="col">Habilitación de firma</th><th scope="col">Acciones</th></tr></thead>
+      <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th scope="col">Nombre completo</th><th scope="col">Cargo</th><th scope="col">Área municipal</th><th scope="col" class="col-centro">Estado laboral</th><th scope="col">Habilitación de firma</th><th scope="col" class="col-centro">Acciones</th></tr></thead>
       <tbody>
-        @for (t of filtrados(); track t.id_persona_trabajador) {
-          <tr><td data-label="Nombre completo">{{ t.nombre }}</td><td data-label="Cargo">{{ t.cargo || 'Cargo no informado' }}</td><td data-label="Área municipal">{{ t.area || 'Área no informada' }}</td><td data-label="Estado laboral"><span class="estado" [class.activo]="t.vigente">{{ t.vigente ? 'Activo' : 'Inactivo' }}</span></td><td data-label="Habilitación de firma"><span class="estado" [class.habilitado]="t.habilitado_firma_certificados">{{ t.habilitado_firma_certificados ? 'Habilitado' : 'No habilitado' }}</span></td><td data-label="Acciones">
+        @for (t of filtrados(); track t.id_persona_trabajador; let numeroVisual = $index) {
+          <tr><td class="col-centro col-numero" data-label="N.º">{{ numeroVisual + 1 }}</td><td data-label="Nombre completo">{{ t.nombre }}</td><td data-label="Cargo">{{ t.cargo || 'Cargo no informado' }}</td><td data-label="Área municipal">{{ t.area || 'Área no informada' }}</td><td data-label="Estado laboral" class="col-centro"><span class="estado" [class.activo]="t.vigente">{{ t.vigente ? 'Activo' : 'Inactivo' }}</span></td><td data-label="Habilitación de firma"><span class="estado" [class.habilitado]="t.habilitado_firma_certificados">{{ t.habilitado_firma_certificados ? 'Habilitado' : 'No habilitado' }}</span></td><td data-label="Acciones" class="col-centro">
             @if (puedeAdministrar()) {
               @if (t.habilitado_firma_certificados) {
                 <button type="button" class="btn interruptor apagar" [disabled]="ocupada() || !!confirmarBaja()" (click)="solicitarBaja(t)" aria-label="Deshabilitar firmante" title="Deshabilitar firmante"><span class="material-symbols-outlined" aria-hidden="true">toggle_on</span></button>
@@ -29,7 +29,7 @@
               }
             } @else { <span class="solo-lectura">Solo lectura</span> }
           </td></tr>
-        } @empty { @if (!cargando() && !error()) { <tr><td colspan="6">No hay trabajadores con estos criterios.</td></tr> } }
+        } @empty { @if (!cargando() && !error()) { <tr><td colspan="7">No hay trabajadores con estos criterios.</td></tr> } }
       </tbody>
     </table>
   </section>

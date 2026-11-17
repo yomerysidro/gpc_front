@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/emision-certificados/firmas/firmas-aplicadas.component.ts"],
+  "sourcesContent": ["import { Component } from '@angular/core';\nimport { RouterLink } from '@angular/router';\nimport { PageTitleComponent } from '../../../shared/components/page-title/page-title.component';\nimport { ListadoEmisionComponent } from '../compartidos/listado-emision.component';\n\n@Component({\n  selector: 'app-firmas-aplicadas', standalone: true,\n  imports: [RouterLink, PageTitleComponent, ListadoEmisionComponent],\n  template: '<app-page-title title=\"Firmas aplicadas\" /><a class=\"btn\" routerLink=\"/certificaciones/firmas\">Volver a Firmas</a><app-listado-emision recurso=\"certificados-firmas\" [soloLectura]=\"true\" />',\n})\nexport class FirmasAplicadasComponent {}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAUM,IAAO,2BAAP,MAAO,0BAAwB;;qCAAxB,2BAAwB;EAAA;yEAAxB,2BAAwB,WAAA,CAAA,CAAA,sBAAA,CAAA,GAAA,YAAA,MAAA,UAAA,CAAA,6BAAA,GAAA,OAAA,GAAA,MAAA,GAAA,QAAA,CAAA,CAAA,SAAA,kBAAA,GAAA,CAAA,cAAA,2BAAA,GAAA,KAAA,GAAA,CAAA,WAAA,uBAAA,GAAA,aAAA,CAAA,GAAA,UAAA,SAAA,kCAAA,IAAA,KAAA;AAAA,QAAA,KAAA,GAAA;AAFxB,MAAA,oBAAA,GAAA,kBAAA,CAAA;AAA2C,MAAA,yBAAA,GAAA,KAAA,CAAA;AAAoD,MAAA,iBAAA,GAAA,iBAAA;AAAe,MAAA,uBAAA;AAAI,MAAA,oBAAA,GAAA,uBAAA,CAAA;;;AAAmD,MAAA,oBAAA,CAAA;AAAA,MAAA,qBAAA,eAAA,IAAA;;oBADtK,YAAY,oBAAoB,uBAAuB,GAAA,eAAA,EAAA,CAAA;;;6EAGtD,0BAAwB,EAAA,WAAA,4BAAA,UAAA,gFAAA,YAAA,GAAA,CAAA;AAAA,GAAA;",
+  "names": []
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/emision-certificados/documentos/listar-documentos/listar-documentos.component.scss"],
+  "sourcesContent": [".filtros-documentos { display: flex; gap: 1rem; align-items: end; flex-wrap: wrap; margin-bottom: 1rem; }\n.form-field { flex: 1 1 10rem; }.tabla-documentos { max-width: 100%; overflow-x: auto; }.table { min-width: 50rem; }\n.opcion-rrhh { display: block; width: 100%; margin-block: .5rem; text-align: left; }\n.disponible { color: #075a39; font-weight: 600; }\ncode, dd { overflow-wrap: anywhere; }dd { margin: .3rem 0 .8rem; }.vacio { text-align: center; }\n\n.estado-catalogo { display: inline-block; border-radius: 1rem; padding: .2rem .6rem; background: #eef3f8; color: #234765; font-size: .85rem; }\n.estado-catalogo.listo { background: #e8f5ec; color: #21643b; }\n"],
+  "mappings": ";AAAA,CAAA;AAAsB,WAAA;AAAe,OAAA;AAAW,eAAA;AAAkB,aAAA;AAAiB,iBAAA;;AACnF,CAAA;AAAc,QAAA,EAAA,EAAA;;AAAkB,CAAA;AAAoB,aAAA;AAAiB,cAAA;;AAAmB,CAAA;AAAS,aAAA;;AACjG,CAAA;AAAe,WAAA;AAAgB,SAAA;AAAa,gBAAA;AAAqB,cAAA;;AACjE,CAAA;AAAc,SAAA;AAAgB,eAAA;;AAC9B;AAAA;AAAW,iBAAA;;AAA0B;AAAK,UAAA,OAAA,EAAA;;AAAwB,CAAA;AAAS,cAAA;;AAE3E,CAAA;AAAmB,WAAA;AAAuB,iBAAA;AAAqB,WAAA,OAAA;AAAsB,cAAA;AAAqB,SAAA;AAAgB,aAAA;;AAC1H,CADA,eACA,CAAA;AAAyB,cAAA;AAAqB,SAAA;;",
+  "names": []
+}

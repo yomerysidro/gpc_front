@@ -4,7 +4,7 @@
 @if (error(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
 @if (reconocimiento(); as registro) {
   <article class="card detalle">
-    <span class="badge badge-reconocimiento">{{ registro.estado }}</span><h2>{{ registro.titulo }}</h2>
+    <span class="badge badge-reconocimiento" [attr.data-estado]="registro.estado">{{ registro.estado }}</span><h2>{{ registro.titulo }}</h2>
     <dl>
       <dt>Trabajador registrado</dt><dd>#{{ registro.id_persona_trabajador }} @if (trabajador(); as fila) { · {{ fila.cargo }} · Persona #{{ fila.id_persona }} }</dd>
       <dt>Nombre completo</dt><dd>{{ nombre() || 'No disponible' }}</dd>

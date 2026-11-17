@@ -21,7 +21,7 @@ app-header {
   color: #fff;
 
   &:hover:not(:disabled) {
-    background: #1b7189;
+    background: var(--azul-oscuro);
     color: #fff;
   }
 
@@ -36,7 +36,8 @@ main {
   overflow-y: auto;
   overscroll-behavior-y: contain;
   padding: var(--espacio-6);
-  background: var(--neutro-0);
+  background: var(--neutro-50);
+  scrollbar-gutter: stable;
 }
 
 // Escritorio: el popover se comporta como columna normal del grid.
@@ -61,15 +62,9 @@ main {
     color: inherit;
   }
 
-  .menu-movil {
-    display: none;
-  }
 }
 
 @media (max-width: 768px) {
-  .menu-escritorio {
-    display: none;
-  }
   :host {
     grid-template-columns: 1fr;
   }

@@ -14,6 +14,7 @@ import { HeaderComponent } from './components/header/header.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { MainLayoutComponent } from './components/layouts/main-layout/main-layout.component';
 import { HomeComponent } from './pages/home/home.component';
+import { ReportesService } from './core/services/reportes/reportes.service';
 import { ListarCertificadosComponent } from './pages/emision-certificados/certificados/listar-certificados/listar-certificados.component';
 import { PageTitleComponent } from './shared/components/page-title/page-title.component';
 import { authGuard } from './core/guards/auth.guard';
@@ -28,7 +29,8 @@ import { EmisionCertificadosService } from './core/services/emision-certificados
 
 describe('Componentes de la estructura base', () => {
   beforeEach(() => TestBed.configureTestingModule({ providers: [provideRouter([]),
-    { provide: AuthService, useValue: { usuario: signal(null), tienePermiso: () => true } },
+    { provide: ReportesService, useValue: { totalRegistrados: () => of(0) } },
+    { provide: AuthService, useValue: { usuario: signal(null), capacidadesSolicitudes: signal(null), tienePermiso: () => true } },
     { provide: EmisionCertificadosService, useValue: {
       listar: () => of({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }),
       listarTodos: () => of([]), documentosIdentidad: () => of({}),

@@ -1,3 +1,15 @@
 @use '../reportes';
 @include reportes.base;
 @include reportes.filtros;
+@include reportes.tabla;
+@include reportes.compacto;
+
+.encabezado-resultados h2 { margin: 0; font-weight: 600; }
+.resumen-asistencia { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.indicador-asistencia { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 14px 16px; border: 1px solid #e1e8f0; border-radius: 10px; background: #f8fafc; }
+.icono-resumen { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: #e8f2fc; color: #075a9b; font-size: 21px; }
+.indicador-asistencia:nth-child(2) .icono-resumen { background: #f0ebff; color: #7045bd; }
+.indicador-asistencia:nth-child(3) .icono-resumen { background: #e8f6ef; color: #147148; }
+.etiqueta-resumen { display: block; color: #54657b; font-size: .8rem; font-weight: 600; }
+.indicador-asistencia strong { display: block; margin-top: 2px; color: #173854; font-size: 1.4rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+@container (max-width: 560px) { .resumen-asistencia { grid-template-columns: 1fr; gap: 8px; } .indicador-asistencia { padding: 10px 12px; } }

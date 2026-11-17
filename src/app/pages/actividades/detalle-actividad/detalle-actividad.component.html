@@ -1,9 +1,9 @@
 <section aria-label="Detalle de la actividad seleccionada">
   <div class="encabezado">
     <button type="button" class="btn btn-icono btn-sin-borde volver-actividad" title="Volver a actividades" aria-label="Volver a actividades" [disabled]="panelOcupado()" (click)="volver.emit()"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span></button>
-    @if (actividad(); as actual) { <div class="identidad"><h1>{{ actual.nombre }}</h1><span class="badge">{{ actual.estado }}</span></div> }
+    @if (actividad(); as actual) { <div class="identidad"><h1>{{ actual.nombre }}</h1><span class="badge" [attr.data-estado]="actual.estado">{{ actual.estado }}</span></div> }
     @if (actividad(); as actual) {
-      @if (auth?.tienePermiso('actividades.editar')) { <div aria-label="Acciones de la actividad"><button class="btn" type="button" [disabled]="operando() || panelOcupado()" (click)="editarActividad.emit(actual)"><span class="material-symbols-outlined" aria-hidden="true">edit</span>Editar</button></div> }
+      @if (auth?.tienePermiso('actividades.editar')) { <div aria-label="Acciones de la actividad"><button class="btn btn-icono" type="button" [disabled]="operando() || panelOcupado()" (click)="editarActividad.emit(actual)" aria-label="Editar" title="Editar"><span class="material-symbols-outlined" aria-hidden="true" data-icon="edit"></span><span class="sr-only">Editar</span></button></div> }
     }
   </div>
   @if (cargando()) { <p role="status">Cargando actividad…</p> }
@@ -41,7 +41,7 @@
           <ul class="lista-sesiones">
             @for (sesion of sesiones(); track sesion['id_actividad_sesion']) {
               <li class="tarjeta-sesion" [attr.data-sesion-id]="sesion['id_actividad_sesion']" [attr.data-actividad-id]="actual.id_actividad">
-                <div class="titulo-panel"><div class="identidad-sesion"><small class="numero-sesion">Sesión #{{ sesion['numero_sesion'] ?? sesion['id_actividad_sesion'] }}</small><h3>{{ sesion['nombre'] || 'Nombre no disponible' }}</h3></div><span class="badge" [class.badge-exito]="sesion['estado'] === 'Finalizada'">{{ sesion['estado'] || 'No disponible' }}</span></div>
+                <div class="titulo-panel"><div class="identidad-sesion"><small class="numero-sesion">Sesión #{{ sesion['numero_sesion'] ?? sesion['id_actividad_sesion'] }}</small><h3>{{ sesion['nombre'] || 'Nombre no disponible' }}</h3></div><span class="badge" [class.badge-exito]="sesion['estado'] === 'Finalizada'" [attr.data-estado]="sesion['estado'] || 'No disponible'">{{ sesion['estado'] || 'No disponible' }}</span></div>
                 <p>{{ fecha($any(sesion['fecha'])) }} · {{ sesion['hora_inicio'] || 'Hora no disponible' }} – {{ sesion['hora_fin'] || 'Hora no disponible' }}</p>
                 @if (capacidadSesion(sesion['id_actividad_sesion'])?.contadores; as c) {
                   <small class="resumen-sesion">{{ c.participantes_sesion }} participantes · {{ c.presentes }} {{ c.presentes === 1 ? 'presente' : 'presentes' }} · {{ c.ausentes }} {{ c.ausentes === 1 ? 'ausente' : 'ausentes' }}</small>

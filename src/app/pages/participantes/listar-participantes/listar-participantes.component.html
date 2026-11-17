@@ -62,18 +62,18 @@
       <div class="tabla-caja" tabindex="0" role="region" aria-label="Listado de participantes con desplazamiento horizontal">
         <table class="table">
           <caption class="sr-only">Inscripciones de participantes</caption>
-          <thead><tr><th scope="col">Participante</th><th scope="col">Documento</th><th scope="col">Actividad</th><th scope="col">Tipo de participación</th><th scope="col">Fecha de inscripción</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+          <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th scope="col">Participante</th><th scope="col">Documento</th><th scope="col">Actividad</th><th scope="col">Tipo de participación</th><th scope="col" class="col-centro">Fecha de inscripción</th><th scope="col" class="col-centro">Estado</th><th scope="col" class="col-centro">Acciones</th></tr></thead>
           <tbody>
-            @for (item of visibles(); track item.id_participacion) {
-              <tr><th scope="row" class="nombre">{{ nombrePersona(item.id_persona) }}</th><td>{{ documentoPersona(item.id_persona) || 'No disponible' }}</td><td>{{ nombreActividad(item.id_actividad) }}</td><td>{{ nombreTipo(item.id_tipo_participacion) }}</td><td class="dato">{{ fecha(item.fecha_inscripcion) }}</td><td><span class="badge">{{ etiquetaEstado(item.estado) }}</span></td>
-                <td><div class="acciones-fila">
-                  <button *appHasPermission="'participantes.ver'" type="button" class="btn btn-icono btn-sin-borde" title="Ver detalle" [attr.aria-label]="'Ver inscripción de ' + nombrePersona(item.id_persona)" (click)="verDetalle(item)"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button>
-                  <button *appHasPermission="'participantes.editar'" type="button" class="btn btn-icono btn-sin-borde" title="Editar inscripción" [attr.aria-label]="'Editar inscripción de ' + nombrePersona(item.id_persona)" (click)="abrirFormulario(item)" [disabled]="guardandoEstado()"><span class="material-symbols-outlined" aria-hidden="true">edit</span></button>
+            @for (item of visibles(); track item.id_participacion; let numeroVisual = $index) {
+              <tr><td class="col-centro col-numero" data-label="N.º">{{ (paginaActual() - 1) * porPagina() + numeroVisual + 1 }}</td><th scope="row" class="nombre">{{ nombrePersona(item.id_persona) }}</th><td>{{ documentoPersona(item.id_persona) || 'No disponible' }}</td><td>{{ nombreActividad(item.id_actividad) }}</td><td>{{ nombreTipo(item.id_tipo_participacion) }}</td><td class="col-centro dato">{{ fecha(item.fecha_inscripcion) }}</td><td class="col-centro"><span class="badge" [attr.data-estado]="etiquetaEstado(item.estado)">{{ etiquetaEstado(item.estado) }}</span></td>
+                <td class="col-centro"><div class="acciones-fila">
+                  <button *appHasPermission="'participantes.ver'" type="button" class="btn btn-icono btn-sin-borde" title="Ver detalle" [attr.aria-label]="'Ver inscripción de ' + nombrePersona(item.id_persona)" (click)="verDetalle(item)"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver detalle</span></button>
+                  <button *appHasPermission="'participantes.editar'" type="button" class="btn btn-icono btn-sin-borde" title="Editar inscripción" [attr.aria-label]="'Editar inscripción de ' + nombrePersona(item.id_persona)" (click)="abrirFormulario(item)" [disabled]="guardandoEstado()"><span class="material-symbols-outlined" aria-hidden="true" data-icon="edit"></span><span class="sr-only">Editar inscripción</span></button>
                   <button *appHasPermission="'participantes.editar'" type="button" class="btn btn-icono btn-sin-borde" title="Cambiar estado" [attr.aria-label]="'Cambiar estado de ' + nombrePersona(item.id_persona)" (click)="abrirEstado(item)" [disabled]="guardandoEstado()"><span class="material-symbols-outlined" aria-hidden="true">toggle_on</span></button>
                 </div></td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="estado-vacio">
+              <tr><td colspan="8" class="estado-vacio">
                 @if (cargando()) { Cargando participantes… }
                 @else if (errorCarga()) { Datos del listado no disponibles. }
                 @else if (!inscripciones().length) { Aún no hay participantes inscritos. }

@@ -44,7 +44,7 @@
             autocomplete="current-password" aria-required="true" aria-describedby="password-error"
             [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid" />
           <button type="button" class="btn btn-icono btn-sin-borde"
-            [attr.aria-pressed]="campoPassword.type === 'text'" aria-label="Mostrar contraseña"
+            [attr.aria-pressed]="campoPassword.type === 'text'" aria-label="Mostrar contraseña" title="Mostrar contraseña"
             (click)="campoPassword.type = campoPassword.type === 'password' ? 'text' : 'password'">
             <span class="material-symbols-outlined" aria-hidden="true">
               {{ campoPassword.type === 'password' ? 'visibility' : 'visibility_off' }}

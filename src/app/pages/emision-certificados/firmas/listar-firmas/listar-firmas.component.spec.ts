@@ -42,10 +42,10 @@ describe('Habilitación persistida de firmantes municipales', () => {
     expect(r.request.body).toEqual(trabajador.habilitado_firma_certificados ? { id_persona_trabajador: trabajador.id_persona_trabajador } : null);
     r.flush({ success: true, data: { completada: true, persistido: true, reintento, funcionario: trabajador } });
   }
-  it('consulta los cuatro vínculos reales y las seis columnas sin habilitar automáticamente', () => {
+  it('consulta los cuatro vínculos reales y las siete columnas sin habilitar automáticamente', () => {
     cargar(); expect(vista().querySelector('h1')?.textContent).toBe('Gestión de firmantes municipales');
     expect(vista().querySelectorAll('tbody tr').length).toBe(4);
-    expect(Array.from(vista().querySelectorAll('th')).map(t => t.textContent)).toEqual(['Nombre completo', 'Cargo', 'Área municipal', 'Estado laboral', 'Habilitación de firma', 'Acciones']);
+    expect(Array.from(vista().querySelectorAll('th')).map(t => t.textContent)).toEqual(['N.º', 'Nombre completo', 'Cargo', 'Área municipal', 'Estado laboral', 'Habilitación de firma', 'Acciones']);
     expect(vista().querySelectorAll('[title="Habilitar firmante"]').length).toBe(4); http.expectNone(() => true);
   });
   it('mantiene ambas Maria por ID laboral y muestra cargo y área independientes', () => {

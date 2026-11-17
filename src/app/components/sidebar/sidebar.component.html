@@ -1,8 +1,4 @@
 <aside>
-  <button type="button" class="btn btn-icono btn-sin-borde cerrar-menu" popovertarget="menu-principal"
-    popovertargetaction="hide" aria-label="Cerrar menú de navegación">
-    <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
-  </button>
   <nav aria-label="Navegación principal" (keydown)="alTeclear($event)">
     @if (dashboard(); as entrada) {
       <a [routerLink]="entrada.path" [class.active]="entradaActiva() === entrada.id"

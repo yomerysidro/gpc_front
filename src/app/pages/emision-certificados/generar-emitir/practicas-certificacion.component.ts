@@ -16,9 +16,9 @@ import { EmisionCertificadosService } from '../../../core/services/emision-certi
     <button type="button" class="btn" [disabled]="cargando()" (click)="cargar()">Actualizar prácticas</button>
     @if (cargando()) { <p role="status">Cargando prácticas…</p> }
     @if (error()) { <p role="alert">{{ error() }}</p><button class="btn" (click)="cargar()">Reintentar</button> }
-    <div class="tabla-practicas" role="region" aria-label="Certificación de prácticas" tabindex="0"><table><thead><tr><th scope="col">Practicante</th><th scope="col">Institución</th><th scope="col">Área</th><th scope="col">Carrera</th><th scope="col">Fecha de inicio</th><th scope="col">Fecha de fin</th><th scope="col">Estado</th><th scope="col">Situación de certificación</th><th scope="col">Acción</th></tr></thead><tbody>
-    @for (e of filas(); track e.id_origen) {
-      <tr><td>{{ nombre(e) }}</td><td>{{ e.practica.institucion || '—' }}</td><td>{{ e.practica.area || '—' }}</td><td>{{ e.practica.carrera || '—' }}</td><td>{{ e.practica.fecha_inicio || '—' }}</td><td>{{ e.practica.fecha_fin || '—' }}</td><td>{{ e.practica.estado }}</td>
+    <div class="tabla-practicas" role="region" aria-label="Certificación de prácticas" tabindex="0"><table><thead><tr><th scope="col" class="col-numero">N.º</th><th scope="col">Practicante</th><th scope="col">Institución</th><th scope="col">Área</th><th scope="col">Carrera</th><th scope="col">Fecha de inicio</th><th scope="col">Fecha de fin</th><th scope="col">Estado</th><th scope="col">Situación de certificación</th><th scope="col">Acción</th></tr></thead><tbody>
+    @for (e of filas(); track e.id_origen; let numeroVisual = $index) {
+      <tr><td class="col-numero">{{ numeroVisual + 1 }}</td><td>{{ nombre(e) }}</td><td>{{ e.practica.institucion || '—' }}</td><td>{{ e.practica.area || '—' }}</td><td>{{ e.practica.carrera || '—' }}</td><td>{{ e.practica.fecha_inicio || '—' }}</td><td>{{ e.practica.fecha_fin || '—' }}</td><td>{{ e.practica.estado }}</td>
       <td><span class="estado-certificacion" [class.estado-disponible]="estado(e) === 'Certificado confirmado'">{{ estado(e) }}</span></td><td>
       @if (e.certificados_existentes.length) {
         @if (estado(e) === 'Anulado') { <span>Anulado</span> }
@@ -27,7 +27,7 @@ import { EmisionCertificadosService } from '../../../core/services/emision-certi
       @else if (!e.finalizacion_registrada) { <span>Primero debe finalizarse la práctica</span> }
       @else { <button class="btn btn-primary" [disabled]="!e.puede_preparar || !e.puede_generar_pdf" (click)="abrir(e)">Preparar certificado</button> }
       </td></tr>
-    } @empty { @if (!cargando() && !error()) { <tr><td colspan="9">No hay prácticas disponibles.</td></tr> } }
+    } @empty { @if (!cargando() && !error()) { <tr><td colspan="10">No hay prácticas disponibles.</td></tr> } }
     </tbody></table></div>
   `,
 })

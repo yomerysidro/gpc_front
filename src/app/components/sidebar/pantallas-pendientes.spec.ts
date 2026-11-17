@@ -9,6 +9,7 @@ import { of } from 'rxjs';
 import { routes } from '../../app.routes';
 import { UsuarioSesion } from '../../core/interfaces/autenticacion/auth.interface';
 import { AuthService } from '../../core/services/autenticacion/auth.service';
+import { ReportesService } from '../../core/services/reportes/reportes.service';
 import { SOLICITUDES_GATEWAY } from '../../core/services/solicitudes/solicitudes.service';
 import { DASHBOARD_SIDEBAR, resolverGruposSidebar, rutaPantallaPendiente, SIDEBAR_CONFIG } from './modulos-navegacion';
 import { pantallasPendientesGuard, puedeConsultarPantallasPendientes } from './pantallas-pendientes.guard';
@@ -29,6 +30,7 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
     ]);
     autenticado = true;
     TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(),
+      { provide: ReportesService, useValue: { totalRegistrados: () => of(0) } },
       { provide: SOLICITUDES_GATEWAY, useValue: null },
       { provide: AuthService, useValue: {
         usuario, permisos, modulos: signal([]), cargarSesion: () => of(autenticado),
@@ -64,7 +66,7 @@ describe('Páginas preliminares del Administrador sin privilegios operativos nue
       expect(enlace.querySelector('.etiqueta-desarrollo')).toBeNull();
     }
     expect(vista.querySelector('app-sidebar')?.textContent).not.toContain('Integración pendiente');
-    expect(vista.querySelector('#submenu-reportes .etiqueta-desarrollo')?.textContent).toBe('En desarrollo');
+    expect(vista.querySelector('#submenu-reportes .etiqueta-desarrollo')).toBeNull();
     http.expectNone(() => true);
   });
 

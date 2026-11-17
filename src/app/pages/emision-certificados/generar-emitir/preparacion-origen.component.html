@@ -149,10 +149,10 @@
 @if (aviso()) { <p role="status">{{ aviso() }}</p> }
 @if (!evaluacion()) {
   <button class="btn" type="button" [disabled]="operando() || cargando()" (click)="cargar()">Actualizar</button>
-  <div class="tabla"><table class="table"><thead><tr><th>Origen</th><th>Estado del origen</th><th>Acción</th></tr></thead><tbody>
-    @for (r of registros(); track r.id) {
-      <tr><td>{{ r.nombre }}</td><td>{{ r.estado }}</td><td><button type="button" class="btn" [disabled]="operando()" (click)="consultar(r.id)">Consultar beneficiario</button></td></tr>
-    } @empty { @if (!cargando()) { <tr><td colspan="3">No hay registros autorizados para consultar.</td></tr> } }
+  <div class="tabla"><table class="table"><thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th>Origen</th><th class="col-centro">Estado del origen</th><th class="col-centro">Acción</th></tr></thead><tbody>
+    @for (r of registros(); track r.id; let numeroVisual = $index) {
+      <tr><td class="col-centro col-numero" data-label="N.º">{{ numeroVisual + 1 }}</td><td>{{ r.nombre }}</td><td class="col-centro">{{ r.estado }}</td><td><button type="button" class="btn" [disabled]="operando()" (click)="consultar(r.id)">Consultar beneficiario</button></td></tr>
+    } @empty { @if (!cargando()) { <tr><td colspan="4">No hay registros autorizados para consultar.</td></tr> } }
   </tbody></table></div>
 }
 @if (evaluacion(); as e) {

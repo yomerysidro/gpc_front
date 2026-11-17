@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/pages/emision-certificados/compartidos/sesiones-asistencia-modal.scss"],
+  "sourcesContent": [".encabezado-registro {\r\n  align-items: baseline;\r\n  margin-bottom: var(--espacio-5);\r\n\r\n  h2 { margin: 0; }\r\n  .btn { margin-left: auto; }\r\n}\r\n\r\n// Solo afecta a los formularios modales de Sesiones y Asistencias.\r\n:host ::ng-deep app-dialogo.modal-registro > dialog.dialogo {\r\n  width: min(48rem, calc(100vw - 2 * var(--espacio-4)));\r\n  max-height: calc(100dvh - 2 * var(--espacio-4));\r\n  overflow-y: auto;\r\n  overscroll-behavior: contain;\r\n\r\n  app-formulario-emision {\r\n    fieldset.card { min-width: 0; margin: 0; padding: 0; border: 0; box-shadow: none; }\r\n    .acciones { justify-content: flex-end; margin-bottom: 0; }\r\n    .acciones button[type='submit'] { order: 1; }\r\n  }\r\n}\r\n"],
+  "mappings": ";AAAA,CAAA;AACE,eAAA;AACA,iBAAA,IAAA;;AAEA,CAJF,oBAIE;AAAK,UAAA;;AACL,CALF,oBAKE,CAAA;AAAO,eAAA;;AAIT,MAAA,UAAA,WAAA,CAAA,eAAA,EAAA,MAAA,CAAA;AACE,SAAA,IAAA,KAAA,EAAA,MAAA,EAAA,EAAA,EAAA,IAAA;AACA,cAAA,KAAA,OAAA,EAAA,EAAA,EAAA,IAAA;AACA,cAAA;AACA,uBAAA;;AAGE,MAAA,UAAA,WAAA,CAPJ,eAOI,EAAA,MAAA,CAPJ,QAOI,uBAAA,QAAA,CAAA;AAAgB,aAAA;AAAc,UAAA;AAAW,WAAA;AAAY,UAAA;AAAW,cAAA;;AAChE,MAAA,UAAA,WAAA,CARJ,eAQI,EAAA,MAAA,CARJ,QAQI,uBAAA,CAAA;AAAY,mBAAA;AAA2B,iBAAA;;AACvC,MAAA,UAAA,WAAA,CATJ,eASI,EAAA,MAAA,CATJ,QASI,uBAAA,CADA,SACA,MAAA,CAAA;AAAkC,SAAA;;",
+  "names": []
+}

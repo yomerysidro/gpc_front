@@ -26,8 +26,8 @@ interface Fila { id: number; nombre: string; estado: string; evaluacion?: Evalua
   standalone: true, selector: 'app-municipales-individuales',
   template: `<button class="btn" [disabled]="cargando()" (click)="cargar()">Actualizar</button>
     @if (error()) { <p role="alert">{{ error() }}</p> }
-    <div class="tabla"><table class="table"><thead><tr><th>Origen</th><th>Estado del origen</th><th>Acción</th></tr></thead><tbody>
-    @for (f of filas(); track f.id) { <tr><td>{{ f.nombre }}</td><td>{{ f.estado }}</td><td><button class="btn" [disabled]="!habilitada(f)" (click)="abrir(f)">{{ accion(f) }}</button>
+    <div class="tabla"><table class="table"><thead><tr><th scope="col" class="col-numero">N.º</th><th>Origen</th><th>Estado del origen</th><th>Acción</th></tr></thead><tbody>
+    @for (f of filas(); track f.id; let numeroVisual = $index) { <tr><td class="col-numero">{{ numeroVisual + 1 }}</td><td>{{ f.nombre }}</td><td>{{ f.estado }}</td><td><button class="btn" [disabled]="!habilitada(f)" (click)="abrir(f)">{{ accion(f) }}</button>
       @if (f.evaluacion?.documento_existente; as d) { <small>Estado documental: {{ d.estado_certificado }} · {{ d.estado_documento }}</small> }
       @if (f.error || f.evaluacion?.motivo_documento || f.evaluacion?.motivos_bloqueo?.length) { <details><summary>Detalles</summary><p>{{ f.error || f.evaluacion?.motivo_documento }}</p>@for (motivo of f.evaluacion?.motivos_bloqueo ?? []; track motivo) { <p>{{ motivo }}</p> }</details> }
     </td></tr> }

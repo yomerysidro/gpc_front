@@ -28,7 +28,7 @@ describe('Presentación adaptable de Reportes', () => {
     });
   }
 
-  it('integra skeletons por tarjeta y permite desplegar el criterio del conteo', () => {
+  it('integra skeletons por tarjeta sin textos explicativos adicionales', () => {
     const fixture = TestBed.createComponent(IndicadoresGeneralesComponent);
     fixture.detectChanges();
     fixture.componentInstance.cargando.set(true);
@@ -38,10 +38,8 @@ describe('Presentación adaptable de Reportes', () => {
     expect(host.querySelectorAll('.skeleton').length).toBe(4);
     expect(host.querySelector('[aria-busy="true"]')).not.toBeNull();
     expect(host.querySelector('[role="status"]')?.getAttribute('aria-label')).toBe('Consultando Actividades registradas');
-    const detalle = host.querySelector<HTMLDetailsElement>('.tarjeta details')!;
-    expect(detalle.open).toBeFalse();
-    detalle.querySelector('summary')!.click();
-    expect(detalle.open).toBeTrue();
+    expect(host.querySelector('.tarjeta details')).toBeNull();
+    expect(host.textContent).not.toContain('Total general · sin filtros');
     fixture.destroy();
   });
 
@@ -64,13 +62,25 @@ describe('Presentación adaptable de Reportes', () => {
     const host = fixture.nativeElement as HTMLElement;
     host.style.width = '320px';
     fixture.detectChanges();
-    fixture.componentInstance.pagina.set({ data: [{ id_certificado: 1, id_tipo_certificado: 2, fecha_emision: null, estado: true } as never], total: 1, current_page: 1, last_page: 1, per_page: 20 });
+    fixture.componentInstance.pagina.set({ data: [{ id_certificado: 1, id_tipo_certificado: 2, beneficiario: 'Ana Pérez', fecha_emision: null, estado: 'EMITIDO' } as never], total: 1, current_page: 1, last_page: 1, per_page: 20, resumen: { total: 1, con_fecha_emision: 0, personas_unicas: 1 }, filtros: {}, criterio_fecha: 'fecha_emision' });
     fixture.detectChanges();
     const tabla = host.querySelector<HTMLElement>('.tabla')!;
     expect(getComputedStyle(tabla).overflowX).toBe('auto');
     expect(tabla.scrollWidth).toBeGreaterThan(tabla.clientWidth);
     expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth + 1);
-    expect(host.querySelector('.badge-exito')?.textContent?.trim()).toBe('Activo');
+    expect(host.querySelector('.badge-exito')?.textContent?.trim()).toBe('Emitido');
+    fixture.destroy();
+  });
+
+  it('muestra los totales de asistencia en tarjetas independientes', () => {
+    const fixture = TestBed.createComponent(ReportesAsistenciaComponent);
+    fixture.detectChanges();
+    fixture.componentInstance.pagina.set({ data: [], total: 14, current_page: 1, last_page: 1, per_page: 20, resumen: { total: 14, personas_unicas: 3, presentes: 8 }, filtros: {} } as never);
+    fixture.detectChanges();
+    const tarjetas = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.indicador-asistencia'));
+    expect(tarjetas.map(tarjeta => tarjeta.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'fact_check Asistencias 14', 'group Personas 3', 'how_to_reg Presentes 8',
+    ]);
     fixture.destroy();
   });
 });

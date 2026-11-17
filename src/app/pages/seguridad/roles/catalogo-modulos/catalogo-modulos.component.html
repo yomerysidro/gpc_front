@@ -40,7 +40,7 @@
               <span class="modulo-nombre">{{ modulo.nombre }}</span>
               <span class="dato modulo-url">{{ modulo.url }}</span>
             </span>
-            <span class="badge" [class.badge-exito]="modulo.estado">{{ modulo.estado ? 'Activo' : 'Inactivo' }}</span>
+            <span class="badge" [class.badge-exito]="modulo.estado" [attr.data-estado]="modulo.estado ? 'Activo' : 'Inactivo'">{{ modulo.estado ? 'Activo' : 'Inactivo' }}</span>
             <span class="modulo-conteo">{{ modulo.permisos.length }} {{ modulo.permisos.length === 1 ? 'permiso' : 'permisos' }}</span>
             <span class="material-symbols-outlined desplegar" aria-hidden="true">expand_more</span>
           </summary>
@@ -67,20 +67,20 @@
               <table class="table table-apilable">
                 <caption class="sr-only">Permisos de {{ modulo.nombre }}</caption>
                 <thead>
-                  <tr>
+                  <tr><th scope="col" class="col-centro col-numero">N.º</th>
                     <th scope="col">Permiso</th>
                     <th scope="col">Clave</th>
-                    <th scope="col">Estado</th>
-                    <th *appHasPermission="'roles.editar'" scope="col"><span class="sr-only">Acciones</span></th>
+                    <th scope="col" class="col-centro">Estado</th>
+                    <th *appHasPermission="'roles.editar'" scope="col" class="col-centro"><span class="sr-only">Acciones</span></th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (permiso of modulo.permisos; track permiso.id) {
-                    <tr [class.registro-inactivo]="!permiso.estado">
+                  @for (permiso of modulo.permisos; track permiso.id; let numeroVisual = $index) {
+                    <tr [class.registro-inactivo]="!permiso.estado"><td class="col-centro col-numero" data-label="N.º">{{ numeroVisual + 1 }}</td>
                       <td>{{ permiso.nombre }}</td>
                       <td class="dato">{{ permiso.clave }}</td>
-                      <td><span class="badge" [class.badge-exito]="permiso.estado">{{ permiso.estado ? 'Activo' : 'Inactivo' }}</span></td>
-                      <td *appHasPermission="'roles.editar'">
+                      <td class="col-centro"><span class="badge" [class.badge-exito]="permiso.estado" [attr.data-estado]="permiso.estado ? 'Activo' : 'Inactivo'">{{ permiso.estado ? 'Activo' : 'Inactivo' }}</span></td>
+                      <td *appHasPermission="'roles.editar'" class="col-centro">
                         <div class="acciones">
                           <button type="button" class="btn btn-icono btn-sin-borde" (click)="abrirPermiso(modulo, permiso)"
                             [attr.aria-label]="'Editar permiso ' + permiso.clave" title="Editar">

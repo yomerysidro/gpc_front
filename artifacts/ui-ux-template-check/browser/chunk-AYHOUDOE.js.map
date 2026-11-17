@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/core/interfaces/emision-certificados/estado-revision.ts"],
+  "sourcesContent": ["export interface EstadoRevision {\n  pdf_confirmado?: boolean;\n  pdf_revisado_disponible?: boolean;\n  disponible_rrhh?: boolean;\n  documento?: EstadoRevision;\n}\n\n/** El campo actual prevalece sobre su alias; un false explícito nunca se reemplaza. */\nexport function pdfConfirmado(estado: EstadoRevision | null | undefined): boolean {\n  return (estado?.pdf_confirmado ?? estado?.pdf_revisado_disponible\n    ?? estado?.documento?.pdf_confirmado ?? estado?.documento?.pdf_revisado_disponible) === true;\n}\n\nexport function listoParaEntrega(estado: EstadoRevision | null | undefined): boolean {\n  return pdfConfirmado(estado) && (estado?.disponible_rrhh ?? estado?.documento?.disponible_rrhh) === true;\n}\n"],
+  "mappings": ";AAQM,SAAU,cAAc,QAAyC;AACrE,UAAQ,QAAQ,kBAAkB,QAAQ,2BACrC,QAAQ,WAAW,kBAAkB,QAAQ,WAAW,6BAA6B;AAC5F;AAEM,SAAU,iBAAiB,QAAyC;AACxE,SAAO,cAAc,MAAM,MAAM,QAAQ,mBAAmB,QAAQ,WAAW,qBAAqB;AACtG;",
+  "names": []
+}

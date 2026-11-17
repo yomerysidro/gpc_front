@@ -1,7 +1,7 @@
 // Estilos exclusivos del módulo; cada página incluye solo lo que utiliza.
 @mixin base {
   :host { display: block; min-width: 0; padding: clamp(16px, 2vw, 28px); background: #f4f7fb; border-radius: 14px; color: #24344b; container-type: inline-size; }
-  .reporte { display: grid; gap: 24px; max-width: 1440px; margin: auto; min-width: 0; }
+  .reporte { display: grid; gap: 24px; width: 100%; margin: 0; min-width: 0; }
   .eyebrow { color: #075a9b; font-size: .7rem; font-weight: 700; letter-spacing: .12em; }
   h1 { margin: 8px 0 12px; color: #173854; font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.03em; }
   h2 { margin: 0 0 10px; font-size: 1.05rem; }
@@ -35,6 +35,29 @@
   input, select { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #c6d2e1; border-radius: 8px; background: #fff; color: #24344b; font: inherit; font-size: 1rem; }
   :is(input, select):disabled { background: #f1f5f9; color: #52647b; cursor: not-allowed; }
   .filtros > .acciones { padding-top: 16px; border-top: 1px solid #e8eef5; }
+}
+
+@mixin compacto {
+  .reporte { gap: 20px; }
+  .reporte > header { padding: 2px 2px 0; }
+  .reporte > header h1 { margin-bottom: 0; }
+  .filtros-compactos { grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(140px, 1fr)) auto; gap: 16px; padding: 20px; border-top: 3px solid #075a9b; }
+  .filtros-compactos label { font-size: .75rem; letter-spacing: .01em; }
+  .filtros-compactos :is(input, select) { background: #f8fafc; border-color: #dce4ed; font-size: .875rem; min-height: 46px; }
+  .buscador { position: relative; min-width: 0; }
+  .buscador > span { position: absolute; left: 12px; top: 13px; color: #8292a6; font-size: 20px; pointer-events: none; }
+  .buscador input { padding-left: 40px; }
+  .btn-buscar { min-height: 46px; padding-inline: 24px; }
+  .catalogo-paginacion, .filtros-compactos > .error { grid-column: 1 / -1; }
+  .catalogo-paginacion { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .sesion-contextual { grid-column: 2 / 4; }
+  .encabezado-resultados { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .encabezado-resultados h2 { margin-bottom: 4px; font-weight: 500; }
+  .total-resultados { font-size: 1.5rem; font-weight: 750; color: #173854; }
+  .encabezado-resultados p { margin: 0; font-size: .8rem; }
+  .nombre-principal { font-weight: 600; color: #173854; }
+  @container (max-width: 850px) { .filtros-compactos { grid-template-columns: repeat(2, minmax(0, 1fr)); } .campo-busqueda { grid-column: 1 / -1; } .sesion-contextual { grid-column: auto; } }
+  @container (max-width: 460px) { .filtros-compactos { grid-template-columns: minmax(0, 1fr); padding: 16px; } .campo-busqueda, .sesion-contextual { grid-column: auto; } .btn-buscar { width: 100%; } }
 }
 
 @mixin tabla {

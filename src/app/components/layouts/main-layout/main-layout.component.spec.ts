@@ -63,13 +63,14 @@ describe('Layout compartido con scroll independiente', () => {
     marco!.style.width = '375px'; marco!.style.height = '640px';
     const doc = marco!.contentDocument!; await esperarFrame();
     const sidebar = elemento<HTMLElement>('app-sidebar'), header = elemento<HTMLElement>('app-header');
-    expect(getComputedStyle(elemento<HTMLElement>('.menu-escritorio')).display).toBe('none');
-    elemento<HTMLButtonElement>('.menu-movil').click(); await esperarFrame();
+    expect(fixture.nativeElement.querySelectorAll('.menu-toggle').length).toBe(1);
+    expect(fixture.nativeElement.querySelector('app-sidebar .cerrar-menu')).toBeNull();
+    elemento<HTMLButtonElement>('.menu-toggle').click(); await esperarFrame();
     expect(sidebar.matches(':popover-open')).toBeTrue();
     expect(sidebar.getBoundingClientRect().top).toBe(header.getBoundingClientRect().bottom);
     expect(sidebar.getBoundingClientRect().bottom).toBeLessThanOrEqual(640);
     expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(375);
-    elemento<HTMLButtonElement>('app-sidebar .cerrar-menu').click(); await esperarFrame();
+    elemento<HTMLButtonElement>('.menu-toggle').click(); await esperarFrame();
     expect(sidebar.matches(':popover-open')).toBeFalse();
   });
 });

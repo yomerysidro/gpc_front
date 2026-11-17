@@ -2,7 +2,7 @@
   <div class="identidad">
     <span class="material-symbols-outlined medalla" aria-hidden="true">military_tech</span>
     <span class="etiqueta">Reconocimiento institucional</span>
-    <span class="badge">{{ reconocimiento().estado }}</span>
+    <span class="badge" [attr.data-estado]="reconocimiento().estado">{{ reconocimiento().estado }}</span>
   </div>
   <div class="contenido">
     <p class="trabajador">{{ nombre() || 'Trabajador #' + reconocimiento().id_persona_trabajador }}</p>
@@ -36,8 +36,8 @@
     </section>
   </div>
   <footer>
-    @if (puedeVerDetalle()) { <a class="btn btn-consulta" [routerLink]="['/certificaciones/reconocimientos', reconocimiento().id_reconocimiento]">Ver detalle</a> }
-    @if (puedeEliminar()) { <button type="button" class="btn" (click)="eliminar.emit()">Eliminar</button> }
-    @if (puedeEditar()) { <a class="btn" [routerLink]="['/certificaciones/reconocimientos', reconocimiento().id_reconocimiento, 'editar']">Editar</a> }
+    @if (puedeVerDetalle()) { <a class="btn btn-consulta btn-icono" [routerLink]="['/certificaciones/reconocimientos', reconocimiento().id_reconocimiento]" aria-label="Ver detalle" title="Ver detalle"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver detalle</span></a> }
+    @if (puedeEliminar()) { <button type="button" class="btn btn-icono" (click)="eliminar.emit()" aria-label="Eliminar" title="Eliminar"><span class="material-symbols-outlined" aria-hidden="true" data-icon="delete"></span><span class="sr-only">Eliminar</span></button> }
+    @if (puedeEditar()) { <a class="btn btn-icono" [routerLink]="['/certificaciones/reconocimientos', reconocimiento().id_reconocimiento, 'editar']" aria-label="Editar" title="Editar"><span class="material-symbols-outlined" aria-hidden="true" data-icon="edit"></span><span class="sr-only">Editar</span></a> }
   </footer>
 </article>

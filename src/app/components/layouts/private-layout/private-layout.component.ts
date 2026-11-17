@@ -1,5 +1,6 @@
 import { Component, computed, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
 import { finalize } from 'rxjs';
+import { Router } from '@angular/router';
 import { MainLayoutComponent } from '../main-layout/main-layout.component';
 import { NavigationItem } from '../../../core/interfaces/navigation/navigation-item.interface';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
@@ -13,6 +14,8 @@ import { AuthService } from '../../../core/services/autenticacion/auth.service';
   styleUrl: './private-layout.component.scss'
 })
 export class PrivateLayoutComponent {
+  private readonly entrada = inject(Router).getCurrentNavigation()?.extras.info as { inicioSesionExitoso?: boolean } | undefined;
+  protected readonly inicioSesionExitoso = signal(this.entrada?.inicioSesionExitoso === true);
   protected readonly auth = inject(AuthService);
   protected readonly saliendo = signal(false);
   protected readonly menuAbierto = signal(false);

@@ -62,6 +62,10 @@ function solicitarContexto(parametros: ParamMap): SolicitudContexto {
   templateUrl: './generar-emitir.component.html', styleUrls: ['../compartidos/emision.scss', './generar-emitir.component.scss'],
 })
 export class GenerarEmitirComponent {
+  protected numeroBeneficiario(b: BeneficiarioCertificacion, r: EvaluacionCertificacion): number {
+    const visibles = r.beneficiarios.data.filter(item => !this.elegibilidad() || item.estado_elegibilidad === this.elegibilidad());
+    return (r.beneficiarios.current_page - 1) * r.beneficiarios.per_page + visibles.indexOf(b) + 1;
+  }
   protected readonly pasoBeneficiario = signal<1 | 2 | 3 | 4>(1);
   protected readonly mensajeCertificado = inject(NonNullableFormBuilder).control('', [validarMensajeCertificado]);
   protected readonly pdfPrevio = signal<{ archivo: ArchivoPdf; datos: Omit<VistaPreviaSesion, 'vista_previa_pdf'>; mensaje: string; clave: string } | null>(null);

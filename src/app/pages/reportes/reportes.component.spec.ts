@@ -6,8 +6,7 @@ import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of, Subject } from 'rxjs';
 import { AuthService } from '../../core/services/autenticacion/auth.service';
-import { ReportesService } from '../../core/services/reportes/reportes.service';
-import { PaginaEmision, CertificadoRow } from '../../core/interfaces/emision-certificados/emision-certificados.interface';
+import { CertificadoReporte, PaginaReporte, ReportesService } from '../../core/services/reportes/reportes.service';
 import { SIDEBAR_CONFIG, resolverGruposSidebar } from '../../components/sidebar/modulos-navegacion';
 import { ReportesCertificadosComponent } from './reportes-certificados/reportes-certificados.component';
 import { ReportesAsistenciaComponent } from './reportes-asistencia/reportes-asistencia.component';
@@ -35,11 +34,11 @@ describe('Reportes: alcance y autorización', () => {
     http.expectNone(() => true);
   });
 
-  it('las cuatro opciones usan reportes.ver y Actividades ya no se marca pendiente', () => {
+  it('las cuatro opciones usan reportes.ver y ninguna se marca pendiente', () => {
     const entradas = SIDEBAR_CONFIG.find(grupo => grupo.id === 'reportes')!.hijos;
     expect(entradas.length).toBe(4);
     expect(entradas.every(entrada => entrada.permiso === 'reportes.ver')).toBeTrue();
-    expect(entradas.find(entrada => entrada.id === 'reportes-actividades')?.pendiente).toBeUndefined();
+    expect(entradas.every(entrada => !entrada.pendiente && entrada.habilitado)).toBeTrue();
     expect(resolverGruposSidebar(() => false, []).some(grupo => grupo.id === 'reportes')).toBeFalse();
     expect(resolverGruposSidebar(clave => clave === 'reportes.ver', []).map(grupo => grupo.id)).toEqual(['reportes']);
   });
@@ -51,10 +50,10 @@ describe('Reportes: alcance y autorización', () => {
     http.expectNone(() => true);
   });
 
-  it('asistencia nunca descarga listados ilimitados ni calcula ausencias', () => {
+  it('asistencia no consulta sin el permiso de origen', () => {
     const fixture = TestBed.createComponent(ReportesAsistenciaComponent);
     fixture.detectChanges(); fixture.componentInstance.consultar(); fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Consulta no disponible');
+    expect(fixture.nativeElement.textContent).toContain('participantes.ver');
     expect(fixture.nativeElement.querySelector('table')).toBeNull();
     http.expectNone(() => true);
   });
@@ -75,10 +74,10 @@ describe('Reportes: alcance y autorización', () => {
 
   it('no repite una solicitud en curso y elimina datos anteriores si falla', () => {
     permisos.add('emision.ver');
-    const respuesta = new Subject<PaginaEmision<CertificadoRow>>();
+    const respuesta = new Subject<PaginaReporte<CertificadoReporte>>();
     const servicio = TestBed.inject(ReportesService);
     spyOn(servicio, 'tipos').and.returnValue(of({ data: [], total: 0, current_page: 1, last_page: 1, per_page: 20 }));
-    const consultar = spyOn(servicio, 'certificados').and.returnValue(respuesta);
+    const consultar = spyOn(servicio, 'certificadosReporte').and.returnValue(respuesta);
     const componente = TestBed.createComponent(ReportesCertificadosComponent).componentInstance;
     componente.consultar(); componente.consultar();
     expect(consultar).toHaveBeenCalledTimes(1);
@@ -88,16 +87,17 @@ describe('Reportes: alcance y autorización', () => {
     expect(componente.cargando()).toBeFalse();
   });
 
-  it('un filtro local nunca cambia el total global ni considera sin fecha como emitido', () => {
+  it('muestra los resultados y resúmenes globales del servidor sin volver a filtrarlos en el cliente', () => {
     const componente = TestBed.createComponent(ReportesCertificadosComponent).componentInstance;
     componente.pagina.set({ data: [
-      { id_certificado: 1, fecha_emision: '2026-11-03', estado: true },
-      { id_certificado: 2, fecha_emision: null, estado: true },
-    ] as CertificadoRow[], total: 200, current_page: 1, last_page: 10, per_page: 20 });
-    componente.aplicado = { inicio: '2026-11-01', fin: '2026-11-30', busqueda: '', tipo: '', estado: '' };
-    expect(componente.filas().length).toBe(1);
+      { id_certificado: 1, fecha_emision: '2026-11-03', estado: 'EMITIDO' },
+      { id_certificado: 2, fecha_emision: null, estado: 'PREPARADO' },
+    ] as CertificadoReporte[], total: 200, current_page: 1, last_page: 10, per_page: 20,
+      resumen: { total: 200, con_fecha_emision: 150, personas_unicas: 180 }, filtros: {}, criterio_fecha: 'fecha_emision' });
+    componente.busqueda = 'borrador sin aplicar';
+    expect(componente.filas().length).toBe(2);
     expect(componente.pagina()?.total).toBe(200);
-    expect(componente.conFecha()).toBe(1);
+    expect(componente.conFecha()).toBe(150);
   });
 
   it('conserva el tipo seleccionado al navegar el catálogo sin acumular páginas', () => {

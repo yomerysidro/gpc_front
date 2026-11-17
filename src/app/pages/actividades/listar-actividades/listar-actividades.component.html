@@ -68,18 +68,18 @@
           <table class="table">
             <caption class="sr-only">Actividades registradas</caption>
             <thead><tr>
-              <th scope="col">N.º</th><th scope="col">Nombre</th><th scope="col">Área</th><th scope="col">Tipo de actividad</th>
-              <th scope="col">Fecha de inicio</th><th scope="col">Fecha de fin</th><th scope="col">Estado</th><th scope="col">Acciones</th>
+              <th scope="col" class="col-centro">N.º</th><th scope="col">Nombre</th><th scope="col">Área</th><th scope="col">Tipo de actividad</th>
+              <th scope="col" class="col-centro">Fecha de inicio</th><th scope="col" class="col-centro">Fecha de fin</th><th scope="col" class="col-centro">Estado</th><th scope="col" class="col-centro">Acciones</th>
             </tr></thead>
             <tbody>
               @for (actividad of listadoListo() ? visibles() : []; track actividad.id_actividad; let indice = $index) {
                 <tr [class.registro-inactivo]="actividad.estado === 'Cerrada'">
-                  <td>{{ (paginaActual() - 1) * porPagina() + indice + 1 }}</td><th scope="row" class="nombre-actividad">{{ actividad.nombre }}</th>
+                  <td class="col-centro">{{ (paginaActual() - 1) * porPagina() + indice + 1 }}</td><th scope="row" class="nombre-actividad">{{ actividad.nombre }}</th>
                   <td>{{ nombreArea(actividad.id_area, actividad.area_nombre) }}</td>
                   <td>{{ nombreTipo(actividad.id_tipo_actividad, actividad.tipo_actividad_nombre) }}</td>
-                  <td class="fecha">{{ fecha(actividad.fecha_inicio) }}</td><td class="fecha">{{ fecha(actividad.fecha_fin) }}</td>
-                  <td><span class="badge" [class.badge-exito]="actividad.estado === 'Activa'">{{ actividad.estado }}</span></td>
-                  <td><div class="acciones-fila">
+                  <td class="col-centro fecha">{{ fecha(actividad.fecha_inicio) }}</td><td class="col-centro fecha">{{ fecha(actividad.fecha_fin) }}</td>
+                  <td class="col-centro"><span class="badge" [class.badge-exito]="actividad.estado === 'Activa'" [attr.data-estado]="actividad.estado">{{ actividad.estado }}</span></td>
+                  <td class="col-centro"><div class="acciones-fila">
                     <button type="button" class="btn btn-icono btn-sin-borde gestionar-actividad" title="Ver actividad" aria-label="Ver actividad"
                       (click)="seleccionarActividad(actividad)">
                       <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
@@ -136,7 +136,7 @@
 
 <app-dialogo #dialogoAcciones class="modal-acciones" titulo="Acciones de la actividad">
   @if (seleccionada(); as actividad) {
-    <p class="contexto-actividad">{{ actividad.nombre }} <span class="badge">{{ actividad.estado }}</span></p>
+    <p class="contexto-actividad">{{ actividad.nombre }} <span class="badge" [attr.data-estado]="actividad.estado">{{ actividad.estado }}</span></p>
     <div class="panel-acciones">
       <button type="button" class="tarjeta-accion" title="Ver detalle" [disabled]="!permitido('actividades.ver')" (click)="ejecutar('detalle', actividad)">
         <span class="material-symbols-outlined" aria-hidden="true">visibility</span><span>Ver detalle</span>
@@ -295,7 +295,7 @@
       <div><dt>Inicio</dt><dd>{{ fecha(actividad.fecha_inicio) }}</dd></div>
       <div><dt>Fin</dt><dd>{{ fecha(actividad.fecha_fin) }}</dd></div>
       <div><dt>Sede</dt><dd>{{ actividad.sede || 'Sin sede registrada' }}</dd></div>
-      <div><dt>Estado</dt><dd><span class="badge" [class.badge-exito]="actividad.estado === 'Activa'">{{ actividad.estado }}</span></dd></div>
+      <div><dt>Estado</dt><dd><span class="badge" [class.badge-exito]="actividad.estado === 'Activa'" [attr.data-estado]="actividad.estado">{{ actividad.estado }}</span></dd></div>
       <div><dt>Origen</dt><dd>{{ origenActividad(actividad) }}</dd></div>
       @if (actividad.id_solicitud_actividad; as solicitudId) {
         <div><dt>Solicitud relacionada</dt><dd>Solicitud #{{ solicitudId }}
