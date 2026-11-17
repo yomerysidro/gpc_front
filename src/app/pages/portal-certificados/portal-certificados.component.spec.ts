@@ -81,6 +81,7 @@ describe('Portal público sin autenticación', () => {
     const h = await RouterTestingHarness.create('/portal-certificados');
     expect(TestBed.inject(Router).url).toBe('/portal-certificados');
     expect(h.routeNativeElement!.textContent).toContain('Portal Público de Certificados');
+    expect(h.routeNativeElement!.querySelector('a[href="/login"]')?.textContent).toContain('Iniciar sesión');
     expect(h.routeNativeElement!.querySelector('app-sidebar')).toBeNull();
     http.expectNone(() => true); h.fixture.destroy();
   });
@@ -150,7 +151,7 @@ describe('Portal público sin autenticación', () => {
       expect(texto).toContain('Certificado de Capacitación'); expect(texto).toContain('Jornada municipal');
       expect(texto).toContain('Sesión N.º 001'); expect(texto).toContain('01/01/2026');
       expect(texto).toContain('Ver certificado');
-      expect(texto).toContain('Certificado registrado y verificado');
+      expect(texto).toContain('Certificado verificado');
       expect(texto).not.toContain('criptográfica'); expect(texto).not.toContain('Laravel');
       f.destroy();
     });
@@ -165,7 +166,7 @@ describe('Portal público sin autenticación', () => {
   it('no ofrece un PDF sin autorización explícita y no infiere disponibilidad de la integridad', () => {
     const f = crear(); const c = f.componentInstance as any;
     consultar(c).flush({ success: true, data: { ...datos, puede_ver_documento: false } }); f.detectChanges();
-    expect(f.nativeElement.textContent).toContain('Certificado registrado y verificado');
+    expect(f.nativeElement.textContent).toContain('Certificado verificado');
     expect(c.resultado().urlPdf).toBeNull(); f.destroy();
   });
   it('rechaza una URL privada o externa aunque el servidor la devuelva', () => {

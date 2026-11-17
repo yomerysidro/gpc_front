@@ -1,7 +1,7 @@
 <div class="portal">
   <header class="cabecera">
     <div class="marca"><img src="/marca/escudo-160.webp" alt="Escudo municipal" width="64" height="72" /><span>Municipalidad Distrital de Morales<small>Servicio de consulta ciudadana</small></span></div>
-    <span class="acceso"><span class="material-symbols-outlined" aria-hidden="true">verified</span> Acceso público</span>
+    <div class="accesos"><span class="acceso"><span class="material-symbols-outlined" aria-hidden="true">verified</span> Acceso público</span><a class="acceso-sistema" routerLink="/login"><svg class="icono-ingreso" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 8l4 4-4 4M14 12H3" /></svg>Iniciar sesión</a></div>
   </header>
   <main id="contenido-portal">
     <div class="presentacion"><p class="antetitulo">MUNICIPALIDAD DISTRITAL DE MORALES</p><h1>Portal Público de Certificados</h1><p>Consulta y verifica tus certificados</p></div>
@@ -30,22 +30,24 @@
         @if (mensaje()) { <p class="aviso" role="status">{{ mensaje() }}</p> }
       </section>
       @if (resultadosDni()?.length === 0) { <p role="status">No hay certificados disponibles para esta consulta.</p> }
+      <div class="resultados-grid">
       @for (r of tarjetas(); track claveTarjeta(r)) {
         <section class="tarjeta resultados" aria-label="Resultado de la consulta" aria-live="polite">
           @switch (r.estado) {
             @case ('disponible') {
               <div class="resultado-cabecera">
                 <div class="resultado-identidad"><span class="material-symbols-outlined insignia" aria-hidden="true">workspace_premium</span><div><span class="etiqueta">CERTIFICADO</span><h2>{{ r.tipo || 'Certificado' }}</h2></div></div>
-                <span class="estado">{{ r.verificado ? r.estadoPublico : 'Disponible' }}</span>
+                <span class="estado" [class.estado-verificado]="r.verificado">
+                  @if (r.verificado) { <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>Certificado verificado }
+                  @else { Disponible }
+                </span>
               </div>
               @if (r.actividad) { <p class="actividad-certificado">{{ r.actividad }}</p> }
               @if (r.sesion) { <p>{{ r.sesion }}</p> }
               @if (r.verificado) { <p>Este documento consta en los registros de la Municipalidad Distrital de Morales.</p><p>Estado del documento: Vigente · Integridad: Verificada</p> }
-              @else { <p class="estado-publico">{{ r.estadoPublico }}</p> }
               <p class="codigo">Código de verificación: {{ r.codigo }}</p>
               @if (r.fecha) { <p>{{ r.fechaEtiqueta || 'Fecha del documento' }}: {{ r.fecha | date:'dd/MM/yyyy' }}</p> }
               @if (r.urlPdf) { <button type="button" class="btn principal" (click)="verCertificado(r)">Ver certificado</button> <a class="btn descargar" [href]="r.urlPdf + '&descargar=1'">Descargar PDF</a> }
-              @else { <p>El archivo no está disponible para visualización pública.</p> }
             }
             @case ('anulado') { <h2>Documento anulado o revocado</h2><p>Este documento no está disponible para visualización ni descarga.</p> }
             @case ('no-encontrado') { <h2>No se encontró un certificado con ese código.</h2><p>Verifica que esté escrito correctamente.</p> }
@@ -61,6 +63,7 @@
           }
         </section>
       }
+      </div>
     @if (detalle()) {
       <section class="tarjeta documento" aria-labelledby="titulo-documento">
         <button type="button" class="btn" (click)="volver()"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Regresar</button>

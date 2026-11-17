@@ -3,6 +3,7 @@ import { ActivatedRouteSnapshot, provideRouter, Router, RouterStateSnapshot, Url
 import { firstValueFrom, isObservable, of } from 'rxjs';
 import { routes } from './app.routes';
 import { authGuard } from './core/guards/auth.guard';
+import { inicioGuard } from './core/guards/inicio.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { AuthService } from './core/services/autenticacion/auth.service';
 
@@ -40,4 +41,17 @@ describe('Autorización de las rutas de Gestión', () => {
     }
     expect(gestion.children!.find(r => r.path === 'practicantes')?.redirectTo).toBe('/gestion/practicas?pestana=practicantes');
   });
+});
+
+describe('Entrada principal', () => {
+  for (const [sesion, destino] of [[false, '/portal-certificados'], [true, '/inicio']] as const) {
+    it(`dirige a ${destino} ${sesion ? 'con sesión' : 'sin sesión'}`, async () => {
+      TestBed.configureTestingModule({ providers: [provideRouter([]), {
+        provide: AuthService, useValue: { cargarSesion: () => of(sesion), rutaInicial: () => '/inicio' },
+      }] });
+      const resultado = TestBed.runInInjectionContext(() => inicioGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot));
+      const ruta = isObservable(resultado) ? await firstValueFrom(resultado) : resultado;
+      expect(TestBed.inject(Router).serializeUrl(ruta as UrlTree)).toBe(destino);
+    });
+  }
 });

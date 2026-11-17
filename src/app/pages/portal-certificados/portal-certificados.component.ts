@@ -3,14 +3,14 @@ import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { distinctUntilChanged, map, Subscription } from 'rxjs';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CertificadoPublico, PortalCertificadosService } from '../../core/services/emision-certificados/portal-certificados.service';
 import { ArchivoPdf } from '../../core/interfaces/emision-certificados/documento-digital.interface';
 import { PdfContinuoComponent } from '../emision-certificados/compartidos/pdf-continuo.component';
 
 @Component({
   selector: 'app-portal-certificados', standalone: true,
-  imports: [ReactiveFormsModule, DatePipe, PdfContinuoComponent],
+  imports: [ReactiveFormsModule, DatePipe, PdfContinuoComponent, RouterLink],
   templateUrl: './portal-certificados.component.html',
   styleUrl: './portal-certificados.component.scss',
 })

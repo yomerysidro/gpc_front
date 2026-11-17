@@ -73,7 +73,7 @@ const gestionRoutes: Routes = [
 
 
 export const routes: Routes = [
-  // Sin componente: en el navegador inicioGuard redirige al primer módulo o a /login.
+  // Sin componente: inicioGuard redirige al primer módulo o al portal público.
   { path: '', pathMatch: 'full', canActivate: [inicioGuard], children: [] },
 
   { path: 'login', component: LoginComponent, canActivate: [guestGuard] },

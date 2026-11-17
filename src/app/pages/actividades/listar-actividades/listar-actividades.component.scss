@@ -11,14 +11,17 @@
 
 .encabezado {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--espacio-3);
-  margin-bottom: var(--espacio-5);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.5rem;
+  padding: 1rem .5rem 1.5rem;
+  margin-bottom: var(--espacio-4);
 }
 
-.descripcion { margin: 0; color: var(--neutro-500); }
+.encabezado-texto { min-width: 0; }
+.descripcion { margin: .4rem 0 0; color: var(--neutro-500); line-height: 1.5; }
+.solicitar-actividad { flex: none; min-height: 44px; padding-inline: 1.25rem; gap: .5rem; }
+.solicitar-actividad .material-symbols-outlined { font-size: 1.2rem; }
 
 .filtros {
   display: flex;
@@ -129,6 +132,8 @@ textarea { resize: vertical; }
 
 
 @media (max-width: 600px) {
+  .encabezado { padding: .75rem 0 1.25rem; }
+  .solicitar-actividad { justify-content: center; max-width: 100%; }
   .rejilla-formulario { grid-template-columns: minmax(0, 1fr); }
   .filtros .form-field { flex-basis: 100%; }
   .limpiar { width: 100%; }

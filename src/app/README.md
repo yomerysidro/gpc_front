@@ -106,7 +106,7 @@ lista: sin ese archivo falla el build de la imagen en el CI.
 
 | Ruta | Guard | Notas |
 | --- | --- | --- |
-| `/` | inicioGuard | Primer módulo del menú con sesión; /login sin ella |
+| `/` | inicioGuard | Primer módulo del menú con sesión; portal público sin ella |
 | `/login`, `/recuperar-password` | guestGuard | Con sesión redirigen al primer módulo |
 | `/reset-password` | — | Enlace del correo: `?token=…&email=…` |
 | `/acceso-denegado` | — | |

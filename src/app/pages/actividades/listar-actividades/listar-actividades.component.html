@@ -1,10 +1,10 @@
 <section aria-label="Gestión de actividades">
   <div #encabezado class="encabezado" tabindex="-1">
-    <div>
+    <div class="encabezado-texto">
       <app-page-title title="Actividades" />
       <p class="descripcion">Administra las actividades institucionales.</p>
     </div>
-      <a *appHasPermission="'solicitudes.crear'" class="btn btn-primary" routerLink="/solicitudes/nueva">Solicitar actividad</a>
+    <a *appHasPermission="'solicitudes.crear'" class="btn btn-primary solicitar-actividad" routerLink="/solicitudes/nueva"><span class="material-symbols-outlined" aria-hidden="true">add</span>Solicitar actividad</a>
   </div>
 
   <div class="pestanas" role="tablist" aria-label="Actividades" (keydown)="alTeclearPestanas($event)">

@@ -4,7 +4,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from '../services/autenticacion/auth.service';
 
-/** Ruta raíz: primer módulo del menú con sesión, /login sin ella. */
+/** Ruta raíz: primer módulo del menú con sesión, portal público sin ella. */
 export const inicioGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
 
@@ -15,6 +15,6 @@ export const inicioGuard: CanActivateFn = () => {
   const router = inject(Router);
 
   return auth.cargarSesion().pipe(
-    map(ok => router.parseUrl(ok ? auth.rutaInicial() : '/login')),
+    map(ok => router.parseUrl(ok ? auth.rutaInicial() : '/portal-certificados')),
   );
 };

@@ -5,6 +5,8 @@ dist
 .github
 .vscode
 coverage
+artifacts
+docs
 deploy
 .agents
 .codex
