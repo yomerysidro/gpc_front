@@ -79,6 +79,7 @@ describe('Portal público sin autenticación', () => {
 
   it('abre la ruta pública sin activar el guard privado ni obligar a autenticar', async () => {
     const h = await RouterTestingHarness.create('/portal-certificados');
+    h.detectChanges();
     expect(TestBed.inject(Router).url).toBe('/portal-certificados');
     expect(h.routeNativeElement!.textContent).toContain('Portal Público de Certificados');
     expect(h.routeNativeElement!.querySelector('a[href="/login"]')?.textContent).toContain('Iniciar sesión');
@@ -173,7 +174,9 @@ describe('Portal público sin autenticación', () => {
     const f = crear(); const c = f.componentInstance as any;
     consultar(c).flush({ success: true, data: { ...datos, url_documento: 'https://ajeno.test/privado.pdf' } }); f.detectChanges();
     c.verCertificado(); http.expectNone(r => r.url.includes('ajeno.test'));
-    expect(f.nativeElement.textContent).toContain('no est\u00e1 disponible para visualizaci\u00f3n p\u00fablica'); f.destroy();
+    expect(c.resultado().urlPdf).toBeNull();
+    expect(f.nativeElement.querySelector('.resultados a')).toBeNull();
+    expect(f.nativeElement.textContent).not.toContain('Ver certificado'); f.destroy();
   });
   it('recupera solo el PDF público original y no ofrece descarga si el backend la rechaza', () => {
     const f = crear(); const c = f.componentInstance as any;
@@ -248,7 +251,7 @@ describe('Portal público sin autenticación', () => {
       const tarjetas = f.nativeElement.querySelectorAll('.resultados'); expect(tarjetas.length).toBe(cantidad);
       expect(tarjetas[0].textContent).toContain('Capacitación'); expect(tarjetas[0].textContent).toContain('Jornada municipal');
       expect(tarjetas[0].textContent).toContain('03/11/2026'); expect(tarjetas[0].textContent).toContain('Disponible');
-      expect(tarjetas[0].textContent).toContain('no est\u00e1 disponible para visualizaci\u00f3n p\u00fablica');
+      expect(tarjetas[0].querySelector('a')).toBeNull();
       expect(tarjetas[0].textContent).toContain('a'.repeat(30));
       expect(Array.from(f.nativeElement.querySelectorAll('button')).some((b: any) => b.textContent === 'Ver certificado')).toBeFalse();
       expect(f.nativeElement.querySelector('a[download]')).toBeNull();

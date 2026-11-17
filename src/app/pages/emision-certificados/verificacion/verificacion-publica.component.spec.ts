@@ -37,7 +37,7 @@ describe('QR histórico en el único Portal Público', () => {
       const req = http.expectOne('/api/certificados/verificar/' + codigo);
       expect(req.request.method).toBe('GET'); expect(req.request.withCredentials).toBeFalse();
       req.flush({ success: true, data: datos }); h.detectChanges();
-      expect(vista().textContent).toContain('Certificado registrado y verificado');
+      expect(vista().textContent).toContain('Certificado verificado');
       expect(vista().textContent).toContain('01/01/2026');
       for (const texto of ['PENDIENTE_FIRMA', 'SQLSTATE', 'Laravel', 'Emisión oficial', 'Firma criptográfica']) {
         expect(vista().textContent).not.toContain(texto);
@@ -64,7 +64,7 @@ describe('QR histórico en el único Portal Público', () => {
     expect(vista().querySelector<HTMLAnchorElement>('.resultados a')!.getAttribute('href')).toBe(url + '&descargar=1');
     const pdf = http.expectOne(url); expect(pdf.request.withCredentials).toBeFalse(); expect(pdf.request.responseType).toBe('blob');
     pdf.flush(null, { status: 403, statusText: 'Forbidden' }); h.detectChanges();
-    expect(vista().textContent).toContain('Certificado registrado y verificado');
+    expect(vista().textContent).toContain('Certificado verificado');
     expect(vista().querySelector('#codigo-portal')).not.toBeNull();
     expect(vista().querySelector('app-pdf-continuo')).toBeNull();
     expect(TestBed.inject(Router).url).toBe('/portal-certificados?codigo=' + codigo);
@@ -72,8 +72,8 @@ describe('QR histórico en el único Portal Público', () => {
   for (const cambios of [{ integridad_verificada: false }, { estado_documento: 'Anulado' }, { estado_certificado: 'Revocado' }, { registro_encontrado: false }]) {
     it('no publica un resultado positivo ante ' + JSON.stringify(cambios), async () => {
       await abrir(); http.expectOne('/api/certificados/verificar/' + codigo).flush({ success: true, data: { ...datos, ...cambios } }); h.detectChanges();
-      expect(vista().textContent).not.toContain('Certificado registrado y verificado');
-      expect(vista().querySelector('app-pdf-continuo, a')).toBeNull();
+      expect(vista().textContent).not.toContain('Certificado verificado');
+      expect(vista().querySelector('app-pdf-continuo, .resultados a, .documento a')).toBeNull();
     });
   }
   it('admite QR mal formado sin solicitar el backend ni cambiar a DNI', async () => {

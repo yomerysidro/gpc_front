@@ -78,8 +78,11 @@ describe('Presentación adaptable de Reportes', () => {
     fixture.componentInstance.pagina.set({ data: [], total: 14, current_page: 1, last_page: 1, per_page: 20, resumen: { total: 14, personas_unicas: 3, presentes: 8 }, filtros: {} } as never);
     fixture.detectChanges();
     const tarjetas = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.indicador-asistencia'));
-    expect(tarjetas.map(tarjeta => tarjeta.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
-      'fact_check Asistencias 14', 'group Personas 3', 'how_to_reg Presentes 8',
+    expect(tarjetas.map(tarjeta => ({
+      etiqueta: tarjeta.querySelector('.etiqueta-resumen')?.textContent?.trim(),
+      valor: tarjeta.querySelector('strong')?.textContent?.trim(),
+    }))).toEqual([
+      { etiqueta: 'Asistencias', valor: '14' }, { etiqueta: 'Personas', valor: '3' }, { etiqueta: 'Presentes', valor: '8' },
     ]);
     fixture.destroy();
   });
