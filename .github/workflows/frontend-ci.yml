@@ -51,7 +51,7 @@ jobs:
           chrome_bin="$(command -v google-chrome || command -v chromium || true)"
           test -n "$chrome_bin" || { echo '::error::Chrome no disponible'; exit 1; }
           echo "CHROME_BIN=$chrome_bin" >> "$GITHUB_ENV"
-      - run: npm test -- --watch=false --browsers=ChromeHeadless
+      - run: npm test -- --watch=false --browsers=ChromeHeadless --reporters=dots
       - run: npm run build -- --configuration production
       - run: test -f dist/gpc_front/browser/index.html && test -f dist/gpc_front/server/server.mjs
   docker:
@@ -78,7 +78,7 @@ jobs:
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4321/healthz && break; sleep 2; done
           curl -fsS http://127.0.0.1:4321/healthz
           curl -fsS http://127.0.0.1:4321/portal-certificados -o "$RUNNER_TEMP/portal.html"
-          curl -fsS http://127.0.0.1:4321/login -o "$RUNNER_TEMP/login.html"
+          curl -fsSL http://127.0.0.1:4321/login -o "$RUNNER_TEMP/login.html"
           grep -q '<app-root' "$RUNNER_TEMP/portal.html"
           grep -q '<app-root' "$RUNNER_TEMP/login.html"
       - if: always()
