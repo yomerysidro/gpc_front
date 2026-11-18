@@ -32,23 +32,44 @@
       @if (resultadosDni()?.length === 0) { <p role="status">No hay certificados disponibles para esta consulta.</p> }
       <div class="resultados-grid">
       @for (r of tarjetas(); track claveTarjeta(r)) {
-        <section class="tarjeta resultados" aria-label="Resultado de la consulta" aria-live="polite">
-          @switch (r.estado) {
-            @case ('disponible') {
-              <div class="resultado-cabecera">
-                <div class="resultado-identidad"><span class="material-symbols-outlined insignia" aria-hidden="true">workspace_premium</span><div><span class="etiqueta">CERTIFICADO</span><h2>{{ r.tipo || 'Certificado' }}</h2></div></div>
-                @if (r.verificado === true) {
+        <section class="tarjeta resultados" [attr.data-estado]="r.estado" aria-label="Resultado de la consulta" aria-live="polite">
+          <div class="resultado-cabecera">
+            <div class="resultado-identidad">
+              <span class="insignia" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                  <rect x="4" y="3" width="16" height="18" rx="2" />
+                  <path d="M8 8h8M8 12h8M8 16h5" />
+                </svg>
+              </span>
+              <div>
+                @switch (r.estado) {
+                  @case ('disponible') { <span class="etiqueta">CERTIFICADO</span><h2>{{ r.tipo || 'Certificado' }}</h2> }
+                  @case ('anulado') { <h2>Documento anulado o revocado</h2> }
+                  @case ('no-encontrado') { <h2>No se encontró un certificado con ese código.</h2> }
+                  @case ('integridad-no-verificada') { <h2>Integridad del archivo no confirmada</h2> }
+                  @default { <h2>Registro encontrado</h2> }
+                }
+              </div>
+            </div>
+            @if (r.estado === 'disponible') {
+              <div class="resultado-estados">
+                @if (modo() === 'dni' || r.verificado !== true) {
+                  <span class="estado">Disponible</span>
+                }
+                @if (r.verificado === true || codigosVerificadosDni().has(r.codigo)) {
                   <span class="estado estado-verificado">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <svg class="badge-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                       <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
                       <path d="m9 12 2 2 4-4" />
                     </svg>
                     Certificado verificado
                   </span>
-                } @else {
-                  <span class="estado">Disponible</span>
                 }
               </div>
+            }
+          </div>
+          @switch (r.estado) {
+            @case ('disponible') {
               @if (r.actividad) { <p class="actividad-certificado">{{ r.actividad }}</p> }
               @if (r.sesion) { <p>{{ r.sesion }}</p> }
               @if (r.verificado) { <p>Este documento consta en los registros de la Municipalidad Distrital de Morales.</p><p>Estado del documento: Vigente · Integridad: Verificada</p> }
@@ -61,10 +82,10 @@
                 </div>
               }
             }
-            @case ('anulado') { <h2>Documento anulado o revocado</h2><p>Este documento no está disponible para visualización ni descarga.</p> }
-            @case ('no-encontrado') { <h2>No se encontró un certificado con ese código.</h2><p>Verifica que esté escrito correctamente.</p> }
-            @case ('integridad-no-verificada') { <h2>Integridad del archivo no confirmada</h2><p>No se pudo verificar el archivo de este documento.</p> }
-            @default { <h2>Registro encontrado</h2><p>El documento no está disponible para visualización pública.</p> }
+            @case ('anulado') { <p>Este documento no está disponible para visualización ni descarga.</p> }
+            @case ('no-encontrado') { <p>Verifica que esté escrito correctamente.</p> }
+            @case ('integridad-no-verificada') { <p>No se pudo verificar el archivo de este documento.</p> }
+            @default { <p>El documento no está disponible para visualización pública.</p> }
           }
           @if (r.estado !== 'disponible' && r.estado !== 'no-encontrado') {
             @if (r.tipo) { <p>{{ r.tipo }}</p> }
@@ -90,7 +111,6 @@
         @if (errorPdf() && !archivo() && resultado()?.urlPdf) { <button type="button" class="btn" (click)="verCertificado()">Reintentar PDF</button> }
       </section>
     }
-    @if (mensaje() || resultado() || resultadosDni() !== null || detalle()) { <button type="button" class="btn nueva" (click)="nuevaConsulta()">Nueva consulta</button> }
   </main>
   <footer>Municipalidad Distrital de Morales<span>Portal Público de Certificados · Servicio institucional</span></footer>
 </div>

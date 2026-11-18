@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   validate:
-    name: Ejecutando
+    name: Ejecutar
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -28,7 +28,7 @@ jobs:
           echo "CHROME_BIN=$chrome_bin" >> "$GITHUB_ENV"
       - run: npm test -- --watch=false --browsers=ChromeHeadless --reporters=dots
   build:
-    name: Construyendo
+    name: Construir
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -48,7 +48,7 @@ jobs:
           path: dist/gpc_front/
           if-no-files-found: error
   verify:
-    name: Verificando
+    name: Verificar
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 5
