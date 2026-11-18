@@ -187,7 +187,28 @@ export class ListadoEmisionComponent implements OnChanges {
       this.requiereActualizar.set(true);
       this.cargando.set(true); this.errorCarga.set(null);
       this.carga?.unsubscribe();
-      this.carga = this.api.listarTodos('attendance').pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      const contexto = this.datosContexto()!;
+      const sesion = Number(contexto.sesiones[0]?.['id_actividad_sesion']);
+      const consulta: Observable<readonly RegistroEmision[]> = contexto.soloSeleccionados
+        ? this.api.participantesSesion(sesion).pipe(map(respuesta => {
+          if (Number(respuesta.id_actividad) !== contexto.actividad.id_actividad || Number(respuesta.id_actividad_sesion) !== sesion) {
+            throw new Error('Laravel no confirmó los participantes de esta sesión.');
+          }
+          const participantes = respuesta.participantes.filter(p => p.seleccionado && p.id_asistencia != null);
+          const asistencias = participantes.map(p => ({
+            id_participacion: p.id_participacion, id_actividad_sesion: sesion, id_asistencia: p.id_asistencia,
+            estado: p.estado_asistencia, hora_entrada: p.hora_entrada, hora_salida: p.hora_salida,
+          }));
+          this.catalogosSesiones.usarContexto({
+            ...contexto, asistencias,
+            participantes: [...new Map(participantes.map(p => [p.id_participacion, {
+              id: p.id_participacion, nombres: p.nombre_completo || 'Nombre no disponible', apellidos: '',
+            }])).values()],
+          });
+          return asistencias;
+        }))
+        : this.api.listarTodos('attendance');
+      this.carga = consulta.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: registros => {
           this.catalogosSesiones.asistencias = registros;
           // Un POST ambiguo nunca se repite si la consulta encuentra ya su par inscripción/sesión.
@@ -331,7 +352,8 @@ export class ListadoEmisionComponent implements OnChanges {
     const cambioActividad = cambios['actividadContexto'];
     const mismoId = !cambioActividad || cambioActividad.previousValue?.id_actividad === cambioActividad.currentValue?.id_actividad;
     if (this.inicializado && this.enDetalle() && this.datosContexto() && mismoId && Object.keys(cambios).every(clave => ['datosContexto', 'soloLectura', 'actividadContexto', 'accionesExternas', 'recargarTrasGuardar'].includes(clave))) {
-      this.catalogosSesiones.usarContexto(this.datosContexto()!); this.actualizarPaginaContextual(); return;
+      if (cambios['datosContexto']) this.catalogosSesiones.usarContexto(this.datosContexto()!);
+      this.actualizarPaginaContextual(); return;
     }
     const mismaActividad = this.inicializado && this.enDetalle() && mismoId && !cambios['recurso'];
     if (!mismaActividad) { this.marcasPendientes.set([]); this.erroresMarcas.set({}); }

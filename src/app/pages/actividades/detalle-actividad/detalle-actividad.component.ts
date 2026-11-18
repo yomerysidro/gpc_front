@@ -53,9 +53,11 @@ export class DetalleActividadComponent {
     }));
   }
   protected puedeFinalizar(sesion: RegistroEmision): boolean {
-    return this.sesiones().includes(sesion) && Number(sesion['id_actividad']) === this.actividadId()
-      && this.capacidadSesion(sesion['id_actividad_sesion'])?.finalizada !== true
-      && this.capacidadSesion(sesion['id_actividad_sesion'])?.puede_finalizarse === true
+    const id = Number(sesion['id_actividad_sesion']);
+    const capacidad = this.capacidadSesion(id);
+    return !!capacidad && Number(capacidad.id_actividad) === this.actividadId()
+      && this.sesiones().some(fila => Number(fila['id_actividad_sesion']) === id)
+      && capacidad.finalizada !== true && capacidad.puede_finalizarse === true
       && this.finalizandoSesion() === null && !this.panelOcupado();
   }
   protected readonly contadoresActividad = computed(() => [...this.capacidadesSesiones().values()].find(s => s.id_actividad === this.actividadId() && s.contadores)?.contadores);
@@ -67,6 +69,7 @@ export class DetalleActividadComponent {
     if (!this.puedeFinalizar(sesion) || !await this.confirmarFinalizacion().abrir() || !this.puedeFinalizar(sesion)) return;
     const id = Number(sesion['id_actividad_sesion']); const actividad = this.actividadId()!;
     this.finalizandoSesion.set(id);
+    this.erroresCertificacion.update(errores => ({ ...errores, [id]: '' }));
     this.solicitudes.add(this.sesionesApi.finalizarSesion(id, actividad).pipe(switchMap(resultado => {
       if (!resultado.finalizada || resultado.sesion.estado !== 'Finalizada' || Number(resultado.sesion.id_actividad_sesion) !== id || Number(resultado.sesion.id_actividad) !== actividad) throw new Error('No se pudo confirmar la finalización de la sesión.');
       // El POST ya confirmó el cierre, aunque falle la consulta posterior de capacidades.
@@ -293,11 +296,9 @@ export class DetalleActividadComponent {
       next: filas => {
         const sesiones = filas.filter(fila => Number(fila['id_actividad']) === id);
         this.sesiones.set(sesiones);
-        this.capacidadesSesiones.update(actual => {
-          const mapa = new Map(actual);
-          for (const sesion of sesiones) if (typeof sesion['puede_finalizarse'] === 'boolean' || sesion['contadores']) mapa.set(Number(sesion['id_actividad_sesion']), sesion as unknown as SesionCertificacion);
-          return mapa;
-        });
+        const capacidades = new Map<number, SesionCertificacion>();
+        for (const sesion of sesiones) if (typeof sesion['puede_finalizarse'] === 'boolean' || sesion['contadores']) capacidades.set(Number(sesion['id_actividad_sesion']), sesion as unknown as SesionCertificacion);
+        this.capacidadesSesiones.set(capacidades);
         const seleccionada = this.sesionActiva();
         if (seleccionada) {
           const actual = sesiones.find(s => Number(s['id_actividad_sesion']) === Number(seleccionada['id_actividad_sesion']));

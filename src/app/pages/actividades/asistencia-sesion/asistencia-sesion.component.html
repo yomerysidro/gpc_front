@@ -5,24 +5,57 @@
     @if (sesion(); as actual) { <p>{{ fecha(actual['fecha']) }} · {{ actual['hora_inicio'] || 'Hora no disponible' }} – {{ actual['hora_fin'] || 'Hora no disponible' }}</p> }
   </div>
   @if (sesion(); as actual) { <span class="estado" [class.finalizada]="actual.estado === 'Finalizada'">{{ actual.estado }}</span> }
+</header>
+@if (sesion()) {
+  <section class="ponentes" aria-labelledby="titulo-ponentes">
+    <h2 id="titulo-ponentes">Ponentes de la sesión</h2>
+    @if (cargando()) { <p role="status">Consultando ponentes…</p> }
+    @else if (avisoPonentes()) { <p role="status">{{ avisoPonentes() }}</p> }
+    @else if (ponentes().length) {
+      <ul>
+        @for (ponente of ponentes(); track ponente.id) {
+          <li><strong>{{ ponente.nombre }}</strong><span>{{ ponente.cargo || 'Ponente' }}</span></li>
+        }
+      </ul>
+    } @else if (datos()) { <p>No hay ponentes vinculados.</p> }
+  </section>
+}
+@if (datos()) {
   <div class="acciones">
+    @if (puedeAgregar()) {
+      <button class="btn" type="button" [disabled]="ocupado()" (click)="consultarCandidatos()">Seleccionar participante</button>
+    }
     <button class="btn" type="button" [disabled]="ocupado() || !datos()" (click)="actualizar()"><span class="material-symbols-outlined" aria-hidden="true">refresh</span>Actualizar asistencia</button>
     @if (!soloLectura() && listado()?.cambiosPendientes()) { <button class="btn btn-primary" type="button" [disabled]="!listado()?.puedeGuardarAsistencia()" (click)="guardar()">Guardar asistencia</button> }
   </div>
-</header>
+  @if (puedeAgregar() && candidatos(); as filas) {
+    <div class="seleccion">
+      @if (filas.length) {
+        <label for="participante-sesion">Participantes inscritos en la actividad</label>
+        <select id="participante-sesion" [disabled]="ocupado()" (change)="candidato.set(+$any($event.target).value || null)">
+          <option value="">Selecciona un participante</option>
+          @for (fila of filas; track fila.id_participacion) {
+            <option [value]="fila.id_participacion">{{ fila.nombre_completo }}</option>
+          }
+        </select>
+        <button class="btn btn-primary" type="button" [disabled]="ocupado() || !candidato()" (click)="agregarParticipante()">Agregar a la sesión</button>
+      } @else { <p role="status">No hay más inscritos disponibles para esta sesión.</p> }
+    </div>
+  }
+}
 @if (cargando()) { <p role="status">Consultando asistencia…</p> }
 @if (error()) { <p class="alert alert-error" role="alert">{{ error() }}</p>@if (!datos()) { <button class="btn" type="button" [disabled]="ocupado()" (click)="reintentar()">Reintentar</button> } }
 @if (aviso()) { <p role="status">{{ aviso() }}</p> }
 @if (sesion()?.contadores; as c) {
   <div class="indicadores" aria-label="Resumen de asistencia" aria-live="polite">
-    <div><span class="material-symbols-outlined" aria-hidden="true">groups</span><strong>{{ c.participantes_sesion }}</strong><span>Participantes</span></div>
-    <div><span class="material-symbols-outlined" aria-hidden="true">co_present</span><strong>{{ c.presentes }}</strong><span>Presentes</span></div>
-    <div><span class="material-symbols-outlined" aria-hidden="true">person_off</span><strong>{{ c.ausentes }}</strong><span>Ausentes</span></div>
-    <div><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span><strong>{{ c.pendientes }}</strong><span>Pendientes</span></div>
+    <div><span class="material-symbols-outlined" aria-hidden="true">groups</span><strong>{{ c.participantes_sesion ?? 'Sin dato' }}</strong><span>Participantes</span></div>
+    <div><span class="material-symbols-outlined" aria-hidden="true">co_present</span><strong>{{ c.presentes ?? 'Sin dato' }}</strong><span>Presentes</span></div>
+    <div><span class="material-symbols-outlined" aria-hidden="true">person_off</span><strong>{{ c.ausentes ?? 'Sin dato' }}</strong><span>Ausentes</span></div>
+    <div><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span><strong>{{ c.pendientes ?? 'Sin dato' }}</strong><span>Pendientes</span></div>
   </div>
 }
 @if (datos(); as contexto) {
   @if (soloLectura()) { <p class="consulta" role="status">Asistencia de solo lectura.</p> }
-  <app-listado-emision recurso="attendance" [paginaCompleta]="true" [enDetalle]="true" [accionesExternas]="true" [recargarTrasGuardar]="true" [soloLectura]="soloLectura()" [estadoInicial]="estadoInicial()" [actividadContexto]="contexto.actividad" [datosContexto]="contexto" (registroGuardado)="actualizarSesion()" />
+  <app-listado-emision recurso="attendance" [paginaCompleta]="true" [enDetalle]="true" [accionesExternas]="true" [recargarTrasGuardar]="true" [soloLectura]="soloLectura() || seleccionando()" [estadoInicial]="estadoInicial()" [actividadContexto]="contexto.actividad" [datosContexto]="contexto" (registroGuardado)="actualizarSesion()" />
 }
 <app-dialogo-confirmacion titulo="Cambios de asistencia pendientes" texto="Hay cambios sin guardar. ¿Deseas descartarlos y salir?" confirmar="Descartar cambios" cancelar="Seguir editando" />

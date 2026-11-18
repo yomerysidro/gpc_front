@@ -18,15 +18,16 @@ export class MainLayoutComponent {
   private readonly destroyRef = inject(DestroyRef);
   constructor() {
     afterNextRender(() => {
-      const consulta = window.matchMedia('(max-width: 768px)');
+      const host = this.elemento.nativeElement;
+      const consulta = host.ownerDocument.defaultView!.matchMedia('(max-width: 768px)');
       const actualizarPantalla = () => this.pantallaMovil.set(consulta.matches);
       actualizarPantalla();
       consulta.addEventListener('change', actualizarPantalla);
       this.destroyRef.onDestroy(() => consulta.removeEventListener('change', actualizarPantalla));
       const cabecera = this.header().nativeElement;
       const medir = () => {
-        this.elemento.nativeElement.style.setProperty('--alto-header-real', `${cabecera.getBoundingClientRect().height}px`);
-        this.pantallaMovil.set(this.elemento.nativeElement.ownerDocument.defaultView!.matchMedia('(max-width: 768px)').matches);
+        host.style.setProperty('--alto-header-real', `${cabecera.getBoundingClientRect().height}px`);
+        this.pantallaMovil.set(host.ownerDocument.defaultView!.matchMedia('(max-width: 768px)').matches);
       };
       medir();
       const observador = new ResizeObserver(medir);

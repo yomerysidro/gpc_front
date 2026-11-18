@@ -13,10 +13,6 @@ import { RestablecerPasswordComponent } from './pages/autenticacion/restablecer-
 import { AccesoDenegadoComponent } from './pages/autenticacion/acceso-denegado/acceso-denegado.component';
 import { HomeComponent } from './pages/home/home.component';
 import { EnConstruccionComponent } from './pages/en-construccion/en-construccion.component';
-import { ListarUsuariosComponent } from './pages/seguridad/usuarios/listar-usuarios/listar-usuarios.component';
-import { FormularioUsuarioComponent } from './pages/seguridad/usuarios/formulario-usuario/formulario-usuario.component';
-import { RolesPermisosComponent } from './pages/seguridad/roles/roles-permisos/roles-permisos.component';
-import { AccesosRolComponent } from './pages/seguridad/roles/accesos-rol/accesos-rol.component';
 import { configuracionGestionGuard } from './components/sidebar/configuracion.guard';
 import { SIDEBAR_CONFIG, rutaPantallaPendiente } from './components/sidebar/modulos-navegacion';
 import { pantallasPendientesGuard } from './components/sidebar/pantallas-pendientes.guard';
@@ -71,6 +67,8 @@ const gestionRoutes: Routes = [
   },
 ];
 
+const cargarFormularioUsuario = () => import('./pages/seguridad/usuarios/formulario-usuario/formulario-usuario.component')
+  .then(pagina => pagina.FormularioUsuarioComponent);
 
 export const routes: Routes = [
   // Sin componente: inicioGuard redirige al primer módulo o al portal público.
@@ -135,16 +133,16 @@ export const routes: Routes = [
         canActivate: [permissionGuard],
         data: { permiso: 'usuarios.ver' },
         children: [
-          { path: '', component: ListarUsuariosComponent },
+          { path: '', loadComponent: () => import('./pages/seguridad/usuarios/listar-usuarios/listar-usuarios.component').then(pagina => pagina.ListarUsuariosComponent) },
           {
             path: 'nuevo',
-            component: FormularioUsuarioComponent,
+            loadComponent: cargarFormularioUsuario,
             canActivate: [permissionGuard],
             data: { permiso: 'usuarios.crear' },
           },
           {
             path: ':id/editar',
-            component: FormularioUsuarioComponent,
+            loadComponent: cargarFormularioUsuario,
             canActivate: [permissionGuard],
             data: { permiso: 'usuarios.editar' },
           },
@@ -155,10 +153,10 @@ export const routes: Routes = [
         canActivate: [permissionGuard],
         data: { permiso: 'roles.ver' },
         children: [
-          { path: '', component: RolesPermisosComponent },
+          { path: '', loadComponent: () => import('./pages/seguridad/roles/roles-permisos/roles-permisos.component').then(pagina => pagina.RolesPermisosComponent) },
           {
             path: ':id/accesos',
-            component: AccesosRolComponent,
+            loadComponent: () => import('./pages/seguridad/roles/accesos-rol/accesos-rol.component').then(pagina => pagina.AccesosRolComponent),
             canActivate: [permissionGuard],
             canDeactivate: [cambiosPendientesGuard],
             data: { permiso: 'roles.editar' },

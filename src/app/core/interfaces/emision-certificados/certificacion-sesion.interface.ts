@@ -2,8 +2,22 @@ import { PaginaEmision } from './emision-certificados.interface';
 
 export type OrigenCertificacion = 'sesion' | 'actividad';
 export interface ContadoresSesion {
- inscritos_actividad_total: number; inscritos_actividad_vigentes: number; participantes_sesion: number;
- presentes: number; ausentes: number; pendientes: number; por_regularizar: number | null;
+ inscritos_actividad_total: number; inscritos_actividad_vigentes: number | null; participantes_sesion: number | null;
+ presentes: number | null; ausentes: number | null; pendientes: number | null; por_regularizar: number | null;
+}
+export interface ParticipanteSesion {
+  id_participacion: number;
+  nombre_completo: string;
+  seleccionado: boolean;
+  id_asistencia: number | null;
+  estado_asistencia: string | null;
+  hora_entrada: string | null;
+  hora_salida: string | null;
+}
+export interface ParticipantesSesion {
+  id_actividad: number;
+  id_actividad_sesion: number;
+  participantes: readonly ParticipanteSesion[];
 }
 export interface SesionCertificacion {
  finalizada?: boolean; contadores?: ContadoresSesion; puede_editar_asistencia?: boolean;

@@ -6,7 +6,7 @@
 .tarjetas-detalle { display: grid; gap: 1rem; }
 .panel, .tarjeta-sesion { min-width: 0; border: 1px solid var(--neutro-200); border-radius: var(--radio-lg); background: var(--neutro-0); padding: 1rem; }
 .titulo-panel { justify-content: space-between; margin-bottom: .6rem; h2, h3 { margin: 0; font-size: 1.05rem; overflow-wrap: anywhere; } }
-.lista-sesiones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; list-style: none; margin: 0; padding: 0; }
+.lista-sesiones { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: .8rem; list-style: none; margin: 0; padding: 0; }
 .tarjeta-sesion { display: flex; flex-direction: column; gap: .4rem; p { margin: 0; font-size: .9rem; } }
 .acciones-sesion { gap: .45rem; margin-top: .5rem; .btn { width: 2.75rem; height: 2.75rem; padding: .5rem; color: #075a9b; } svg { width: 1.4rem; height: 1.4rem; fill: none; stroke: currentColor; stroke-width: 1.8; } .asistencia-principal { color: white; background: #075a9b; } }
 .informacion { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: 0; }
@@ -20,8 +20,7 @@ dt { color: var(--neutro-500); font-weight: 600; } dd { margin: .2rem 0 0; overf
 .tarjeta-sesion .badge-exito { background: #e8f5ec; color: #21643b; }
 .acciones-sesion .btn { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; }
 :host ::ng-deep app-dialogo.modal-detalle-sesion > dialog.dialogo { width: min(38rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; > h2 { padding-right: 2.5rem; } }
-@media (max-width: 1200px) { .lista-sesiones { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .lista-sesiones { grid-template-columns: minmax(0, 1fr); } .resumen-actividad .informacion { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .resumen-actividad .informacion { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Detalle institucional compacto. */
 .encabezado { padding-bottom: .8rem; border-bottom: 2px solid #d6ad4a; }
@@ -40,3 +39,5 @@ footer { display: flex; justify-content: flex-end; }
 .identidad-sesion { min-width: 0; }
 :host ::ng-deep app-dialogo.modal-ponentes-sesion > dialog.dialogo { width: min(44rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; overflow-x: hidden; box-sizing: border-box; }
 .numero-sesion { display: block; margin-bottom: .2rem; color: #52677b; font-size: .75rem; }
+.cierre-sesion .btn { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.4rem; }
+.motivos-cierre { flex-basis: 100%; margin: .25rem 0 0; padding-inline-start: 1.15rem; color: #52677b; font-size: .85rem; overflow-wrap: anywhere; }
