@@ -41,7 +41,8 @@
           <ul class="lista-sesiones">
             @for (sesion of sesiones(); track sesion['id_actividad_sesion']) {
               <li class="tarjeta-sesion" [attr.data-sesion-id]="sesion['id_actividad_sesion']" [attr.data-actividad-id]="actual.id_actividad">
-                <div class="titulo-panel"><div class="identidad-sesion"><small class="numero-sesion">Sesión #{{ sesion['numero_sesion'] ?? sesion['id_actividad_sesion'] }}</small><h3>{{ sesion['nombre'] || 'Nombre no disponible' }}</h3></div><span class="badge" [class.badge-exito]="sesion['estado'] === 'Finalizada'" [attr.data-estado]="sesion['estado'] || 'No disponible'">{{ sesion['estado'] || 'No disponible' }}</span></div>
+                @let estadoSesion = sesionFinalizada(sesion) ? 'Finalizada' : sesion['estado'] || 'No disponible';
+                <div class="titulo-panel"><div class="identidad-sesion"><small class="numero-sesion">Sesión #{{ sesion['numero_sesion'] ?? sesion['id_actividad_sesion'] }}</small><h3>{{ sesion['nombre'] || 'Nombre no disponible' }}</h3></div><span class="badge" [class.badge-exito]="estadoSesion === 'Finalizada'" [attr.data-estado]="estadoSesion">{{ estadoSesion }}</span></div>
                 <p>{{ fecha($any(sesion['fecha'])) }} · {{ sesion['hora_inicio'] || 'Hora no disponible' }} – {{ sesion['hora_fin'] || 'Hora no disponible' }}</p>
                 @if (capacidadSesion(sesion['id_actividad_sesion'])?.contadores; as c) {
                   <small class="resumen-sesion">{{ c.participantes_sesion ?? 'Sin dato de' }} participantes · {{ c.presentes ?? 'Sin dato de' }} {{ c.presentes === 1 ? 'presente' : 'presentes' }} · {{ c.ausentes ?? 'Sin dato de' }} {{ c.ausentes === 1 ? 'ausente' : 'ausentes' }}</small>
@@ -52,22 +53,12 @@
                   @if (auth?.tienePermiso('participantes.crear')) { <button class="btn" type="button" title="Inscribir participante en la actividad" aria-label="Inscribir participante" [disabled]="panelOcupado()" (click)="abrirInscripcion(sesion)"><span class="material-symbols-outlined" aria-hidden="true">how_to_reg</span></button> }
                   @if (auth?.tienePermiso('participantes.ver')) { <button class="btn asistencia-principal" type="button" title="Control de asistencia" aria-label="Asistencia de sesión" [disabled]="panelOcupado()" (click)="abrirPanel('asistencia', sesion)"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span></button> }
                 </nav>
-                @if (sesion['estado'] !== 'Finalizada' && capacidadSesion(sesion['id_actividad_sesion'])?.finalizada !== true) {
+                @if (!sesionFinalizada(sesion)) {
                   <div class="cierre-sesion">
-                    @if (capacidadSesion(sesion['id_actividad_sesion'])?.puede_finalizarse !== true) {
-                      <button class="btn" type="button" [disabled]="finalizandoSesion() !== null || cargandoCapacidades().includes(+$any(sesion['id_actividad_sesion']))" (click)="cargarCapacidades(sesion)">Consultar cierre</button>
-                    }
-                    <button class="btn accion-principal" type="button" title="Finalizar sesión" aria-label="Finalizar sesión" [disabled]="!puedeFinalizar(sesion)" (click)="finalizarSesion(sesion)"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>{{ finalizandoSesion() === +$any(sesion['id_actividad_sesion']) ? 'Finalizando…' : 'Finalizar sesión' }}</button>
-                    @if (capacidadSesion(sesion['id_actividad_sesion'])?.motivos_bloqueo_finalizacion; as motivos) {
-                      @if (motivos.length) {
-                        <ul class="motivos-cierre" aria-live="polite">
-                          @for (motivo of motivos; track $index) { <li>{{ motivo }}</li> }
-                        </ul>
-                      }
-                    }
+                    <button class="btn accion-principal" type="button" title="Finalizar sesión" aria-label="Finalizar sesión" [disabled]="finalizandoSesion() !== null || panelOcupado()" (click)="finalizarSesion(sesion)"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>{{ finalizandoSesion() === +$any(sesion['id_actividad_sesion']) ? 'Procesando…' : 'Finalizar sesión' }}</button>
                   </div>
                 }
-                @if (erroresCertificacion()[+$any(sesion['id_actividad_sesion'])]; as error) { <p role="alert">{{ error }}</p> }
+                @if (erroresCertificacion()[+$any(sesion['id_actividad_sesion'])]; as error) { <p class="motivo-cierre" role="alert">{{ error }}</p> }
        </li>
             }
           </ul>

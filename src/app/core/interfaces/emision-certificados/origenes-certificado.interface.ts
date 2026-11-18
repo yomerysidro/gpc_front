@@ -72,7 +72,9 @@ export interface PonentesCertificacion {
 export interface VinculoPonenteSesion {
   id_actividad_ponente: number; id_actividad: number; id_actividad_sesion: number | null; id_persona_ponente: number;
   id_persona?: number; nombres?: string; apellido_paterno?: string | null; apellido_materno?: string | null;
+  estado_asistencia?: EstadoAsistenciaPonente | null;
 }
+export type EstadoAsistenciaPonente = 'PRESENTE' | 'AUSENTE';
 /** Contrato de GET /activity/{actividad}/sessions/{sesion}/ponentes. */
 export interface PonentesSesionGestion {
   id_actividad: number; id_sesion: number;

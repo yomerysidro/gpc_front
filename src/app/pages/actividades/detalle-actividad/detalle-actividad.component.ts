@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { EmisionCertificadosService } from '../../../core/services/emision-certificados/emision-certificados.service';
 import { RegistroEmision } from '../../../core/interfaces/emision-certificados/emision-certificados.interface';
-import { Observable, Subject, Subscription, shareReplay, switchMap } from 'rxjs';
+import { EMPTY, Observable, Subject, Subscription, finalize, shareReplay, switchMap, tap } from 'rxjs';
 import { Actividad, PersonaActividad } from '../../../core/interfaces/actividades/actividad.interface';
 import { ActividadesService } from '../../../core/services/actividades/actividades.service';
 import { PersonService } from '../../../core/services/person/person.service';
@@ -31,60 +31,72 @@ export class DetalleActividadComponent {
   readonly cerrarActividad = output<Actividad>();
   protected readonly capacidadesSesiones = signal<ReadonlyMap<number, SesionCertificacion>>(new Map());
   protected readonly erroresCertificacion = signal<Readonly<Record<number, string>>>({});
-  protected readonly cargandoCapacidades = signal<readonly number[]>([]);
   protected readonly finalizandoSesion = signal<number | null>(null);
   private readonly confirmarFinalizacion = viewChild.required<DialogoConfirmacionComponent>('confirmarFinalizacion');
   protected capacidadSesion(id: unknown): SesionCertificacion | undefined { return this.capacidadesSesiones().get(Number(id)); }
-  protected cargarCapacidades(sesion: RegistroEmision, evento?: Event): void {
-    if (evento && !(evento.target as HTMLDetailsElement).open) return;
-    const id = Number(sesion['id_actividad_sesion']);
-    if (!this.sesiones().includes(sesion) || this.cargandoCapacidades().includes(id)) return;
-    this.capacidadesSesiones.update(m => { const nuevo = new Map(m); nuevo.delete(id); return nuevo; });
-    this.cargandoCapacidades.update(ids => [...ids, id]);
-    this.erroresCertificacion.update(e => ({ ...e, [id]: '' }));
-    const actividad = this.actividadId();
-    this.solicitudes.add(this.sesionesApi.estadoSesionCertificacion(id).subscribe({
-      next: estado => {
-        this.cargandoCapacidades.update(ids => ids.filter(i => i !== id));
-        if (Number(estado.id_actividad) !== actividad || Number(estado.id_actividad_sesion) !== id) { this.erroresCertificacion.update(e => ({ ...e, [id]: 'Laravel no confirmó la sesión de esta actividad.' })); return; }
-        this.capacidadesSesiones.update(actual => new Map(actual).set(id, estado));
-        this.sesiones.update(filas => filas.map(f => Number(f['id_actividad_sesion']) === id ? { ...f, estado: estado.estado } : f));
-      }, error: error => { this.cargandoCapacidades.update(ids => ids.filter(i => i !== id)); this.erroresCertificacion.update(e => ({ ...e, [id]: `HTTP ${error.status || 0}. ${error.mensaje}` })); },
-    }));
-  }
-  protected puedeFinalizar(sesion: RegistroEmision): boolean {
-    const id = Number(sesion['id_actividad_sesion']);
-    const capacidad = this.capacidadSesion(id);
-    return !!capacidad && Number(capacidad.id_actividad) === this.actividadId()
-      && this.sesiones().some(fila => Number(fila['id_actividad_sesion']) === id)
-      && capacidad.finalizada !== true && capacidad.puede_finalizarse === true
-      && this.finalizandoSesion() === null && !this.panelOcupado();
+  protected sesionFinalizada(sesion: RegistroEmision): boolean {
+    return sesion['estado'] === 'Finalizada' || sesion['finalizada'] === true
+      || this.capacidadSesion(sesion['id_actividad_sesion'])?.finalizada === true;
   }
   protected readonly contadoresActividad = computed(() => [...this.capacidadesSesiones().values()].find(s => s.id_actividad === this.actividadId() && s.contadores)?.contadores);
   protected puedeCertificar(sesion: RegistroEmision): boolean {
     const estado = this.capacidadSesion(sesion['id_actividad_sesion']);
     return this.auth?.tienePermiso('emision.ver') === true && this.auth?.tienePermiso('emision.crear') === true && this.auth?.tienePermiso('participantes.ver') === true && estado?.estado === 'Finalizada' && estado.puede_certificarse === true;
   }
-  protected async finalizarSesion(sesion: RegistroEmision): Promise<void> {
-    if (!this.puedeFinalizar(sesion) || !await this.confirmarFinalizacion().abrir() || !this.puedeFinalizar(sesion)) return;
-    const id = Number(sesion['id_actividad_sesion']); const actividad = this.actividadId()!;
+  protected finalizarSesion(sesion: RegistroEmision): void {
+    const id = Number(sesion['id_actividad_sesion']);
+    const actividad = this.actividadId();
+    if (!actividad || Number(sesion['id_actividad']) !== actividad || !this.sesiones().includes(sesion)
+      || this.sesionFinalizada(sesion) || this.finalizandoSesion() !== null || this.panelOcupado()) return;
     this.finalizandoSesion.set(id);
     this.erroresCertificacion.update(errores => ({ ...errores, [id]: '' }));
-    this.solicitudes.add(this.sesionesApi.finalizarSesion(id, actividad).pipe(switchMap(resultado => {
-      if (!resultado.finalizada || resultado.sesion.estado !== 'Finalizada' || Number(resultado.sesion.id_actividad_sesion) !== id || Number(resultado.sesion.id_actividad) !== actividad) throw new Error('No se pudo confirmar la finalización de la sesión.');
-      // El POST ya confirmó el cierre, aunque falle la consulta posterior de capacidades.
-      this.sesiones.update(filas => filas.map(f => Number(f['id_actividad_sesion']) === id ? { ...f, estado: resultado.sesion.estado } : f));
-      this.detallesSesiones.delete(id);
-      this.capacidadesSesiones.update(m => { const nuevo = new Map(m); nuevo.delete(id); return nuevo; });
-      return this.sesionesApi.estadoSesionCertificacion(id);
-    })).subscribe({ next: estado => {
-      this.finalizandoSesion.set(null);
-      if (estado.estado !== 'Finalizada' || Number(estado.id_actividad_sesion) !== id || Number(estado.id_actividad) !== actividad) { this.erroresCertificacion.update(e => ({ ...e, [id]: 'No se pudo confirmar el estado final de la sesión.' })); return; }
-      this.capacidadesSesiones.update(m => new Map(m).set(id, estado));
-      this.sesiones.update(filas => filas.map(f => Number(f['id_actividad_sesion']) === id ? { ...f, estado: estado.estado } : f));
-      if (Number(this.sesionActiva()?.['id_actividad_sesion']) === id) this.sesionActiva.update(s => s ? { ...s, estado: estado.estado } : s);
-      this.detallesSesiones.delete(id);
-    }, error: error => { this.finalizandoSesion.set(null); this.erroresCertificacion.update(e => ({ ...e, [id]: [error.status ? `HTTP ${error.status}.` : '', error.mensaje || error.message, ...Object.values(error.errores ?? {}).flat()].join(' ') })); this.capacidadesSesiones.update(m => { const nuevo = new Map(m); nuevo.delete(id); return nuevo; }); } }));
+    const verificarContexto = (estado: { id_actividad: number; id_actividad_sesion: number }) => {
+      if (Number(estado.id_actividad_sesion) !== id || Number(estado.id_actividad) !== actividad) {
+        throw new Error('Laravel no confirmó la sesión de esta actividad.');
+      }
+    };
+    this.solicitudes.add(this.sesionesApi.estadoSesionCertificacion(id).pipe(
+      switchMap(async estado => {
+        verificarContexto(estado);
+        this.aplicarEstadoSesion(id, estado);
+        if (estado.finalizada === true || estado.estado === 'Finalizada') return false;
+        if (estado.puede_finalizarse !== true) {
+          throw new Error(estado.motivos_bloqueo_finalizacion?.join(' ') || 'Laravel no autorizó la finalización de la sesión.');
+        }
+        return this.confirmarFinalizacion().abrir();
+      }),
+      switchMap(confirmada => confirmada && this.actividadId() === actividad ? this.sesionesApi.finalizarSesion(id, actividad) : EMPTY),
+      switchMap(resultado => {
+        verificarContexto(resultado.sesion);
+        if (!resultado.finalizada || resultado.sesion.estado !== 'Finalizada') {
+          throw new Error(resultado.motivos_bloqueo?.join(' ') || 'No se pudo confirmar la finalización de la sesión.');
+        }
+        this.aplicarEstadoSesion(id, {
+          ...this.capacidadSesion(id), ...resultado.sesion, finalizada: true, puede_finalizarse: false,
+          motivos_bloqueo_finalizacion: [], puede_certificarse: false, motivos_bloqueo_certificacion: [],
+        });
+        return this.sesionesApi.estadoSesionCertificacion(id);
+      }),
+      tap(estado => {
+        verificarContexto(estado);
+        if (estado.estado !== 'Finalizada' && estado.finalizada !== true) {
+          throw new Error('No se pudo confirmar el estado final de la sesión.');
+        }
+        this.aplicarEstadoSesion(id, estado);
+      }),
+      finalize(() => this.finalizandoSesion.set(null)),
+    ).subscribe({
+      error: error => this.erroresCertificacion.update(errores => ({
+        ...errores, [id]: [error.mensaje || error.message, ...Object.values(error.errores ?? {}).flat()].filter(Boolean).join(' '),
+      })),
+    }));
+  }
+  private aplicarEstadoSesion(id: number, estado: SesionCertificacion): void {
+    const nombreEstado = estado.finalizada === true ? 'Finalizada' : estado.estado;
+    this.capacidadesSesiones.update(mapa => new Map(mapa).set(id, estado));
+    this.sesiones.update(filas => filas.map(fila => Number(fila['id_actividad_sesion']) === id ? { ...fila, estado: nombreEstado } : fila));
+    this.sesionActiva.update(fila => fila && Number(fila['id_actividad_sesion']) === id ? { ...fila, estado: nombreEstado } : fila);
+    this.detallesSesiones.delete(id);
   }
   private readonly router = inject(Router);
   protected readonly sesionActiva = signal<RegistroEmision | null>(null);
@@ -247,7 +259,7 @@ export class DetalleActividadComponent {
     this.modalPonentesSesion().cerrar(); this.sesionPonentes.set(null);
     this.contextoInscripcion.set(null); this.avisoInscripcion.set(null);
     this.sesionActiva.set(null);
-    this.capacidadesSesiones.set(new Map()); this.erroresCertificacion.set({}); this.cargandoCapacidades.set([]); this.finalizandoSesion.set(null);
+    this.capacidadesSesiones.set(new Map()); this.erroresCertificacion.set({}); this.finalizandoSesion.set(null);
     this.sesiones.set([]); this.errorSesiones.set(null); this.cargandoSesiones.set(false);
     this.asistencias.set([]); this.errorResumen.set(null);
     this.cargandoResumen.set(false);
