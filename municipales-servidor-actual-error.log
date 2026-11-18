@@ -1,8 +1,0 @@
-X [ERROR] NG2: Type 'boolean | undefined' is not assignable to type 'boolean'.
-  Type 'undefined' is not assignable to type 'boolean'. [plugin angular-compiler]
-
-    src/app/pages/emision-certificados/generar-emitir/preparar-municipal.component.ts:19:163:
-      19 │ ...Esperado]="d.hash_pdf" [permitirDescarga]="o.puede_descargar &&...
-         ╵                            ~~~~~~~~~~~~~~~~
-
-

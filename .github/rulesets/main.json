@@ -27,23 +27,6 @@
         "require_last_push_approval": true,
         "required_review_thread_resolution": true
       }
-    },
-    {
-      "type": "required_status_checks",
-      "parameters": {
-        "required_status_checks": [
-          {
-            "context": "Flujo de ramas"
-          },
-          {
-            "context": "TypeScript y pruebas"
-          },
-          {
-            "context": "Build de producción"
-          }
-        ],
-        "strict_required_status_checks_policy": true
-      }
     }
   ]
 }

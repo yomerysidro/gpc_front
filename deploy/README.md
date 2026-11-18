@@ -1,7 +1,7 @@
 ﻿# Dockerización del frontend Angular
 
 > **Railway:** esta guía describe el flujo histórico de Compose/GHCR. Para la
-> configuración vigente y el despliegue manual consultar [CI_CD_FRONTEND.md](../docs/railway/CI_CD_FRONTEND.md).
+> configuración vigente y el despliegue mediante la integración nativa, consultar [CI_CD_FRONTEND.md](../docs/railway/CI_CD_FRONTEND.md).
 > El workflow de publicación automática de GHCR ya no existe.
 
 ## Diagnóstico y arquitectura
