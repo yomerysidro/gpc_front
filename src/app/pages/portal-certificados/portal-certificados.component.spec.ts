@@ -161,7 +161,8 @@ describe('Portal público sin autenticación', () => {
     const f = crear(); const c = f.componentInstance as any;
     consultar(c).flush({ success: true, data: { ...datos, estado_certificado: 'Listo para entrega',
       puede_ver_documento: false, vigente: false, url_documento: null } }); f.detectChanges();
-    expect(c.resultado().estado).toBe('disponible');
+    expect(c.resultado().estado).toBe('no-disponible');
+    expect(f.nativeElement.textContent).not.toContain('Certificado verificado');
     expect(f.nativeElement.textContent).not.toContain('Ver certificado'); f.destroy();
   });
   it('no ofrece un PDF sin autorización explícita y no infiere disponibilidad de la integridad', () => {
@@ -234,6 +235,31 @@ describe('Portal público sin autenticación', () => {
     expect(f.nativeElement.querySelector('#dni-publico')).toBeNull();
     expect(f.nativeElement.textContent).toContain('No se encontró un certificado con ese código. Verifica que esté escrito correctamente');
     http.expectNone('/api/portal-certificados/consultar-dni'); f.destroy();
+  });
+
+  it('conserva el código histórico desde DNI y en la búsqueda por código', () => {
+    const historico = 'CertA123';
+    const url = '/api/certificados/verificar/' + historico;
+    const pendiente = { ...datos, codigo_verificacion: historico, vigente: false,
+      puede_ver_documento: false, url_documento: null, estado_certificado: 'PENDIENTE_FIRMA' };
+    const f = crear(); const c = f.componentInstance as any;
+    c.dni.setValue('01234567'); c.buscar();
+    http.expectOne('/api/portal-certificados/consultar-dni').flush({ success: true, data: {
+      certificados: [{ ...filaDni('a'), codigo_verificacion: historico }],
+    } });
+    http.expectOne(url).flush({ success: true, data: pendiente });
+    expect(c.resultadosDni()[0].codigo).toBe(historico);
+    expect(c.codigosVerificadosDni().has(historico)).toBeFalse();
+    c.cambiarModo('codigo'); c.codigo.setValue(historico); c.buscar();
+    http.expectOne(url).flush({ success: true, data: pendiente });
+    expect(c.resultado().codigo).toBe(historico);
+    expect(c.resultado().verificado).toBeFalse();
+    for (const invalido of ['12345', 'Cert-123', 'Cert 123', 'a'.repeat(64)]) {
+      c.codigo.setValue(invalido); expect(c.codigo.invalid).toBeTrue();
+      c.buscar(); http.expectNone(req => req.url.includes('/certificados/verificar/'));
+    }
+    f.destroy();
+
   });
 
   function filaDni(letra: string, publicado = false) {
@@ -405,18 +431,49 @@ describe('Sesión real y layout estable durante la consulta pública', () => {
   });
   afterEach(() => { h?.fixture.destroy(); http.verify({ ignoreCancelled: true }); });
   function componente(): any { return h.fixture.debugElement.query(By.directive(PortalCertificadosComponent)).componentInstance; }
-  it('recupera sesión antes de consultar un QR y conserva formulario y sidebar ante un error público', async () => {
+  it('consulta una vez el código histórico del QR aunque la comprobación de sesión siga pendiente', async () => {
+    const historico = 'CertA123';
+    h = await RouterTestingHarness.create('/verificar/' + historico);
+    http.expectOne('/api/certificados/verificar/' + historico).flush({}, { status: 404, statusText: 'Not Found' });
+    http.expectOne('/api/auth/me').flush({}, { status: 401, statusText: 'Unauthorized' });
+    h.detectChanges();
+    expect(componente().codigo.value).toBe(historico);
+    http.expectNone('/api/portal-certificados/consultar-dni');
+  });
+
+  it('restaura la sesión en paralelo con el QR sin recrear el componente ni repetir la consulta', async () => {
     h = await RouterTestingHarness.create('/verificar/' + codigo);
-    http.expectNone('/api/certificados/verificar/' + codigo);
+    const c = componente();
+    const consulta = http.expectOne('/api/certificados/verificar/' + codigo);
+    expect(h.routeNativeElement!.querySelector('.carga-institucional')?.textContent).toContain('Cargando certificados digitales');
     http.expectOne('/api/auth/me').flush({ user: { id: 1, nombre: 'Administrador', rol: 'Administrador', email: 'admin@institucional.test' },
       modulos: [], permisos: [], capacidades_solicitudes: {} }); h.detectChanges(); h.detectChanges();
-    const c = componente(); const sidebar = h.routeNativeElement!.querySelector('app-sidebar');
+    const sidebar = h.routeNativeElement!.querySelector('app-sidebar');
     expect(sidebar).not.toBeNull(); expect(c.modo()).toBe('codigo'); expect(c.codigo.value).toBe(codigo);
-    http.expectOne('/api/certificados/verificar/' + codigo).flush({}, { status: 404, statusText: 'Not Found' }); h.detectChanges();
+    consulta.flush({}, { status: 404, statusText: 'Not Found' }); h.detectChanges();
+    expect(h.routeNativeElement!.querySelector('.carga-institucional')).toBeNull();
     expect(componente()).toBe(c); expect(c.modo()).toBe('codigo'); expect(c.codigo.value).toBe(codigo);
     expect(h.routeNativeElement!.querySelector('app-sidebar')).toBe(sidebar);
     expect(h.routeNativeElement!.querySelector('#dni-publico')).toBeNull();
     http.expectNone('/api/auth/me'); http.expectNone('/api/portal-certificados/consultar-dni');
+    http.expectNone('/api/certificados/verificar/' + codigo);
+  });
+  it('permite reintentar un QR tras un 503 y conserva el acceso público', async () => {
+    h = await RouterTestingHarness.create('/verificar?codigo=' + codigo);
+    const ruta = '/api/certificados/verificar/' + codigo;
+    http.expectOne('/api/auth/me').flush({}, { status: 401, statusText: 'Unauthorized' });
+    http.expectOne(ruta).flush({}, { status: 503, statusText: 'Service Unavailable' });
+    h.detectChanges();
+    const vista = h.routeNativeElement!;
+    expect(vista.querySelector('.carga-institucional')).toBeNull();
+    expect(vista.querySelector('[role="alert"]')?.textContent).toContain('No se pudo conectar');
+    const reintentar = vista.querySelector<HTMLButtonElement>('.aviso button')!;
+    expect(reintentar.textContent).toContain('Reintentar');
+    reintentar.click();
+    http.expectOne(ruta).flush({}, { status: 404, statusText: 'Not Found' });
+    h.detectChanges();
+    expect(vista.querySelector('.aviso button')).toBeNull();
+    expect(vista.querySelector('#codigo-portal')).not.toBeNull();
   });
   it('recupera la sesión al recargar y conserva el mismo sidebar al buscar DNI, abrir PDF, descargar, regresar y recibir un 401 público', async () => {
     h = await RouterTestingHarness.create('/portal-certificados');
@@ -454,7 +511,8 @@ describe('Sesión real y layout estable durante la consulta pública', () => {
     h = await RouterTestingHarness.create('/portal-certificados');
     expect(h.routeNativeElement!.textContent).toContain('Portal Público de Certificados');
     expect(h.routeNativeElement!.textContent).not.toContain('Abriendo Portal');
-    expect(h.routeNativeElement!.querySelector('[role="status"]')).not.toBeNull();
+    expect(h.routeNativeElement!.querySelector('#dni-publico')).not.toBeNull();
+    expect(h.routeNativeElement!.querySelector('.carga-institucional')).toBeNull();
     http.expectOne('/api/auth/me').flush({}, { status: 401, statusText: 'Unauthorized' }); h.detectChanges();
     expect(h.routeNativeElement!.querySelector('app-sidebar')).toBeNull();
     expect(TestBed.inject(Router).url).toBe('/portal-certificados');

@@ -1,7 +1,7 @@
 import { HttpClient, HttpContext, HttpErrorResponse, HttpRequest } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, map, Observable, of, shareReplay, switchMap, throwError } from 'rxjs';
+import { catchError, map, Observable, of, shareReplay, switchMap, throwError, timeout } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
   AuthErrorResponse,
@@ -83,6 +83,7 @@ export class SessionAuthService extends AuthService {
 
   cargarSesion(propagarError = false): Observable<boolean> {
     this.sesion$ ??= this.http.get<SesionResponse>(`${this.api}/auth/me`, this.opciones()).pipe(
+      timeout(10000),
       map(sesion => {
         this.usuarioActual.set(sesion.user);
         this.modulosActuales.set(sesion.modulos);

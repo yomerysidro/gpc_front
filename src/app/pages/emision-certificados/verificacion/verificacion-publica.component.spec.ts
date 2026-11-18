@@ -13,9 +13,9 @@ describe('QR histórico en el único Portal Público', () => {
   let http: HttpTestingController;
   let h: RouterTestingHarness;
   const codigo = 'a'.repeat(30);
-  const datos = { codigo_verificacion: codigo, estado_documento: 'Vigente', estado_certificado: 'PENDIENTE_FIRMA',
+  const datos = { codigo_verificacion: codigo, estado_documento: 'Vigente', estado_certificado: 'Vigente',
     fecha_generacion: '2026-01-01', fecha_emision: null, registro_encontrado: true, integridad_verificada: true,
-    vigente: false, puede_ver_documento: false, url_documento: null, emision_oficial_verificada: false,
+    vigente: true, puede_ver_documento: false, url_documento: null, emision_oficial_verificada: false,
     firma_verificada: false, motivos: ['SQLSTATE Laravel privado'] };
   beforeEach(() => {
     TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(),
@@ -69,7 +69,7 @@ describe('QR histórico en el único Portal Público', () => {
     expect(vista().querySelector('app-pdf-continuo')).toBeNull();
     expect(TestBed.inject(Router).url).toBe('/portal-certificados?codigo=' + codigo);
   });
-  for (const cambios of [{ integridad_verificada: false }, { estado_documento: 'Anulado' }, { estado_certificado: 'Revocado' }, { registro_encontrado: false }]) {
+  for (const cambios of [{ integridad_verificada: false }, { estado_documento: 'Anulado' }, { estado_certificado: 'Revocado' }, { registro_encontrado: false }, { estado_certificado: 'PENDIENTE_FIRMA', vigente: false }]) {
     it('no publica un resultado positivo ante ' + JSON.stringify(cambios), async () => {
       await abrir(); http.expectOne('/api/certificados/verificar/' + codigo).flush({ success: true, data: { ...datos, ...cambios } }); h.detectChanges();
       expect(vista().textContent).not.toContain('Certificado verificado');

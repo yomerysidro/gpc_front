@@ -1,4 +1,4 @@
-import { Component, computed, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, ElementRef, HostListener, inject, input, signal, viewChild } from '@angular/core';
 import { finalize } from 'rxjs';
 import { Router } from '@angular/router';
 import { MainLayoutComponent } from '../main-layout/main-layout.component';
@@ -14,6 +14,7 @@ import { AuthService } from '../../../core/services/autenticacion/auth.service';
   styleUrl: './private-layout.component.scss'
 })
 export class PrivateLayoutComponent {
+  readonly publico = input(false);
   private readonly entrada = inject(Router).getCurrentNavigation()?.extras.info as { inicioSesionExitoso?: boolean } | undefined;
   protected readonly inicioSesionExitoso = signal(this.entrada?.inicioSesionExitoso === true);
   protected readonly auth = inject(AuthService);

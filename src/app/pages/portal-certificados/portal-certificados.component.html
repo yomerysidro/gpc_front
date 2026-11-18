@@ -12,7 +12,7 @@
           <button type="button" [attr.aria-pressed]="modo() === 'dni'" (click)="cambiarModo('dni')">Buscar por DNI</button>
           <button type="button" [attr.aria-pressed]="modo() === 'codigo'" (click)="cambiarModo('codigo')">Buscar por código</button>
         </div>
-        <form (submit)="$event.preventDefault(); buscar()" [attr.aria-busy]="cargando()" novalidate>
+        <form (submit)="$event.preventDefault(); buscar()" [attr.aria-busy]="mostrandoCarga()" novalidate>
           @if (modo() === 'dni') {
             <label for="dni-publico">DNI</label>
             <p id="dni-ayuda" class="ayuda">Ingresa los 8 dígitos de tu DNI peruano. No necesitas un código adicional.</p>
@@ -20,15 +20,30 @@
             <p id="dni-error" class="validacion">@if (dni.touched && dni.invalid) { El DNI debe contener 8 dígitos numéricos. }</p>
           } @else {
             <label for="codigo-portal">Código de verificación</label>
-            <p id="codigo-ayuda" class="ayuda">Pega el código de 30 caracteres de tu certificado. No necesitas ingresar tu DNI.</p>
+            <p id="codigo-ayuda" class="ayuda">Pega el código tal como aparece en tu certificado.</p>
             <input id="codigo-portal" class="input" type="text" maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false" [formControl]="codigo" aria-describedby="codigo-ayuda codigo-error" [attr.aria-invalid]="codigo.touched && codigo.invalid" />
-            <p id="codigo-error" class="validacion">@if (codigo.touched && codigo.invalid) { Ingresa el código de 30 caracteres, con números y letras de la a a la f en minúscula. }</p>
+            <p id="codigo-error" class="validacion">@if (codigo.touched && codigo.invalid) { Ingresa un código válido, sin espacios ni símbolos. }</p>
           }
-          <button class="btn principal" type="submit" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">search</span>{{ cargando() ? 'Consultando…' : 'Consultar' }}</button>
+          <button class="btn principal" type="submit" [disabled]="mostrandoCarga()"><span class="material-symbols-outlined" aria-hidden="true">search</span>{{ mostrandoCarga() ? 'Consultando…' : 'Consultar' }}</button>
         </form>
-        @if (cargando()) { <p role="status">Consultando el certificado…</p> }
-        @if (mensaje()) { <p class="aviso" role="status">{{ mensaje() }}</p> }
+        @if (mensaje()) {
+          <div class="aviso">
+            <p [attr.role]="reintento() ? 'alert' : 'status'">{{ mensaje() }}</p>
+            @if (reintento(); as intento) {
+              <button type="button" class="btn" (click)="buscar(intento.abrirPdf)">Reintentar</button>
+            }
+          </div>
+        }
       </section>
+      @if (mostrandoCarga()) {
+        <div class="tarjeta carga-institucional" role="status">
+          <img src="/marca/escudo-160.webp" alt="" width="56" height="64" />
+          <span class="carga-municipalidad">Municipalidad Distrital de Morales</span>
+          <span class="carga-indicador" aria-hidden="true"></span>
+          <strong>Cargando certificados digitales</strong>
+          <p>Estamos consultando el registro municipal.</p>
+        </div>
+      }
       @if (resultadosDni()?.length === 0) { <p role="status">No hay certificados disponibles para esta consulta.</p> }
       <div class="resultados-grid">
       @for (r of tarjetas(); track claveTarjeta(r)) {

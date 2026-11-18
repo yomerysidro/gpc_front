@@ -6,6 +6,8 @@ import { DocumentosDigitalesService } from './documentos-digitales.service';
 import { ArchivoPdf, VerificacionDocumento } from '../../interfaces/emision-certificados/documento-digital.interface';
 import { environment } from '../../../../environments/environment';
 
+export const FORMATO_CODIGO_PUBLICO = /^(?:[a-f0-9]{30}|(?=[A-Za-z0-9]*[A-Za-z])(?=[A-Za-z0-9]*[0-9])[A-Za-z0-9]{2,30})(?![\s\S])/;
+
 export interface CertificadoPublico {
   readonly referencia?: string;
   readonly disponibleRrhh?: boolean;
@@ -50,7 +52,7 @@ export class PortalCertificadosService {
         const texto = (v: unknown) => v === null || typeof v === 'string';
         if (respuesta?.success !== true || !Array.isArray(filas) || filas.some(r => !r
           || typeof r.referencia_publica !== 'string' || !/^[a-f0-9]{64}$/.test(r.referencia_publica)
-          || typeof r.codigo_verificacion !== 'string' || !/^[a-f0-9]{30}$/.test(r.codigo_verificacion)
+          || typeof r.codigo_verificacion !== 'string' || !FORMATO_CODIGO_PUBLICO.test(r.codigo_verificacion)
           || typeof r.origen !== 'string' || typeof r.estado_disponibilidad !== 'string'
           || typeof r.disponible_rrhh !== 'boolean' || typeof r.pdf_publicado !== 'boolean'
           || ![r.tipo_certificado, r.actividad, r.sesion, r.fecha_sesion, r.url_documento].every(texto))) {
@@ -69,12 +71,12 @@ export class PortalCertificadosService {
   }
 
   verificar(codigo: string): Observable<CertificadoPublico> {
-    if (!/^[a-f0-9]{30}$/.test(codigo)) return throwError(() => ({ status: 422 }));
+    if (!FORMATO_CODIGO_PUBLICO.test(codigo)) return throwError(() => ({ status: 422 }));
     return this.documentos.verificar(codigo).pipe(timeout(30000), map(r => this.proyectar(r)));
   }
 
   confirmarVigenciaEIntegridad(codigo: string): Observable<boolean> {
-    if (!/^[a-f0-9]{30}$/.test(codigo)) return throwError(() => ({ status: 422 }));
+    if (!FORMATO_CODIGO_PUBLICO.test(codigo)) return throwError(() => ({ status: 422 }));
     return this.documentos.verificar(codigo).pipe(
       timeout(30000),
       map(r => r.vigente === true && this.proyectar(r).verificado === true),
@@ -90,7 +92,7 @@ export class PortalCertificadosService {
   private proyectar(r: VerificacionDocumento): CertificadoPublico {
     const estados = [r.estado_documento, r.estado_certificado].map(v => v.trim().toLowerCase());
     const anulado = estados.some(v => ['anulado', 'revocado'].includes(v));
-    const verificado = !anulado && r.registro_encontrado === true && estados[0] === 'vigente' && r.integridad_verificada === true;
+    const verificado = !anulado && r.registro_encontrado === true && estados[0] === 'vigente' && r.vigente === true && r.integridad_verificada === true;
     // La autorización pública no exige firma ni emisión criptográfica. El servidor decide su disponibilidad.
     const fecha = [r.fecha_generacion]
       .find(v => typeof v === 'string' && !Number.isNaN(Date.parse(v)));

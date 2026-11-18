@@ -17,6 +17,15 @@ app-header {
   align-self: start;
 }
 
+:host(.marco-publico) {
+  display: block;
+  position: static;
+  height: auto;
+  overflow: visible;
+
+  main { display: contents; }
+}
+
 .menu-toggle {
   background: transparent;
   color: #fff;
