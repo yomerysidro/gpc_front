@@ -40,7 +40,7 @@ describe('Portal público sin autenticación', () => {
     TestBed.overrideComponent(PdfContinuoComponent, { set: { template: '<div>PDF autorizado</div>' } });
     http = TestBed.inject(HttpTestingController);
   });
-  afterEach(() => http.verify());
+  afterEach(() => http.verify({ ignoreCancelled: true }));
   function crear() { const f = TestBed.createComponent(PortalCertificadosComponent); f.detectChanges(); return f; }
   function consultar(c: any) { c.cambiarModo('codigo'); c.codigo.setValue(codigo); c.buscar(); return http.expectOne(`/api/certificados/verificar/${codigo}`); }
 
@@ -242,6 +242,92 @@ describe('Portal público sin autenticación', () => {
       fecha_sesion: '2026-11-03', estado_disponibilidad: 'Listo para entrega', disponible_rrhh: true,
       pdf_publicado: publicado, url_documento: publicado ? `/api/certificados/verificar/${letra.repeat(30)}?archivo=1` : null };
   }
+  it('comparte el diseño entre DNI y código y mantiene completos los iconos en pantallas estrechas', () => {
+    const f = crear();
+    const c = f.componentInstance as any;
+    const vista: HTMLElement = f.nativeElement;
+    const tipo = 'Capacitación ' + 'Institucional'.repeat(8);
+    const tarjetas = () => Array.from(vista.querySelectorAll<HTMLElement>('.resultados'));
+    const medir = (ancho: number) => {
+      vista.style.width = ancho + 'px';
+      return tarjetas().map(tarjeta => {
+        expect(tarjeta.scrollWidth).toBeLessThanOrEqual(tarjeta.clientWidth);
+        const iconos = tarjeta.querySelectorAll<SVGSVGElement>('.insignia svg, .badge-check');
+        for (const icono of Array.from(iconos)) {
+          const caja = icono.getBoundingClientRect();
+          const contenedor = icono.parentElement!.getBoundingClientRect();
+          expect(caja.width).toBeGreaterThan(20);
+          expect(caja.height).toBe(caja.width);
+          expect(caja.left).toBeGreaterThanOrEqual(contenedor.left);
+          expect(caja.right).toBeLessThanOrEqual(contenedor.right);
+          expect(caja.top).toBeGreaterThanOrEqual(contenedor.top);
+          expect(caja.bottom).toBeLessThanOrEqual(contenedor.bottom);
+        }
+        return tarjeta.getBoundingClientRect().width;
+      });
+    };
+
+    c.dni.setValue('01234567');
+    c.buscar();
+    http.expectOne('/api/portal-certificados/consultar-dni').flush({ success: true, data: {
+      certificados: [{ ...filaDni('a'), tipo_certificado: tipo }, filaDni('b')],
+    } });
+    f.detectChanges();
+    expect(tarjetas().length).toBe(2);
+    expect(tarjetas()[0].querySelector('h2')?.textContent).toBe(tipo);
+    expect(vista.querySelector('.badge-check')).toBeNull();
+    expect(tarjetas()[0].querySelector('.estado')?.textContent?.trim()).toBe('Disponible');
+    const anchos = [320, 768, 1280];
+    const porDni = anchos.map(ancho => medir(ancho)[0]);
+
+    const verificacionesDni = http.match(r => r.method === 'GET' && r.url.startsWith('/api/certificados/verificar/'));
+    expect(verificacionesDni.length).toBe(2);
+    consultar(c).flush({ success: true, data: { ...datos, tipo_certificado: tipo } });
+    expect(verificacionesDni.every(req => req.cancelled)).toBeTrue();
+    f.detectChanges();
+    expect(tarjetas().length).toBe(1);
+    expect(tarjetas()[0].querySelector('h2')?.textContent).toBe(tipo);
+    expect(vista.querySelectorAll('.badge-check').length).toBe(1);
+    expect(anchos.map(ancho => medir(ancho)[0])).toEqual(porDni);
+    f.destroy();
+  });
+  it('agrega el sello únicamente al resultado DNI vigente e íntegro y conserva sus datos y disponibilidad', () => {
+    const f = crear();
+    const c = f.componentInstance as any;
+    c.dni.setValue('01234567');
+    c.buscar();
+    http.expectOne('/api/portal-certificados/consultar-dni').flush({ success: true, data: {
+      certificados: [filaDni('a'), { ...filaDni('b'), tipo_certificado: 'Reconocimiento' }, filaDni('c'), filaDni('d'), filaDni('e')],
+    } });
+    f.detectChanges();
+    const tarjetas = Array.from(f.nativeElement.querySelectorAll('.resultados') as NodeListOf<HTMLElement>);
+    expect(tarjetas.length).toBe(5);
+    expect(f.nativeElement.querySelector('.badge-check')).toBeNull();
+    const original = c.resultadosDni();
+    const verificar = (letra: string, cambios: object) => {
+      const codigoVerificado = letra.repeat(30);
+      const req = http.expectOne('/api/certificados/verificar/' + codigoVerificado);
+      expect(req.request.withCredentials).toBeFalse();
+      expect(req.request.headers.has('Authorization')).toBeFalse();
+      req.flush({ success: true, data: { ...datos, codigo_verificacion: codigoVerificado, ...cambios } });
+    };
+    verificar('a', { actividad: 'Respuesta de verificación', url_documento: null });
+    verificar('b', { integridad_verificada: false });
+    verificar('c', { estado_certificado: 'Revocado' });
+    verificar('d', { vigente: false });
+    http.expectOne('/api/certificados/verificar/' + 'e'.repeat(30))
+      .flush({}, { status: 503, statusText: 'Service Unavailable' });
+    f.detectChanges();
+    expect(c.resultadosDni()).toBe(original);
+    expect(tarjetas[0].textContent).toContain('Jornada municipal');
+    expect(tarjetas[0].textContent).not.toContain('Respuesta de verificación');
+    expect(tarjetas[0].textContent).toContain('Certificado verificado');
+    expect(tarjetas[0].querySelector('.badge-check')).not.toBeNull();
+    expect(tarjetas[0].querySelector('a')).toBeNull();
+    expect(tarjetas.every(tarjeta => tarjeta.textContent?.includes('Disponible'))).toBeTrue();
+    expect(tarjetas.slice(1).every(tarjeta => !tarjeta.querySelector('.badge-check'))).toBeTrue();
+    f.destroy();
+  });
   for (const cantidad of [1, 2]) {
     it(`presenta ${cantidad} documentos del contrato DNI sin atribuir publicación a disponible_rrhh`, () => {
       const f = crear(); const c = f.componentInstance as any; c.dni.setValue('01234567'); c.buscar();
@@ -317,7 +403,7 @@ describe('Sesión real y layout estable durante la consulta pública', () => {
     TestBed.overrideComponent(PdfContinuoComponent, { set: { template: '<div>PDF original</div>' } });
     http = TestBed.inject(HttpTestingController);
   });
-  afterEach(() => { h?.fixture.destroy(); http.verify(); });
+  afterEach(() => { h?.fixture.destroy(); http.verify({ ignoreCancelled: true }); });
   function componente(): any { return h.fixture.debugElement.query(By.directive(PortalCertificadosComponent)).componentInstance; }
   it('recupera sesión antes de consultar un QR y conserva formulario y sidebar ante un error público', async () => {
     h = await RouterTestingHarness.create('/verificar/' + codigo);

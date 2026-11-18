@@ -2,7 +2,7 @@ import { Component, computed, DestroyRef, inject, PLATFORM_ID, signal } from '@a
 import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { distinctUntilChanged, map, Subscription } from 'rxjs';
+import { catchError, distinctUntilChanged, EMPTY, filter, from, map, mergeMap, Subscription, switchMap, tap, throwError } from 'rxjs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CertificadoPublico, PortalCertificadosService } from '../../core/services/emision-certificados/portal-certificados.service';
 import { ArchivoPdf } from '../../core/interfaces/emision-certificados/documento-digital.interface';
@@ -30,6 +30,7 @@ export class PortalCertificadosComponent {
   protected readonly errorPdf = signal('');
   protected readonly resultado = signal<CertificadoPublico | null>(null);
   protected readonly resultadosDni = signal<readonly CertificadoPublico[] | null>(null);
+  protected readonly codigosVerificadosDni = signal<ReadonlySet<string>>(new Set());
   protected readonly tarjetas = computed(() => this.modo() === 'dni' ? this.resultadosDni() ?? []
     : this.resultado() ? [this.resultado()!] : []);
   protected readonly detalle = signal(false);
@@ -64,11 +65,25 @@ export class PortalCertificadosComponent {
     if (control.invalid || this.cargando()) return;
     this.limpiar(); this.cargando.set(true);
     if (this.modo() === 'dni') {
-      this.consulta = this.api.consultarDni(this.dni.value).pipe(takeUntilDestroyed(this.destroy)).subscribe({
-        next: certificados => {
+      this.consulta = this.api.consultarDni(this.dni.value).pipe(
+        tap(certificados => {
           this.cargando.set(false);
           this.resultadosDni.set(certificados);
-        },
+        }),
+        switchMap(certificados => {
+          const codigos = new Set(certificados.filter(r => r.estado === 'disponible').map(r => r.codigo));
+          return from(codigos).pipe(
+            mergeMap(codigo => this.api.confirmarVigenciaEIntegridad(codigo).pipe(
+              filter(confirmado => confirmado),
+              map(() => codigo),
+              catchError(e => e?.status === 429 ? throwError(() => e) : EMPTY),
+            ), 3),
+            catchError(() => EMPTY),
+          );
+        }),
+        takeUntilDestroyed(this.destroy),
+      ).subscribe({
+        next: codigo => this.codigosVerificadosDni.update(codigos => new Set([...codigos, codigo])),
         error: e => {
           this.cargando.set(false);
           this.mensaje.set(e?.status === 429 ? 'Has realizado varias consultas. Espera un momento antes de intentar nuevamente.'
@@ -130,6 +145,7 @@ export class PortalCertificadosComponent {
   private limpiar(): void {
     this.consulta?.unsubscribe(); this.cargando.set(false); this.mensaje.set(''); this.resultado.set(null);
     this.resultadosDni.set(null);
+    this.codigosVerificadosDni.set(new Set());
     this.limpiarPdf(); this.detalle.set(false);
   }
 }

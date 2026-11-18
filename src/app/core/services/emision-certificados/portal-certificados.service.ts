@@ -73,6 +73,14 @@ export class PortalCertificadosService {
     return this.documentos.verificar(codigo).pipe(timeout(30000), map(r => this.proyectar(r)));
   }
 
+  confirmarVigenciaEIntegridad(codigo: string): Observable<boolean> {
+    if (!/^[a-f0-9]{30}$/.test(codigo)) return throwError(() => ({ status: 422 }));
+    return this.documentos.verificar(codigo).pipe(
+      timeout(30000),
+      map(r => r.vigente === true && this.proyectar(r).verificado === true),
+    );
+  }
+
   archivo(certificado: CertificadoPublico): Observable<ArchivoPdf> {
     if (certificado.estado !== 'disponible' || !certificado.urlPdf) return throwError(() => ({ status: 403 }));
     // El servicio existente valida URL, código, contenido PDF y hash cuando está disponible.
