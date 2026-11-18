@@ -71,11 +71,41 @@ label { display: block; font-weight: 600; }
 .actividad-certificado { font-weight: 600; color: #124b72; overflow-wrap: anywhere; }
 footer { padding: 1rem var(--espacio-6, 1.5rem); text-align: left; border-top: 1px solid #dce5ed; font-size: .85rem; }
 footer span { display: block; margin-top: .4rem; color: #526879; }
-:host-context(app-main-layout) { min-height: 0; background: transparent; }
-:host-context(app-main-layout) .portal { min-height: 0; }
-:host-context(app-main-layout) .cabecera { display: none; }
-:host-context(app-main-layout) main { padding: 0; }
-:host-context(app-main-layout) footer { padding: .8rem 0 0; }
+:host-context(app-main-layout:not(.marco-publico)) { min-height: 0; background: transparent; }
+:host-context(app-main-layout:not(.marco-publico)) .portal { min-height: 0; }
+:host-context(app-main-layout:not(.marco-publico)) .cabecera { display: none; }
+:host-context(app-main-layout:not(.marco-publico)) main { padding: 0; }
+:host-context(app-main-layout:not(.marco-publico)) footer { padding: .8rem 0 0; }
+.aviso p { margin: 0; }
+.aviso .btn { margin-top: .65rem; }
+.carga-institucional {
+  display: grid;
+  justify-items: center;
+  gap: .55rem;
+  width: min(100%, 28rem);
+  margin-inline: auto;
+  text-align: center;
+  border-top: 3px solid var(--dorado-accion);
+  color: var(--azul-institucional);
+}
+.carga-institucional img { object-fit: contain; }
+.carga-municipalidad { font-size: .875rem; font-weight: 600; }
+.carga-institucional strong { font-size: 1.15rem; }
+.carga-institucional p { margin: 0; color: #526879; }
+.carga-indicador {
+  width: 1.65rem;
+  height: 1.65rem;
+  margin-block: .35rem;
+  border: 3px solid #dce5ed;
+  border-top-color: var(--azul-institucional);
+  border-right-color: var(--dorado-accion);
+  border-radius: 50%;
+  animation: girar-carga .85s linear infinite;
+}
+@keyframes girar-carga { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .carga-indicador { animation: none; }
+}
 @media (max-width: 600px) {
   .acceso { display: none; }
   .cabecera { flex-wrap: wrap; }

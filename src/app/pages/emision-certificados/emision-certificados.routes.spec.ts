@@ -170,7 +170,7 @@ describe('Autorización institucional y navegación de Emisión', () => {
     expect(TestBed.inject(Router).url).toBe('/portal-certificados?codigo=CODIGO-PRUEBA');
     http.expectOne('/api/auth/me').flush({}, { status: 401, statusText: 'Unauthorized' }); harness.detectChanges(); harness.detectChanges();
     expect(harness.routeNativeElement!.querySelector('app-header, app-sidebar')).toBeNull();
-    expect(harness.routeNativeElement!.textContent).toContain('código de 30 caracteres');
+    expect(harness.routeNativeElement!.textContent).toContain('Ingresa un código válido');
     expect(harness.routeNativeElement!.querySelector<HTMLInputElement>('input')!.value).toBe('CODIGO-PRUEBA');
     expect(harness.routeNativeElement!.querySelector('#dni-publico')).toBeNull();
     expect(api.listar).not.toHaveBeenCalled();

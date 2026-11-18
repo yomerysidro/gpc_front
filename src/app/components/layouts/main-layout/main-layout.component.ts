@@ -1,4 +1,4 @@
-import { afterNextRender, Component, DestroyRef, ElementRef, inject, input, signal, viewChild } from '@angular/core';
+import { afterNextRender, Component, DestroyRef, effect, ElementRef, inject, Injector, input, signal, viewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from '../../header/header.component';
 import { SidebarComponent } from '../../sidebar/sidebar.component';
@@ -10,12 +10,13 @@ import { NavigationItem } from '../../../core/interfaces/navigation/navigation-i
   imports: [RouterOutlet, HeaderComponent, SidebarComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
-  host: { '[class.sidebar-contraido]': 'sidebarContraido()' },
+  host: { '[class.sidebar-contraido]': 'sidebarContraido()', '[class.marco-publico]': 'publico()' },
 })
 export class MainLayoutComponent {
   private readonly elemento = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly header = viewChild.required('headerLayout', { read: ElementRef<HTMLElement> });
+  private readonly header = viewChild('headerLayout', { read: ElementRef<HTMLElement> });
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   constructor() {
     afterNextRender(() => {
       const host = this.elemento.nativeElement;
@@ -24,18 +25,19 @@ export class MainLayoutComponent {
       actualizarPantalla();
       consulta.addEventListener('change', actualizarPantalla);
       this.destroyRef.onDestroy(() => consulta.removeEventListener('change', actualizarPantalla));
-      const cabecera = this.header().nativeElement;
-      const medir = () => {
-        host.style.setProperty('--alto-header-real', `${cabecera.getBoundingClientRect().height}px`);
-        this.pantallaMovil.set(host.ownerDocument.defaultView!.matchMedia('(max-width: 768px)').matches);
-      };
-      medir();
-      const observador = new ResizeObserver(medir);
-      observador.observe(cabecera);
-      this.destroyRef.onDestroy(() => observador.disconnect());
+      effect(onCleanup => {
+        const cabecera = this.header()?.nativeElement;
+        if (!cabecera) return;
+        const medir = () => host.style.setProperty('--alto-header-real', `${cabecera.getBoundingClientRect().height}px`);
+        medir();
+        const observador = new ResizeObserver(medir);
+        observador.observe(cabecera);
+        onCleanup(() => observador.disconnect());
+      }, { injector: this.injector });
     });
   }
   readonly navigation = input<readonly NavigationItem[]>([]);
+  readonly publico = input(false);
   protected readonly sidebarContraido = signal(false);
   protected readonly menuMovilAbierto = signal(false);
   protected readonly pantallaMovil = signal(false);

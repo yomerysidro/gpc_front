@@ -1,3 +1,4 @@
+@if (!publico()) {
 <app-header #headerLayout>
     <button type="button" class="btn btn-icono btn-sin-borde menu-toggle" popovertarget="menu-principal"
       [attr.aria-label]="pantallaMovil() ? 'Menú de navegación' : sidebarContraido() ? 'Expandir menú lateral' : 'Contraer menú lateral'"
@@ -9,10 +10,11 @@
   <ng-content select="[layout-header]" />
 </app-header>
 <!-- En pantallas angostas el sidebar es un popover (cajón con velo); en escritorio queda fijo. -->
-<app-sidebar id="menu-principal" popover [items]="navigation()"
-  [(contraido)]="sidebarContraido" (toggle)="actualizarMenuMovil($event)"
-  (click)="$any($event.currentTarget).hidePopover()" />
-<main>
+  <app-sidebar id="menu-principal" popover [items]="navigation()"
+    [(contraido)]="sidebarContraido" (toggle)="actualizarMenuMovil($event)"
+    (click)="$any($event.currentTarget).hidePopover()" />
+}
+<main [attr.role]="publico() ? 'presentation' : null">
   <ng-content select="[layout-alert]" />
   <router-outlet />
 </main>

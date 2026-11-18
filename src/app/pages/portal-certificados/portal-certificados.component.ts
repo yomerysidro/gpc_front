@@ -1,10 +1,10 @@
-import { Component, computed, DestroyRef, inject, PLATFORM_ID, signal } from '@angular/core';
-import { DatePipe, isPlatformBrowser } from '@angular/common';
+import { afterNextRender, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, distinctUntilChanged, EMPTY, filter, from, map, mergeMap, Subscription, switchMap, tap, throwError } from 'rxjs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { CertificadoPublico, PortalCertificadosService } from '../../core/services/emision-certificados/portal-certificados.service';
+import { CertificadoPublico, FORMATO_CODIGO_PUBLICO, PortalCertificadosService } from '../../core/services/emision-certificados/portal-certificados.service';
 import { ArchivoPdf } from '../../core/interfaces/emision-certificados/documento-digital.interface';
 import { PdfContinuoComponent } from '../emision-certificados/compartidos/pdf-continuo.component';
 
@@ -19,14 +19,18 @@ export class PortalCertificadosComponent {
   private readonly destroy = inject(DestroyRef);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly route = inject(ActivatedRoute, { optional: true });
+  private readonly codigoInicial = this.route?.snapshot.queryParamMap.get('codigo') ?? null;
   private consulta?: Subscription;
   private descarga?: Subscription;
   protected readonly dni = this.fb.control('', [Validators.required, Validators.pattern(/^[0-9]{8}$/)]);
-  protected readonly codigo = this.fb.control('', [Validators.required, Validators.pattern(/^[a-f0-9]{30}$/)]);
+  protected readonly codigo = this.fb.control('', [Validators.required, Validators.pattern(FORMATO_CODIGO_PUBLICO)]);
   protected readonly modo = signal<'dni' | 'codigo'>('dni');
   protected readonly cargando = signal(false);
+  private readonly pendienteQr = signal(this.codigoInicial !== null && FORMATO_CODIGO_PUBLICO.test(this.codigoInicial));
+  protected readonly mostrandoCarga = computed(() => this.pendienteQr() || this.cargando());
   protected readonly cargandoPdf = signal(false);
   protected readonly mensaje = signal('');
+  protected readonly reintento = signal<{ abrirPdf: boolean } | null>(null);
   protected readonly errorPdf = signal('');
   protected readonly resultado = signal<CertificadoPublico | null>(null);
   protected readonly resultadosDni = signal<readonly CertificadoPublico[] | null>(null);
@@ -38,11 +42,18 @@ export class PortalCertificadosComponent {
   protected readonly urlDescarga = signal<string | null>(null);
 
   constructor() {
-    if (isPlatformBrowser(inject(PLATFORM_ID))) this.route?.queryParamMap.pipe(map(q => q.get('codigo')), distinctUntilChanged(),
-      takeUntilDestroyed(this.destroy)).subscribe(codigo => {
-        if (codigo === null) return;
-        this.cambiarModo('codigo'); this.codigo.setValue(codigo); this.codigo.markAsTouched(); this.buscar(true);
-      });
+    if (this.codigoInicial !== null) {
+      this.modo.set('codigo');
+      this.codigo.setValue(this.codigoInicial);
+    }
+    afterNextRender(() => {
+      this.route?.queryParamMap.pipe(map(q => q.get('codigo')), distinctUntilChanged(),
+        takeUntilDestroyed(this.destroy)).subscribe(codigo => {
+          if (codigo === null) return;
+          this.cambiarModo('codigo'); this.codigo.setValue(codigo); this.buscar(true);
+        });
+      this.pendienteQr.set(false);
+    });
     this.destroy.onDestroy(() => this.limpiarPdf());
     this.dni.valueChanges.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => this.limpiar());
     this.codigo.valueChanges.pipe(takeUntilDestroyed(this.destroy)).subscribe(() => this.limpiar());
@@ -86,6 +97,7 @@ export class PortalCertificadosComponent {
         next: codigo => this.codigosVerificadosDni.update(codigos => new Set([...codigos, codigo])),
         error: e => {
           this.cargando.set(false);
+          this.registrarReintento(e?.status, false);
           this.mensaje.set(e?.status === 429 ? 'Has realizado varias consultas. Espera un momento antes de intentar nuevamente.'
             : e?.status === 422 ? 'Revisa que el DNI tenga ocho dígitos.'
             : e?.status === 401 || e?.status === 403 ? 'Esta consulta pública no está autorizada.'
@@ -101,6 +113,7 @@ export class PortalCertificadosComponent {
       },
       error: e => {
         this.cargando.set(false);
+        this.registrarReintento(e?.status, abrirPdf);
         this.mensaje.set(e?.status === 404 ? 'No se encontró un certificado con ese código. Verifica que esté escrito correctamente.'
           : e?.status === 422 ? 'Revisa el código de verificación ingresado.'
           : e?.status === 429 ? 'Has realizado varias consultas. Espera un momento antes de intentar nuevamente.'
@@ -137,6 +150,10 @@ export class PortalCertificadosComponent {
   protected volver(): void { this.limpiarPdf(); this.detalle.set(false); if (this.modo() === 'dni') this.resultado.set(null); }
   protected falloVisor(): void { this.errorPdf.set('No se pudo visualizar el PDF. Puedes descargar el archivo autorizado.'); }
 
+  private registrarReintento(estado: number | undefined, abrirPdf: boolean): void {
+    if (!estado || estado >= 500) this.reintento.set({ abrirPdf });
+  }
+
   private limpiarPdf(): void {
     this.descarga?.unsubscribe();
     const url = this.urlDescarga(); if (url) URL.revokeObjectURL(url);
@@ -145,6 +162,7 @@ export class PortalCertificadosComponent {
   private limpiar(): void {
     this.consulta?.unsubscribe(); this.cargando.set(false); this.mensaje.set(''); this.resultado.set(null);
     this.resultadosDni.set(null);
+    this.reintento.set(null);
     this.codigosVerificadosDni.set(new Set());
     this.limpiarPdf(); this.detalle.set(false);
   }
