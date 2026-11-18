@@ -37,17 +37,29 @@
             @case ('disponible') {
               <div class="resultado-cabecera">
                 <div class="resultado-identidad"><span class="material-symbols-outlined insignia" aria-hidden="true">workspace_premium</span><div><span class="etiqueta">CERTIFICADO</span><h2>{{ r.tipo || 'Certificado' }}</h2></div></div>
-                <span class="estado" [class.estado-verificado]="r.verificado">
-                  @if (r.verificado) { <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>Certificado verificado }
-                  @else { Disponible }
-                </span>
+                @if (r.verificado === true) {
+                  <span class="estado estado-verificado">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                      <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
+                      <path d="m9 12 2 2 4-4" />
+                    </svg>
+                    Certificado verificado
+                  </span>
+                } @else {
+                  <span class="estado">Disponible</span>
+                }
               </div>
               @if (r.actividad) { <p class="actividad-certificado">{{ r.actividad }}</p> }
               @if (r.sesion) { <p>{{ r.sesion }}</p> }
               @if (r.verificado) { <p>Este documento consta en los registros de la Municipalidad Distrital de Morales.</p><p>Estado del documento: Vigente · Integridad: Verificada</p> }
               <p class="codigo">Código de verificación: {{ r.codigo }}</p>
               @if (r.fecha) { <p>{{ r.fechaEtiqueta || 'Fecha del documento' }}: {{ r.fecha | date:'dd/MM/yyyy' }}</p> }
-              @if (r.urlPdf) { <button type="button" class="btn principal" (click)="verCertificado(r)">Ver certificado</button> <a class="btn descargar" [href]="r.urlPdf + '&descargar=1'">Descargar PDF</a> }
+              @if (r.urlPdf) {
+                <div class="resultado-acciones">
+                  <button type="button" class="btn principal" (click)="verCertificado(r)">Ver certificado</button>
+                  <a class="btn descargar" [href]="r.urlPdf + '&descargar=1'">Descargar PDF</a>
+                </div>
+              }
             }
             @case ('anulado') { <h2>Documento anulado o revocado</h2><p>Este documento no está disponible para visualización ni descarga.</p> }
             @case ('no-encontrado') { <h2>No se encontró un certificado con ese código.</h2><p>Verifica que esté escrito correctamente.</p> }
