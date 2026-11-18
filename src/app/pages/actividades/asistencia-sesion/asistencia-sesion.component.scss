@@ -11,4 +11,14 @@
 .btn-primary { background: #d6ad4a; color: #192b3c; border-color: #b38a2c; }
 .indicadores { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; margin-bottom: 1rem; > div { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .1rem .5rem; padding: .65rem; background: #f7f9fc; border: 1px solid #dfe6ef; border-radius: .5rem; } .material-symbols-outlined { grid-row: span 2; color: #075a9b; } strong { color: #075a9b; font-size: 1.3rem; } div > span:last-child { font-size: .8rem; overflow-wrap: anywhere; } }
 .consulta { color: #52677b; font-size: .85rem; }
+.ponentes { margin-bottom: 1rem; padding: .85rem 1rem; border: 1px solid #dfe6ef; border-inline-start: 3px solid #d6ad4a; border-radius: .5rem; background: #f7f9fc; overflow-wrap: anywhere; }
+.ponentes h2 { color: #075a9b; font-size: 1rem; margin: 0 0 .5rem; }
+.ponentes p, .ponentes ul { margin: 0; }
+.ponentes ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: .5rem 1rem; padding: 0; list-style: none; }
+.ponentes li { display: grid; gap: .15rem; min-width: 0; }
+.ponentes li span { color: #52677b; font-size: .85rem; }
+.acciones { margin-bottom: 1rem; }
+.seleccion { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.seleccion label { flex-basis: 100%; }
+.seleccion select { padding: .5rem; max-width: 100%; min-width: 0; }
 @media (max-width: 600px) { .indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

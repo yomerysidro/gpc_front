@@ -321,7 +321,7 @@ describe('Detalle de actividad con las APIs existentes', () => {
     await fixture.whenStable();
     const peticion = http.expectOne('/api/activity-session/15/finalizar');
     expect(peticion.request.method).toBe('POST');
-    expect(peticion.request.body).toEqual({});
+    expect(peticion.request.body).toEqual({ id_actividad: 7, id_sesion: 15 });
     return peticion;
   }
   it('respeta la capacidad efectiva sin exigir la regla antigua y conserva contadores de Laravel', async () => {
@@ -343,8 +343,19 @@ describe('Detalle de actividad con las APIs existentes', () => {
   });
   it('muestra el bloqueo institucional sin habilitar cierre ni certificación por los permisos del usuario', async () => {
     await prepararCierre(false);
-    expect(texto()).toContain('Finalizaci\u00f3n no disponible para esta sesi\u00f3n.');
+    expect(texto()).toContain('Falta una política aprobada de cierre, estados de asistencia y regularizaciones.');
     expect(Array.from(fixture.nativeElement.querySelectorAll('.cierre-sesion button[aria-label]') as NodeListOf<HTMLButtonElement>).every(b => b.disabled)).toBeTrue();
+    http.expectNone(req => req.method !== 'GET');
+  });
+  it('vuelve a consultar un cierre bloqueado y habilita la acción si Laravel confirma el cambio', async () => {
+    const sesion = await prepararCierre(false);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('.cierre-sesion button:not([aria-label])').click();
+    responder('/activity-session/15', { ...sesion, puede_finalizarse: true, motivos_bloqueo_finalizacion: [] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.cierre-sesion button[aria-label]').disabled).toBeFalse();
+    expect(texto()).not.toContain('Falta una política aprobada');
     http.expectNone(req => req.method !== 'GET');
   });
   it('finaliza solo la sesión, consulta capacidades y conserva la actividad Activa', async () => {

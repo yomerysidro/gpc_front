@@ -18,7 +18,7 @@ import { AreaService } from '../area/area.service';
 import { PersonDocumentService } from '../person-document/person-document.service';
 import { DocumentTypeService } from '../document-type/document-type.service';
 import { BLOQUEO_ESCRITURA_EMISION, ESCRITURA_EMISION_AUTORIZADA } from './operaciones-emision';
-import { EvaluacionCertificacion, FinalizacionSesion, OrigenCertificacion, PendienteCertificacion, SesionCertificacion } from '../../interfaces/emision-certificados/certificacion-sesion.interface';
+import { EvaluacionCertificacion, FinalizacionSesion, OrigenCertificacion, ParticipantesSesion, PendienteCertificacion, SesionCertificacion } from '../../interfaces/emision-certificados/certificacion-sesion.interface';
 
 /** Ámbitos reales de config/module_permissions.php; no se deducen del nombre de la URL. */
 export const PERMISOS_EMISION: Record<RecursoEmision, string> = {
@@ -178,6 +178,13 @@ export class EmisionCertificadosService {
   estadoSesionCertificacion(id: number): Observable<SesionCertificacion> {
     return this.consultaCertificacion<SesionCertificacion>(`activity-session/${id}`);
   }
+  participantesSesion(id: number, candidatos = false): Observable<ParticipantesSesion> {
+    return this.consultaCertificacion<ParticipantesSesion>(`activity-session/${id}/participantes${candidatos ? '/candidatos' : ''}`);
+  }
+  seleccionarParticipantesSesion(id: number, ids: readonly number[]): Observable<ParticipantesSesion> {
+    return this.http.post<ApiResponse<ParticipantesSesion>>(`${this.api}/activity-session/${id}/participantes`,
+      { ids_participacion: ids }, { ...this.opciones(), withCredentials: true }).pipe(map(r => this.datos(r)), catchError(e => this.error(e)));
+  }
   pendientesCertificacion(filtros: FiltrosEmision = {}): Observable<PaginaEmision<PendienteCertificacion>> {
     return this.consultaCertificacion<PaginaEmision<PendienteCertificacion>>('certificaciones/pendientes', filtros);
   }
@@ -209,7 +216,7 @@ export class EmisionCertificadosService {
   }
   finalizarSesion(id: number, actividad: number): Observable<FinalizacionSesion> {
     return this.http.post<ApiResponse<FinalizacionSesion>>(`${this.api}/activity-session/${id}/finalizar`,
-      {}, this.opciones()).pipe(map(r => this.datos(r)), catchError(e => this.error(e)));
+      { id_actividad: actividad, id_sesion: id }, { ...this.opciones(), withCredentials: true }).pipe(map(r => this.datos(r)), catchError(e => this.error(e)));
   }
   private consultaCertificacion<T>(ruta: string, filtros: FiltrosEmision = {}): Observable<T> {
     let params = new HttpParams();
@@ -391,7 +398,7 @@ export class EmisionCertificadosService {
     }
     if (error instanceof HttpErrorResponse && Array.isArray(error.error?.data?.motivos_bloqueo)) {
       const motivos = error.error.data.motivos_bloqueo.filter((m: unknown) => typeof m === 'string');
-      return throwError(() => ({ ...normalizado, mensaje: [normalizado.mensaje, ...motivos].join(' ') }));
+      return throwError(() => ({ ...normalizado, mensaje: [...new Set([normalizado.mensaje, ...motivos])].join(' ') }));
     }
     // Los Data de Emisión usan {data: {campo: [mensajes]}} para los 422.
     if (error instanceof HttpErrorResponse && error.status === 422) {

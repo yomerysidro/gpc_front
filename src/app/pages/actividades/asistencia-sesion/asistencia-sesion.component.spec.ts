@@ -42,16 +42,39 @@ describe('Control de asistencia como página de sesión', () => {
   async function iniciar(actual = sesion, filas = participantes, marcas: unknown[] = [marca]) {
     harness = await RouterTestingHarness.create(ruta);
     responder('/activity/7', actividad); responder('/activity-session/15', actual); harness.detectChanges();
-    responder('/participation', filas); responder('/attendance/list', marcas);
-    responder('/persons/list', [{ id_persona: 40, nombres: 'Ana', apellido_paterno: 'Pérez' }, { id_persona: 41, nombres: 'Luis', apellido_paterno: 'Ríos' }]);
+    responder('/activity-session/15/participantes', {
+      id_actividad: 7, id_actividad_sesion: 15,
+      participantes: filas.filter(p => p.id_actividad === 7).map(p => {
+        const asistencia = (marcas as typeof marca[]).find(m => m.id_participacion === p.id_participacion && m.id_actividad_sesion === 15);
+        return {
+          id_participacion: p.id_participacion, nombre_completo: p.id_persona === 40 ? 'Ana Pérez' : 'Luis Ríos',
+          seleccionado: !!asistencia, id_asistencia: asistencia?.id_asistencia ?? null,
+          estado_asistencia: asistencia?.estado ?? null, hora_entrada: asistencia?.hora_entrada ?? null,
+        };
+      }),
+    });
+    if (permisos.has('ponentes-firmantes.ver')) {
+      responder('/activity/7/sessions/15/ponentes', { id_actividad: 7, id_sesion: 15, ponentes_disponibles: [], vinculos: [
+        { id_actividad: 7, id_actividad_sesion: 15, id_actividad_ponente: 1, id_persona_ponente: 10, id_persona: 40, nombres: 'Ana', apellido_paterno: 'Pérez' },
+        { id_actividad: 7, id_actividad_sesion: 15, id_actividad_ponente: 2, id_persona_ponente: 11, nombres: 'Celia' },
+      ] });
+      responder('/person-speakers/list', [{ id_persona_ponente: 10, cargo: 'Especialista' }, { id_persona_ponente: 11, cargo: 'Facilitadora' }]);
+    }
     harness.detectChanges(); await harness.fixture.whenStable(); harness.detectChanges();
   }
   it('abre sin modal, usa el resumen de sesión de la API y mantiene la asistencia de otras sesiones independiente', async () => {
+    permisos.add('ponentes-firmantes.ver');
     await iniciar(sesion, participantes, [marca, { ...marca, id_asistencia: 81, id_participacion: 31, id_actividad_sesion: 16, estado: 'AUSENTE' }]);
     expect(vista().querySelector('h1')!.textContent).toContain('Control de asistencia — Sesión N.º 003');
     expect(vista().textContent).toContain('Actividad municipal'); expect(vista().textContent).toContain('12/11/2026');
     expect(Array.from(vista().querySelectorAll('.indicadores strong')).map(e => e.textContent)).toEqual(['2', '1', '0', '1']);
-    expect(vista().querySelectorAll('tbody tr').length).toBe(2);
+    expect(vista().querySelectorAll('tbody tr').length).toBe(1);
+    expect(vista().querySelector('tbody')?.textContent).toContain('Ana Pérez');
+    expect(vista().querySelector('tbody')?.textContent).not.toContain('Celia');
+    expect(vista().querySelector('tbody')?.textContent).not.toContain('Luis Ríos');
+    expect(vista().querySelector('.ponentes')?.textContent).toContain('Ana Pérez');
+    expect(vista().querySelector('.ponentes')?.textContent).toContain('Especialista');
+    expect(vista().querySelector('.ponentes')?.textContent).toContain('Facilitadora');
     expect(vista().querySelectorAll('.circulo-ausente[aria-pressed="true"]').length).toBe(0);
     expect(vista().querySelector('dialog[open]')).toBeNull();
     expect(vista().querySelectorAll('thead th').length).toBe(6);
@@ -68,18 +91,37 @@ describe('Control de asistencia como página de sesión', () => {
     patch.flush({ success: true, data: { id_asistencia: 80 } });
     responder('/attendance/80', { ...marca, estado: 'AUSENTE' });
     responder('/activity-session/15', { ...sesion, contadores: { ...sesion.contadores, presentes: 0, ausentes: 1 } });
-    responder('/attendance/list', [{ ...marca, estado: 'AUSENTE' }]); harness.detectChanges();
+    responder('/activity-session/15/participantes', {
+      id_actividad: 7, id_actividad_sesion: 15,
+      participantes: [{ ...marca, nombre_completo: 'Ana Pérez', seleccionado: true, estado_asistencia: 'AUSENTE' }],
+    });
+    harness.detectChanges();
     expect(vista().textContent).not.toContain('Sin guardar'); expect(vista().textContent).toContain('08:00');
     expect(vista().querySelectorAll('.circulo-ausente[aria-pressed="true"]').length).toBe(1);
     http.expectNone('/api/activity/7'); http.expectNone('/api/participation');
   });
-  it('crea una marca para el participante y sesión seleccionados sin inventar horas', async () => {
-    await iniciar(); (vista().querySelectorAll('.circulo-presente')[1] as HTMLButtonElement).click(); harness.detectChanges(); pulsar('Guardar asistencia');
-    const post = http.expectOne('/api/attendance/create'); expect(post.request.body).toEqual({ id_participacion: 31, id_actividad_sesion: 15, estado: 'PRESENTE' });
-    post.flush({ success: true, data: { id_asistencia: 82 } });
-    const nueva = { id_asistencia: 82, id_participacion: 31, id_actividad_sesion: 15, estado: 'PRESENTE' };
-    responder('/attendance/82', nueva); responder('/activity-session/15', sesion); responder('/attendance/list', [marca, nueva]); harness.detectChanges();
-    expect(vista().querySelectorAll('.circulo-presente[aria-pressed="true"]').length).toBe(2);
+  it('agrega un inscrito mediante la selección de Laravel y recarga su asistencia confirmada', async () => {
+    await iniciar();
+    pulsar('Seleccionar participante');
+    const candidato = { id_participacion: 31, nombre_completo: 'Luis Ríos', seleccionado: false, id_asistencia: null };
+    const datos = { id_actividad: 7, id_actividad_sesion: 15 };
+    responder('/activity-session/15/participantes/candidatos', { ...datos, participantes: [candidato] });
+    harness.detectChanges();
+    const select = vista().querySelector<HTMLSelectElement>('#participante-sesion')!;
+    select.value = '31';
+    select.dispatchEvent(new Event('change'));
+    harness.detectChanges();
+    pulsar('Agregar a la sesión');
+    const post = http.expectOne(r => r.method === 'POST' && r.url === '/api/activity-session/15/participantes');
+    expect(post.request.body).toEqual({ ids_participacion: [31] });
+    const seleccionado = { ...candidato, seleccionado: true, id_asistencia: 82, estado_asistencia: 'AUSENTE' };
+    post.flush({ success: true, data: { ...datos, participantes: [seleccionado] } });
+    responder('/activity/7', actividad);
+    responder('/activity-session/15', sesion);
+    responder('/activity-session/15/participantes', { ...datos, participantes: [seleccionado] });
+    harness.detectChanges();
+    expect(vista().querySelector('tbody')?.textContent).toContain('Luis Ríos');
+    expect(vista().querySelectorAll('.circulo-ausente[aria-pressed="true"]').length).toBe(1);
   });
   for (const actual of [{ ...sesion, estado: 'Finalizada', puede_editar_asistencia: false }, { ...sesion, puede_editar_asistencia: false }]) {
     it('respeta la consulta protegida: ' + actual.estado + ' sin edición', async () => {
@@ -126,7 +168,8 @@ describe('Control de asistencia como página de sesión', () => {
     expect(vista().querySelector<HTMLSelectElement>('#attendance-id_participacion')!.disabled).toBeTrue();
   });
   it('mantiene la paginación sin perder cambios y se adapta al ancho disponible', async () => {
-    await iniciar(sesion, Array.from({ length: 12 }, (_, i) => ({ id_participacion: 30 + i, id_actividad: 7, id_persona: 40 + i })));
+    const filas = Array.from({ length: 12 }, (_, i) => ({ id_participacion: 30 + i, id_actividad: 7, id_persona: 40 + i }));
+    await iniciar(sesion, filas, filas.map((p, i) => ({ ...marca, id_asistencia: 80 + i, id_participacion: p.id_participacion })));
     (vista().querySelector('.circulo-ausente') as HTMLButtonElement).click(); harness.detectChanges(); pulsar('Siguiente');
     expect(vista().querySelectorAll('tbody tr').length).toBe(2); pulsar('Anterior'); expect(vista().textContent).toContain('Sin guardar');
     for (const ancho of [360, 768, 1200]) {

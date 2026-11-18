@@ -21,6 +21,7 @@ export interface DatosAsistenciaContextual {
   sesiones: readonly RegistroEmision[];
   participantes: readonly { id: number; nombres: string; apellidos: string }[];
   asistencias: readonly RegistroEmision[];
+  soloSeleccionados?: boolean;
 }
 
 /** Modelo de presentación exclusivo de estas pestañas. Las claves CRUD no cambian. */
@@ -38,6 +39,7 @@ export class SesionesAsistenciaListado {
   nombres = new Map<number, string>();
   errorPersonas: string | null = null;
   private nombresParticipaciones = new Map<number, string>();
+  private soloSeleccionados = false;
 
   /** Reutiliza consultas ya confirmadas por el detalle, sin volver a pedir sus catálogos. */
   usarContexto(datos: DatosAsistenciaContextual): void {
@@ -46,6 +48,7 @@ export class SesionesAsistenciaListado {
     this.participaciones = datos.participantes.map(p => ({ id_participacion: p.id, id_actividad: datos.actividad.id_actividad }));
     this.nombresParticipaciones = new Map(datos.participantes.map(p => [p.id, [p.nombres, p.apellidos].filter(Boolean).join(' ')]));
     this.asistencias = datos.asistencias;
+    this.soloSeleccionados = datos.soloSeleccionados === true;
     this.cargado = true;
   }
 
@@ -66,6 +69,7 @@ export class SesionesAsistenciaListado {
       this.actividades = datos.actividades;
       this.sesiones = datos.sesiones;
       this.participaciones = datos.participaciones; this.asistencias = datos.asistencias;
+      this.soloSeleccionados = false;
       const actividades = new Map(datos.actividades.map(fila => [Number(fila['id_actividad']), fila['nombre']]));
       const sesiones = new Map(datos.sesiones.map(fila => [Number(fila['id_actividad_sesion']), fila]));
       const participaciones = new Map(datos.participaciones.map(fila => [Number(fila['id_participacion']), fila]));
@@ -92,12 +96,13 @@ export class SesionesAsistenciaListado {
 
   matriz(actividad: string, sesion: string): readonly RegistroEmision[] {
     if (!actividad || !sesion || !this.sesionesDisponibles(actividad).some(fila => String(fila['id_actividad_sesion']) === sesion)) return [];
-    return this.participaciones.filter(fila => String(fila['id_actividad']) === actividad).map(participacion => {
+    return this.participaciones.filter(fila => String(fila['id_actividad']) === actividad).flatMap(participacion => {
       const marcas = this.asistencias.filter(marca => Number(marca['id_participacion']) === Number(participacion['id_participacion']) && String(marca['id_actividad_sesion']) === sesion);
-      return { ...marcas[0], id_participacion: participacion['id_participacion'], id_actividad_sesion: Number(sesion), actividadFiltro: Number(actividad),
+      if (this.soloSeleccionados && !marcas.some(marca => marca['id_asistencia'] != null)) return [];
+      return [{ ...marcas[0], id_participacion: participacion['id_participacion'], id_actividad_sesion: Number(sesion), actividadFiltro: Number(actividad),
         sesionNombre: this.sesiones.find(fila => String(fila['id_actividad_sesion']) === sesion)?.['nombre'] ?? 'Nombre no disponible',
         actividadNombre: this.actividades.find(fila => String(fila['id_actividad']) === actividad)?.['nombre'] ?? 'Nombre no disponible',
-        participanteNombre: this.nombresParticipaciones.get(Number(participacion['id_participacion'])) || this.nombres.get(Number(participacion['id_persona'])) || 'Nombre no disponible', duplicada: marcas.length > 1 };
+        participanteNombre: this.nombresParticipaciones.get(Number(participacion['id_participacion'])) || this.nombres.get(Number(participacion['id_persona'])) || 'Nombre no disponible', duplicada: marcas.length > 1 }];
     });
   }
 

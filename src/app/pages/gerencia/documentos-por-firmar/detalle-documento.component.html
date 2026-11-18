@@ -1,7 +1,7 @@
 <header class="titulo-detalle">
   <a class="btn regreso" routerLink="/pendientes/documentos-firmar" [queryParams]="{ page: paginaRegreso() }" title="Volver a certificados por firmar" aria-label="Volver a certificados por firmar"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span></a>
   <h1>Revisar certificado</h1>
-  @if (documento(); as doc) { <span class="estado">{{ disponibleRrhh() ? 'Listo para entrega' : 'Pendiente de firma' }}</span> }
+  @if (documento(); as doc) { <span class="estado" [class.estado-listo]="disponibleRrhh()">{{ disponibleRrhh() ? 'Listo para entrega' : nombreEstado(doc.estado_certificado) }}</span> }
 </header>
 @if (cargas().has('documento')) { <p role="status">Consultando documento…</p> }
 @if (errores()['documento']) { <p role="alert">{{ errores()['documento'] }}</p><button type="button" class="btn" (click)="cargarDocumento()">Reintentar documento</button> }
@@ -30,7 +30,7 @@
       <section class="panel-firmas" aria-labelledby="titulo-firmas">
         <header class="cabecera-firmas">
           <h2 id="titulo-firmas">Firmas del certificado</h2>
-          <span class="estado" [class.estado-listo]="disponibleRrhh()">{{ disponibleRrhh() ? 'Listo para entrega' : 'Pendiente de firma' }}</span>
+          <span class="estado" [class.estado-listo]="disponibleRrhh()">{{ disponibleRrhh() ? 'Listo para entrega' : nombreEstado(doc.estado_certificado) }}</span>
         </header>
         @if (preparado() && !disponibleRrhh()) { <p role="status">Documento confirmado</p> }
         @if (!preparado() && !seleccionando()) { <button type="button" class="btn abrir-seleccion" [disabled]="!puedeAsignar() || ocupada()" (click)="abrirSeleccion()">Seleccionar firmantes</button> }

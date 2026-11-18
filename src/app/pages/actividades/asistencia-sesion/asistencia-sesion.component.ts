@@ -1,12 +1,12 @@
 import { Component, DestroyRef, HostListener, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, forkJoin, map, of, startWith, Subject, switchMap } from 'rxjs';
+import { catchError, finalize, forkJoin, map, of, startWith, Subject, switchMap } from 'rxjs';
 import { ActividadesService } from '../../../core/services/actividades/actividades.service';
 import { EmisionCertificadosService } from '../../../core/services/emision-certificados/emision-certificados.service';
-import { PersonService } from '../../../core/services/person/person.service';
+import { PersonSpeakerService } from '../../../core/services/person-speaker/person-speaker.service';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
-import { SesionCertificacion } from '../../../core/interfaces/emision-certificados/certificacion-sesion.interface';
+import { ParticipanteSesion, ParticipantesSesion, SesionCertificacion } from '../../../core/interfaces/emision-certificados/certificacion-sesion.interface';
 import { RegistroEmision } from '../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { ListadoEmisionComponent, EstadoNavegacionListado } from '../../emision-certificados/compartidos/listado-emision.component';
 import { DatosAsistenciaContextual, FILTROS_SESIONES_VACIOS } from '../../emision-certificados/actividades/sesiones-asistencia-listado';
@@ -24,7 +24,7 @@ export class AsistenciaSesionComponent {
   private readonly router = inject(Router);
   private readonly api = inject(EmisionCertificadosService);
   private readonly actividades = inject(ActividadesService);
-  private readonly personas = inject(PersonService);
+  private readonly personasPonentes = inject(PersonSpeakerService);
   private readonly auth = inject(AuthService);
   protected readonly listado = viewChild(ListadoEmisionComponent);
   private readonly confirmar = viewChild.required(DialogoConfirmacionComponent);
@@ -33,6 +33,11 @@ export class AsistenciaSesionComponent {
   protected readonly estadoInicial = signal<EstadoNavegacionListado | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly aviso = signal<string | null>(null);
+  protected readonly ponentes = signal<readonly { id: number; nombre: string; cargo: string | null }[]>([]);
+  protected readonly avisoPonentes = signal<string | null>(null);
+  protected readonly candidatos = signal<readonly ParticipanteSesion[] | null>(null);
+  protected readonly candidato = signal<number | null>(null);
+  protected readonly seleccionando = signal(false);
   protected readonly cargando = signal(true);
   private actividadId = 0;
   private sesionId = 0;
@@ -49,6 +54,7 @@ export class AsistenciaSesionComponent {
 
   private consulta() {
     this.datos.set(null); this.sesion.set(null); this.error.set(null); this.aviso.set(null); this.cargando.set(true);
+    this.ponentes.set([]); this.avisoPonentes.set(null); this.candidatos.set(null); this.candidato.set(null);
     if (![this.actividadId, this.sesionId].every(id => Number.isSafeInteger(id) && id > 0)) {
       this.error.set('La actividad o la sesión solicitada no es válida.'); this.cargando.set(false); return of(null);
     }
@@ -60,24 +66,93 @@ export class AsistenciaSesionComponent {
         if (actividad.id_actividad !== this.actividadId || Number(sesion.id_actividad) !== this.actividadId || Number(sesion.id_actividad_sesion) !== this.sesionId) throw new Error('No se pudo verificar la sesión de esta actividad.');
         this.sesion.set(sesion as SesionCertificacion & RegistroEmision);
         this.estadoInicial.set({ campo: '', valor: '', pagina: 1, filtrosSesiones: { ...FILTROS_SESIONES_VACIOS, actividad: String(this.actividadId), sesion: String(this.sesionId) } });
-        return forkJoin({ participaciones: this.api.listarTodos('participation'), asistencias: this.api.listarTodos('attendance'), personas: this.personas.listar().pipe(catchError(() => { this.aviso.set('No se pudieron consultar los nombres de los participantes.'); return of([]); })) }).pipe(map(({ participaciones, asistencias, personas }) => {
-          const nombres = new Map(personas.map(p => [p.id_persona, p]));
-          this.datos.set({ actividad: { id_actividad: actividad.id_actividad, nombre: actividad.nombre }, sesiones: [sesion as unknown as RegistroEmision], asistencias,
-            participantes: participaciones.filter(p => Number(p['id_actividad']) === this.actividadId).map(p => {
-              const persona = nombres.get(Number(p['id_persona']));
-              return { id: Number(p['id_participacion']), nombres: persona?.nombres || 'Nombre no disponible', apellidos: [persona?.apellido_paterno, persona?.apellido_materno].filter(Boolean).join(' ') };
-            }) }); this.cargando.set(false);
+        return forkJoin({
+          seleccion: this.api.participantesSesion(this.sesionId),
+          ponentes: this.consultarPonentes(),
+        }).pipe(map(({ seleccion, ponentes }) => {
+          const filas = this.verificarSeleccion(seleccion).filter(p => p.seleccionado && p.id_asistencia != null);
+          const participantes = [...new Map(filas.map(p => [p.id_participacion, p])).values()];
+          this.datos.set({
+            actividad: { id_actividad: actividad.id_actividad, nombre: actividad.nombre },
+            sesiones: [sesion as unknown as RegistroEmision],
+            soloSeleccionados: true,
+            participantes: participantes.map(p => ({ id: p.id_participacion, nombres: p.nombre_completo || 'Nombre no disponible', apellidos: '' })),
+            asistencias: filas.map(p => ({
+              id_participacion: p.id_participacion, id_actividad_sesion: this.sesionId, id_asistencia: p.id_asistencia,
+              estado: p.estado_asistencia, hora_entrada: p.hora_entrada, hora_salida: p.hora_salida,
+            })),
+          });
+          this.ponentes.set(ponentes);
+          this.cargando.set(false);
         }));
       }), catchError(error => { this.cargando.set(false); this.error.set(this.mensaje(error)); return of(null); }),
     );
   }
 
+  private consultarPonentes() {
+    if (!this.auth.tienePermiso('ponentes-firmantes.ver')) {
+      this.avisoPonentes.set('No tienes permiso para consultar los ponentes.');
+      return of([]);
+    }
+    return forkJoin({
+      gestion: this.api.ponentesSesion(this.actividadId, this.sesionId),
+      cargos: this.personasPonentes.listar().pipe(catchError(() => of([]))),
+    }).pipe(map(({ gestion, cargos }) => {
+      const catalogo = new Map(cargos.map(p => [p.id_persona_ponente, p.cargo]));
+      const personas = new Map(gestion.ponentes_disponibles.map(p => [p.id_persona_ponente, p]));
+      return gestion.vinculos.map(v => {
+        const persona = v.nombres ? v : personas.get(v.id_persona_ponente);
+        return {
+          id: v.id_actividad_ponente,
+          nombre: [persona?.nombres, persona?.apellido_paterno, persona?.apellido_materno].filter(Boolean).join(' ') || 'Nombre no disponible',
+          cargo: catalogo.get(v.id_persona_ponente) ?? null,
+        };
+      });
+    }), catchError(error => { this.avisoPonentes.set(this.mensaje(error)); return of([]); }));
+  }
+
+  private verificarSeleccion(respuesta: ParticipantesSesion): readonly ParticipanteSesion[] {
+    if (Number(respuesta?.id_actividad) !== this.actividadId || Number(respuesta?.id_actividad_sesion) !== this.sesionId ||
+        !Array.isArray(respuesta?.participantes)) {
+      throw new Error('Laravel no confirmó los participantes de esta sesión.');
+    }
+    return respuesta.participantes;
+  }
+
+  protected puedeAgregar(): boolean {
+    return !!this.datos() && !this.soloLectura() && this.auth.tienePermiso('participantes.crear') && !this.listado()?.hayCambiosSinGuardar();
+  }
+
+  protected consultarCandidatos(): void {
+    if (!this.puedeAgregar() || this.ocupado()) return;
+    this.seleccionando.set(true);
+    this.aviso.set(null);
+    this.candidatos.set(null);
+    this.candidato.set(null);
+    this.api.participantesSesion(this.sesionId, true).pipe(
+      map(respuesta => this.verificarSeleccion(respuesta).filter(p => !p.seleccionado)),
+      takeUntilDestroyed(this.destroyRef), finalize(() => this.seleccionando.set(false)),
+    ).subscribe({ next: filas => this.candidatos.set(filas), error: e => this.aviso.set(this.mensaje(e)) });
+  }
+
+  protected agregarParticipante(): void {
+    const id = this.candidato();
+    if (!this.puedeAgregar() || this.ocupado() || !id || !this.candidatos()?.some(p => p.id_participacion === id)) return;
+    this.seleccionando.set(true);
+    this.aviso.set(null);
+    this.api.seleccionarParticipantesSesion(this.sesionId, [id]).pipe(
+      map(respuesta => this.verificarSeleccion(respuesta)),
+      takeUntilDestroyed(this.destroyRef), finalize(() => this.seleccionando.set(false)),
+    ).subscribe({ next: () => this.reintentos.next(), error: e => this.aviso.set(this.mensaje(e)) });
+  }
+
   protected soloLectura(): boolean { return !this.sesion() || this.sesion()!.estado === 'Finalizada' || this.sesion()!.finalizada === true || this.sesion()!.puede_editar_asistencia === false; }
   protected reintentar(): void { if (!this.ocupado()) this.reintentos.next(); }
-  protected ocupado(): boolean { return this.cargando() || (this.listado()?.estaGuardando() ?? false); }
-  protected guardar(): void { if (!this.soloLectura()) this.listado()?.guardarAsistencia(); }
+  protected ocupado(): boolean { return this.cargando() || this.seleccionando() || (this.listado()?.estaGuardando() ?? false); }
+  protected guardar(): void { if (!this.ocupado() && !this.soloLectura()) this.listado()?.guardarAsistencia(); }
   protected actualizar(): void {
     if (this.ocupado()) return;
+    if (!this.listado()?.hayCambiosSinGuardar()) { this.reintentos.next(); return; }
     this.listado()?.refrescarAsistencia(); this.actualizarSesion();
   }
   protected actualizarSesion(): void {
@@ -92,7 +167,7 @@ export class AsistenciaSesionComponent {
   }
   protected volver(): void { if (!this.ocupado()) void this.router.navigate(['/certificaciones/actividades'], { queryParams: { id_actividad: this.actividadId } }); }
   async puedeSalir(): Promise<boolean> {
-    if (this.listado()?.estaGuardando()) return false;
+    if (this.seleccionando() || this.listado()?.estaGuardando()) return false;
     if (!this.listado()?.hayCambiosSinGuardar()) return true;
     this.confirmando ??= this.confirmar().abrir().then(descartar => { if (descartar) this.listado()?.descartarCambios(); return descartar; }).finally(() => this.confirmando = undefined);
     return this.confirmando;
