@@ -148,8 +148,8 @@
         } @else {
         <h2 class="titulo-grupo">Participantes</h2>
         <div class="tabla"><table class="table beneficiarios-certificacion"><thead><tr><th class="col-centro col-numero" scope="col">N.º</th><th>Participante</th><th>Documento</th><th class="col-centro">Asistencia</th><th>Elegibilidad</th><th>Tipo aplicable</th><th>Preparación</th><th class="col-centro">Acciones</th></tr></thead><tbody>
-          @for (b of r.beneficiarios.data; track b.id_participacion) {
-            <tr [hidden]="!!elegibilidad() && b.estado_elegibilidad !== elegibilidad()"><td class="col-centro col-numero">{{ numeroBeneficiario(b, r) }}</td><th scope="row">{{ b.nombre_completo }}</th><td>{{ b.documento_identidad || 'No disponible' }}</td><td class="col-centro">{{ b.estado_asistencia || 'No informada' }}</td><td>{{ b.estado_elegibilidad }}@for (motivo of b.motivos; track motivo) { <p>{{ motivo }}</p> }</td><td>{{ nombreTipoEvaluacion(b.id_tipo_certificado) }}</td><td>{{ estadoBeneficiario(b, r) }}</td><td class="col-centro">
+          @for (b of r.beneficiarios.data; track b.id_participacion; let i = $index) {
+            <tr [hidden]="!!elegibilidad() && b.estado_elegibilidad !== elegibilidad()"><td class="col-centro col-numero">{{ (r.beneficiarios.current_page - 1) * r.beneficiarios.per_page + i + 1 }}</td><th scope="row">{{ b.nombre_completo }}</th><td>{{ b.documento_identidad || 'No disponible' }}</td><td class="col-centro">{{ b.estado_asistencia || 'No informada' }}</td><td>{{ b.estado_elegibilidad }}@for (motivo of b.motivos; track motivo) { <p>{{ motivo }}</p> }</td><td>{{ nombreTipoEvaluacion(b.id_tipo_certificado) }}</td><td>{{ estadoBeneficiario(b, r) }}</td><td class="col-centro">
               @if (b.id_certificado || b.id_preparacion || b.id_certificado_documento) {
                 <button class="btn btn-consulta" type="button" [disabled]="!b.id_certificado_documento || cargandoRevision()" (click)="abrirCertificadoExistente(b, r)">Ver certificado</button>
               } @else {

@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   validate:
-    name: TypeScript y pruebas
+    name: Ejecutando
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -27,36 +27,48 @@ jobs:
           test -n "$chrome_bin" || { echo '::error::Chrome no disponible'; exit 1; }
           echo "CHROME_BIN=$chrome_bin" >> "$GITHUB_ENV"
       - run: npm test -- --watch=false --browsers=ChromeHeadless --reporters=dots
-      - run: npm run build -- --configuration production
-      - run: test -f dist/gpc_front/browser/index.html && test -f dist/gpc_front/server/server.mjs
-  docker:
-    name: Build de producción
+  build:
+    name: Construyendo
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: actions/setup-node@v4
         with:
-          context: .
-          file: ./Dockerfile
-          load: true
-          push: false
-          tags: gpc-frontend:ci
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,scope=frontend,mode=max
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build -- --configuration production
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-production
+          path: dist/gpc_front/
+          if-no-files-found: error
+  verify:
+    name: Verificando
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-production
+          path: dist/gpc_front/
       - name: Verificar SSR y puerto dinámico
         run: |
-          docker run -d --name gpc-frontend-ci -e PORT=4321 -p 127.0.0.1:4321:4321 gpc-frontend:ci
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4321/healthz && break; sleep 2; done
-          curl -fsS http://127.0.0.1:4321/healthz
-          curl -fsS http://127.0.0.1:4321/portal-certificados -o "$RUNNER_TEMP/portal.html"
-          curl -fsSL http://127.0.0.1:4321/login -o "$RUNNER_TEMP/login.html"
-          grep -q '<app-root' "$RUNNER_TEMP/portal.html"
-          grep -q '<app-root' "$RUNNER_TEMP/login.html"
-      - if: always()
-        run: docker logs gpc-frontend-ci || true
-      - if: always()
-        run: docker rm -f gpc-frontend-ci || true
+          test -s dist/gpc_front/browser/index.html
+          test -s dist/gpc_front/server/server.mjs
+          PORT=4321 NODE_ENV=production node dist/gpc_front/server/server.mjs > "$RUNNER_TEMP/frontend-ssr.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; cat "$RUNNER_TEMP/frontend-ssr.log"' EXIT
+          curl -fsS --retry 15 --retry-connrefused --retry-delay 1 --max-time 10 http://127.0.0.1:4321/healthz
+          for route in portal-certificados login; do
+            curl -fsSL --max-time 10 "http://127.0.0.1:4321/$route" -o "$RUNNER_TEMP/$route.html"
+            grep -q '<app-root' "$RUNNER_TEMP/$route.html"
+          done
