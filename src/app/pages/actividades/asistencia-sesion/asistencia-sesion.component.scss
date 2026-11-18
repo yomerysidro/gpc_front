@@ -17,6 +17,9 @@
 .ponentes ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: .5rem 1rem; padding: 0; list-style: none; }
 .ponentes li { display: grid; gap: .15rem; min-width: 0; }
 .ponentes li span { color: #52677b; font-size: .85rem; }
+.ponentes .resumen-ponentes { margin-bottom: .6rem; color: #52677b; }
+.acciones-ponente { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .25rem; }
+.acciones-ponente [aria-pressed='true'] { background: #075a9b; color: white; }
 .acciones { margin-bottom: 1rem; }
 .seleccion { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
 .seleccion label { flex-basis: 100%; }

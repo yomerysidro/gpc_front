@@ -149,7 +149,7 @@
               <details class="detalle-asistencia"><summary>Ver horas y regularizar</summary><dl>
                 <dt>Hora de entrada</dt><dd>{{ fila['hora_entrada'] || 'Sin registrar' }}</dd>
                 <dt>Hora de salida</dt><dd>{{ fila['hora_salida'] || 'Sin registrar' }}</dd>
-              </dl><p>Las horas se conservan al guardar presencia o ausencia. Registrar horas requiere el formulario; no se generan automáticamente.</p>
+              </dl>
                 <label><input type="checkbox" [attr.aria-label]="'Registrar entrada de ' + fila['participanteNombre']" [checked]="!!fila['hora_entrada']" [disabled]="!!borrador(fila) || !!fila['hora_entrada'] || !!fila['duplicada'] || guardandoMarca() !== null || requiereActualizar() || soloLecturaSesion() || !permitido(fila['id_asistencia'] ? 'editar' : 'crear')" (change)="marcarAsistencia(fila, $event)" />Entrada</label>
                 <label><input type="checkbox" [attr.aria-label]="'Registrar salida de ' + fila['participanteNombre']" [checked]="!!fila['hora_salida']" [disabled]="!!borrador(fila) || !fila['hora_entrada'] || !!fila['hora_salida'] || !!fila['duplicada'] || guardandoMarca() !== null || requiereActualizar() || soloLecturaSesion() || !permitido('editar')" (change)="marcarAsistencia(fila, $event)" />Salida</label>
                 @if (fila['id_asistencia'] && !fila['duplicada'] && permitido('editar') && !soloLecturaSesion()) { <button class="btn" type="button" [disabled]="guardandoMarca() !== null || requiereActualizar()" (click)="marcarAsistencia(fila, $event)">Regularizar</button> }

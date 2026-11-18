@@ -10,14 +10,26 @@
   <section class="ponentes" aria-labelledby="titulo-ponentes">
     <h2 id="titulo-ponentes">Ponentes de la sesión</h2>
     @if (cargando()) { <p role="status">Consultando ponentes…</p> }
-    @else if (avisoPonentes()) { <p role="status">{{ avisoPonentes() }}</p> }
-    @else if (ponentes().length) {
+    @if (avisoPonentes()) { <p role="status">{{ avisoPonentes() }}</p> }
+    @if (!cargando() && ponentes().length) {
+      @if (resumenPonentes(); as resumen) {
+        <p class="resumen-ponentes" aria-live="polite">{{ resumen.presentes }} presentes · {{ resumen.ausentes }} ausentes · {{ resumen.pendientes }} pendientes</p>
+      }
       <ul>
         @for (ponente of ponentes(); track ponente.id) {
-          <li><strong>{{ ponente.nombre }}</strong><span>{{ ponente.cargo || 'Ponente' }}</span></li>
+          <li>
+            <strong>{{ ponente.nombre }}</strong><span>{{ ponente.cargo || 'Ponente' }}</span>
+            <span>{{ ponente.estado === 'PRESENTE' ? 'Presente' : ponente.estado === 'AUSENTE' ? 'Ausente' : ponente.estado === null ? 'Pendiente' : 'Asistencia no disponible' }}</span>
+            @if (ponente.estado !== undefined && puedeMarcarPonentes()) {
+              <div class="acciones-ponente" role="group" [attr.aria-label]="'Asistencia de ' + ponente.nombre">
+                <button type="button" class="btn" [attr.aria-pressed]="ponente.estado === 'PRESENTE'" [disabled]="ocupado()" (click)="marcarPonente(ponente.id, 'PRESENTE')">Presente</button>
+                <button type="button" class="btn" [attr.aria-pressed]="ponente.estado === 'AUSENTE'" [disabled]="ocupado()" (click)="marcarPonente(ponente.id, 'AUSENTE')">Ausente</button>
+              </div>
+            }
+          </li>
         }
       </ul>
-    } @else if (datos()) { <p>No hay ponentes vinculados.</p> }
+    } @else if (datos() && !avisoPonentes()) { <p>No hay ponentes vinculados.</p> }
   </section>
 }
 @if (datos()) {

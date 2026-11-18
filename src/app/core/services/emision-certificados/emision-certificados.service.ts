@@ -1,6 +1,6 @@
 import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { PonentesActividadCertificacion } from '../../interfaces/emision-certificados/origenes-certificado.interface';
-import { CatalogosOrigenes, EvaluacionOrigen, OrigenDocumental, PonentesCertificacion, PonentesSesionGestion } from '../../interfaces/emision-certificados/origenes-certificado.interface';
+import { CatalogosOrigenes, EstadoAsistenciaPonente, EvaluacionOrigen, OrigenDocumental, PonentesCertificacion, PonentesSesionGestion } from '../../interfaces/emision-certificados/origenes-certificado.interface';
 import { inject, Injectable } from '@angular/core';
 import { catchError, EMPTY, expand, forkJoin, map, Observable, of, reduce, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -96,6 +96,18 @@ export class EmisionCertificadosService {
       }
       return d;
     }));
+  }
+  marcarAsistenciaPonente(actividad: number, sesion: number, vinculo: number, estado: EstadoAsistenciaPonente): Observable<EstadoAsistenciaPonente> {
+    return this.http.put<ApiResponse<{ id_actividad_sesion: number; id_actividad_ponente: number; estado_asistencia: EstadoAsistenciaPonente }>>(
+      `${this.api}/activity/${actividad}/sessions/${sesion}/ponentes/${vinculo}/asistencia`, { estado },
+      { ...this.opciones(), withCredentials: true },
+    ).pipe(map(respuesta => {
+      const datos = this.datos(respuesta);
+      if (datos?.id_actividad_sesion !== sesion || datos?.id_actividad_ponente !== vinculo || datos?.estado_asistencia !== estado) {
+        throw new HttpErrorResponse({ status: 502, error: { message: 'Laravel no confirmó la asistencia del ponente.' } });
+      }
+      return datos.estado_asistencia;
+    }), catchError(error => this.error(error)));
   }
   vincularPonenteSesion(actividad: number, sesion: number, idPersonaPonente: number): Observable<{ vinculo: { id_actividad_ponente: number } }> {
     if (!aciertoPositivo(actividad) || !aciertoPositivo(sesion) || !aciertoPositivo(idPersonaPonente)) {

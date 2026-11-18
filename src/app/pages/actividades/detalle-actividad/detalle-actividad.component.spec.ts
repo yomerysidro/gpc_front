@@ -285,7 +285,7 @@ describe('Detalle de actividad con las APIs existentes', () => {
     expect(texto()).toContain('No se pudo verificar la sesi\u00f3n de esta actividad.');
     expect(texto()).not.toContain('Detalle ajeno'); http.expectNone(req => req.method !== 'GET');
   });
-  it('reserva finalización y certificación sin escribir estados y ofrece consulta contextual aunque la actividad siga Activa', async () => {
+  it('ofrece una sola acción de cierre aunque el listado todavía no declare capacidades', async () => {
     permisos.add('actividades.ver'); permisos.add('emision.ver'); permisos.add('participantes.ver');
     responder('/activity/7', actividad); catalogos(); responder('/participation', []);
     responder('/attendance/list', []);
@@ -293,29 +293,35 @@ describe('Detalle de actividad con las APIs existentes', () => {
     const tarjeta = fixture.nativeElement.querySelector('.tarjeta-sesion') as HTMLElement;
     expect(tarjeta.dataset['actividadId']).toBe('7'); expect(tarjeta.dataset['sesionId']).toBe('15');
     const acciones = tarjeta.querySelectorAll<HTMLButtonElement>('.cierre-sesion button[aria-label]');
-    expect(acciones.length).toBe(1); expect(Array.from(acciones).every(b => b.disabled && !!b.title)).toBeTrue();
+    expect(acciones.length).toBe(1); expect(acciones[0].disabled).toBeFalse();
+    expect(tarjeta.textContent).not.toContain('Consultar cierre');
     acciones[0].click();
+    responder('/activity-session/15', { id_actividad_sesion: 15, id_actividad: 7, estado: 'culminado', puede_finalizarse: false });
+    await fixture.whenStable();
     expect(tarjeta.querySelector('.consulta-certificacion')).toBeNull();
     expect(tarjeta.textContent).not.toContain('Certificar participantes');
     expect(fixture.nativeElement.querySelector('app-dialogo-confirmacion dialog[open]')).toBeNull();
     http.expectNone(req => req.method !== 'GET');
   });
 
-  async function prepararCierre(puedeFinalizar = true) {
+  async function prepararCierre(puedeFinalizarse?: boolean) {
     ['actividades.ver', 'actividades.editar', 'emision.ver', 'emision.crear', 'participantes.ver'].forEach(p => permisos.add(p));
     responder('/activity/7', actividad); catalogos(); responder('/participation', []); responder('/attendance/list', []);
     const sesion = { id_actividad_sesion: 15, id_actividad: 7, nombre: 'Jornada real', estado: 'Activo' };
-    responder('/activity-session', [sesion]); await fixture.whenStable();
-    (fixture.componentInstance as any).cargarCapacidades((fixture.componentInstance as any).sesiones()[0]);
-    await fixture.whenStable();
-    responder('/activity-session/15', { ...sesion, puede_finalizarse: puedeFinalizar,
-      motivos_bloqueo_finalizacion: puedeFinalizar ? [] : ['Falta una política aprobada de cierre, estados de asistencia y regularizaciones.'],
-      puede_certificarse: false, motivos_bloqueo_certificacion: ['Falta relación persistente con la sesión.'] });
+    responder('/activity-session', [{ ...sesion, puede_finalizarse: puedeFinalizarse,
+      motivos_bloqueo_finalizacion: puedeFinalizarse === false ? ['Motivo de una respuesta anterior.'] : [] }]);
     await fixture.whenStable();
     return sesion;
   }
+  async function consultarCierre(estado: object) {
+    const boton = fixture.nativeElement.querySelector('.cierre-sesion button') as HTMLButtonElement;
+    boton.click();
+    boton.click();
+    responder('/activity-session/15', { id_actividad_sesion: 15, id_actividad: 7, nombre: 'Jornada real', estado: 'Activo', ...estado });
+    await fixture.whenStable();
+  }
   async function confirmarCierre() {
-    fixture.nativeElement.querySelector('.cierre-sesion button[aria-label]').click(); await fixture.whenStable();
+    await consultarCierre({ puede_finalizarse: true });
     const dialogo = fixture.nativeElement.querySelector('app-dialogo-confirmacion dialog[open]');
     (Array.from(dialogo.querySelectorAll('button')) as HTMLButtonElement[]).find(b => b.textContent?.trim() === 'Finalizar sesión')!.click();
     await fixture.whenStable();
@@ -341,25 +347,26 @@ describe('Detalle de actividad con las APIs existentes', () => {
     expect(texto()).toContain('Activa');
     http.expectNone(req => req.method !== 'GET');
   });
-  it('muestra el bloqueo institucional sin habilitar cierre ni certificación por los permisos del usuario', async () => {
+  it('muestra el motivo vigente de Laravel sin confirmar ni escribir y permite reintentar', async () => {
     await prepararCierre(false);
+    expect(texto()).not.toContain('Motivo de una respuesta anterior.');
+    await consultarCierre({ puede_finalizarse: false,
+      motivos_bloqueo_finalizacion: ['Falta una política aprobada de cierre, estados de asistencia y regularizaciones.'] });
     expect(texto()).toContain('Falta una política aprobada de cierre, estados de asistencia y regularizaciones.');
-    expect(Array.from(fixture.nativeElement.querySelectorAll('.cierre-sesion button[aria-label]') as NodeListOf<HTMLButtonElement>).every(b => b.disabled)).toBeTrue();
+    expect(fixture.nativeElement.querySelector('.cierre-sesion button').disabled).toBeFalse();
+    expect(fixture.nativeElement.querySelector('app-dialogo-confirmacion dialog[open]')).toBeNull();
     http.expectNone(req => req.method !== 'GET');
   });
-  it('vuelve a consultar un cierre bloqueado y habilita la acción si Laravel confirma el cambio', async () => {
-    const sesion = await prepararCierre(false);
-    fixture.detectChanges();
-    fixture.nativeElement.querySelector('.cierre-sesion button:not([aria-label])').click();
-    responder('/activity-session/15', { ...sesion, puede_finalizarse: true, motivos_bloqueo_finalizacion: [] });
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.cierre-sesion button[aria-label]').disabled).toBeFalse();
-    expect(texto()).not.toContain('Falta una política aprobada');
+  it('evita un cierre duplicado si Laravel devuelve una sesión ya finalizada', async () => {
+    await prepararCierre(true);
+    await consultarCierre({ estado: 'Finalizada', finalizada: true, puede_finalizarse: false });
+    expect(fixture.nativeElement.querySelector('.badge-exito').textContent).toBe('Finalizada');
+    expect(fixture.nativeElement.querySelector('.cierre-sesion button')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-dialogo-confirmacion dialog[open]')).toBeNull();
     http.expectNone(req => req.method !== 'GET');
   });
   it('finaliza solo la sesión, consulta capacidades y conserva la actividad Activa', async () => {
-    const sesion = await prepararCierre();
+    const sesion = await prepararCierre(false);
     const peticion = await confirmarCierre();
     peticion.flush({ success: true, data: { finalizada: true, sesion: { ...sesion, estado: 'Finalizada' }, estado_actividad: 'Activa', motivos_bloqueo: [] } });
     responder('/activity-session/15', { ...sesion, estado: 'Finalizada', puede_finalizarse: false, puede_certificarse: false, motivos_bloqueo_finalizacion: [], motivos_bloqueo_certificacion: ['Falta relación persistente con la sesión.'] });

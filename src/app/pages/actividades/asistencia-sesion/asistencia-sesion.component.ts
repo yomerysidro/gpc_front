@@ -1,4 +1,4 @@
-import { Component, DestroyRef, HostListener, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, DestroyRef, HostListener, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, finalize, forkJoin, map, of, startWith, Subject, switchMap } from 'rxjs';
@@ -8,6 +8,7 @@ import { PersonSpeakerService } from '../../../core/services/person-speaker/pers
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { ParticipanteSesion, ParticipantesSesion, SesionCertificacion } from '../../../core/interfaces/emision-certificados/certificacion-sesion.interface';
 import { RegistroEmision } from '../../../core/interfaces/emision-certificados/emision-certificados.interface';
+import { EstadoAsistenciaPonente } from '../../../core/interfaces/emision-certificados/origenes-certificado.interface';
 import { ListadoEmisionComponent, EstadoNavegacionListado } from '../../emision-certificados/compartidos/listado-emision.component';
 import { DatosAsistenciaContextual, FILTROS_SESIONES_VACIOS } from '../../emision-certificados/actividades/sesiones-asistencia-listado';
 import { DialogoConfirmacionComponent } from '../../../shared/components/dialogo-confirmacion/dialogo-confirmacion.component';
@@ -33,7 +34,17 @@ export class AsistenciaSesionComponent {
   protected readonly estadoInicial = signal<EstadoNavegacionListado | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly aviso = signal<string | null>(null);
-  protected readonly ponentes = signal<readonly { id: number; nombre: string; cargo: string | null }[]>([]);
+  protected readonly ponentes = signal<readonly {
+    id: number; nombre: string; cargo: string | null; estado?: EstadoAsistenciaPonente | null;
+  }[]>([]);
+  protected readonly resumenPonentes = computed(() => {
+    const filas = this.ponentes();
+    if (filas.some(fila => fila.estado === undefined)) return null;
+    const presentes = filas.filter(fila => fila.estado === 'PRESENTE').length;
+    const ausentes = filas.filter(fila => fila.estado === 'AUSENTE').length;
+    return { presentes, ausentes, pendientes: filas.length - presentes - ausentes };
+  });
+  protected readonly guardandoPonente = signal<number | null>(null);
   protected readonly avisoPonentes = signal<string | null>(null);
   protected readonly candidatos = signal<readonly ParticipanteSesion[] | null>(null);
   protected readonly candidato = signal<number | null>(null);
@@ -106,9 +117,30 @@ export class AsistenciaSesionComponent {
           id: v.id_actividad_ponente,
           nombre: [persona?.nombres, persona?.apellido_paterno, persona?.apellido_materno].filter(Boolean).join(' ') || 'Nombre no disponible',
           cargo: catalogo.get(v.id_persona_ponente) ?? null,
+          estado: v.estado_asistencia,
         };
       });
     }), catchError(error => { this.avisoPonentes.set(this.mensaje(error)); return of([]); }));
+  }
+
+  protected puedeMarcarPonentes(): boolean {
+    return !this.soloLectura() && this.auth.tienePermiso('participantes.editar');
+  }
+
+  protected marcarPonente(id: number, estado: EstadoAsistenciaPonente): void {
+    const ponente = this.ponentes().find(fila => fila.id === id);
+    if (this.ocupado() || !this.puedeMarcarPonentes() || ponente?.estado === undefined || ponente.estado === estado) return;
+    const sesion = this.sesionId;
+    this.guardandoPonente.set(id);
+    this.avisoPonentes.set(null);
+    this.api.marcarAsistenciaPonente(this.actividadId, sesion, id, estado).pipe(
+      takeUntilDestroyed(this.destroyRef), finalize(() => this.guardandoPonente.set(null)),
+    ).subscribe({
+      next: confirmado => {
+        if (sesion === this.sesionId) this.ponentes.update(filas => filas.map(fila => fila.id === id ? { ...fila, estado: confirmado } : fila));
+      },
+      error: error => { if (sesion === this.sesionId) this.avisoPonentes.set(this.mensaje(error)); },
+    });
   }
 
   private verificarSeleccion(respuesta: ParticipantesSesion): readonly ParticipanteSesion[] {
@@ -148,7 +180,7 @@ export class AsistenciaSesionComponent {
 
   protected soloLectura(): boolean { return !this.sesion() || this.sesion()!.estado === 'Finalizada' || this.sesion()!.finalizada === true || this.sesion()!.puede_editar_asistencia === false; }
   protected reintentar(): void { if (!this.ocupado()) this.reintentos.next(); }
-  protected ocupado(): boolean { return this.cargando() || this.seleccionando() || (this.listado()?.estaGuardando() ?? false); }
+  protected ocupado(): boolean { return this.cargando() || this.seleccionando() || this.guardandoPonente() !== null || (this.listado()?.estaGuardando() ?? false); }
   protected guardar(): void { if (!this.ocupado() && !this.soloLectura()) this.listado()?.guardarAsistencia(); }
   protected actualizar(): void {
     if (this.ocupado()) return;
@@ -167,7 +199,7 @@ export class AsistenciaSesionComponent {
   }
   protected volver(): void { if (!this.ocupado()) void this.router.navigate(['/certificaciones/actividades'], { queryParams: { id_actividad: this.actividadId } }); }
   async puedeSalir(): Promise<boolean> {
-    if (this.seleccionando() || this.listado()?.estaGuardando()) return false;
+    if (this.seleccionando() || this.guardandoPonente() !== null || this.listado()?.estaGuardando()) return false;
     if (!this.listado()?.hayCambiosSinGuardar()) return true;
     this.confirmando ??= this.confirmar().abrir().then(descartar => { if (descartar) this.listado()?.descartarCambios(); return descartar; }).finally(() => this.confirmando = undefined);
     return this.confirmando;

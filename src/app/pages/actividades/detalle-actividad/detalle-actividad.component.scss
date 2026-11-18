@@ -40,4 +40,4 @@ footer { display: flex; justify-content: flex-end; }
 :host ::ng-deep app-dialogo.modal-ponentes-sesion > dialog.dialogo { width: min(44rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; overflow-x: hidden; box-sizing: border-box; }
 .numero-sesion { display: block; margin-bottom: .2rem; color: #52677b; font-size: .75rem; }
 .cierre-sesion .btn { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.4rem; }
-.motivos-cierre { flex-basis: 100%; margin: .25rem 0 0; padding-inline-start: 1.15rem; color: #52677b; font-size: .85rem; overflow-wrap: anywhere; }
+.tarjeta-sesion .motivo-cierre { color: #52677b; font-size: .85rem; overflow-wrap: anywhere; }

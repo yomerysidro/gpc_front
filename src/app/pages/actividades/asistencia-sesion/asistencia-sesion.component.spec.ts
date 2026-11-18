@@ -39,7 +39,7 @@ describe('Control de asistencia como página de sesión', () => {
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
-  async function iniciar(actual = sesion, filas = participantes, marcas: unknown[] = [marca]) {
+  async function iniciar(actual = sesion, filas = participantes, marcas: unknown[] = [marca], estados = false) {
     harness = await RouterTestingHarness.create(ruta);
     responder('/activity/7', actividad); responder('/activity-session/15', actual); harness.detectChanges();
     responder('/activity-session/15/participantes', {
@@ -55,8 +55,8 @@ describe('Control de asistencia como página de sesión', () => {
     });
     if (permisos.has('ponentes-firmantes.ver')) {
       responder('/activity/7/sessions/15/ponentes', { id_actividad: 7, id_sesion: 15, ponentes_disponibles: [], vinculos: [
-        { id_actividad: 7, id_actividad_sesion: 15, id_actividad_ponente: 1, id_persona_ponente: 10, id_persona: 40, nombres: 'Ana', apellido_paterno: 'Pérez' },
-        { id_actividad: 7, id_actividad_sesion: 15, id_actividad_ponente: 2, id_persona_ponente: 11, nombres: 'Celia' },
+        { id_actividad: 7, id_actividad_sesion: 15, id_actividad_ponente: 1, id_persona_ponente: 10, id_persona: 40, nombres: 'Ana', apellido_paterno: 'Pérez', estado_asistencia: estados ? null : undefined },
+        { id_actividad: 7, id_actividad_sesion: 15, id_actividad_ponente: 2, id_persona_ponente: 11, nombres: 'Celia', estado_asistencia: estados ? 'AUSENTE' : undefined },
       ] });
       responder('/person-speakers/list', [{ id_persona_ponente: 10, cargo: 'Especialista' }, { id_persona_ponente: 11, cargo: 'Facilitadora' }]);
     }
@@ -80,6 +80,26 @@ describe('Control de asistencia como página de sesión', () => {
     expect(vista().querySelectorAll('thead th').length).toBe(6);
     expect(vista().textContent).not.toContain('No determinable');
     expect(vista().textContent).not.toContain('En el modal puedes');
+  });
+  it('guarda la asistencia del ponente y mantiene separados los indicadores', async () => {
+    permisos.add('ponentes-firmantes.ver');
+    await iniciar(sesion, participantes, [{ ...marca, id_participacion: 31 }], true);
+    const boton = vista().querySelector<HTMLButtonElement>('.acciones-ponente button')!;
+    expect(vista().querySelector('tbody')?.textContent).toContain('Luis Ríos');
+    expect(vista().querySelector('tbody')?.textContent).not.toContain('Ana Pérez');
+    expect(vista().querySelector('.resumen-ponentes')?.textContent).toContain('1 pendientes');
+    boton.click();
+    harness.detectChanges();
+    const peticion = http.expectOne('/api/activity/7/sessions/15/ponentes/1/asistencia');
+    expect(peticion.request.method).toBe('PUT');
+    expect(peticion.request.withCredentials).toBeTrue();
+    expect(peticion.request.body).toEqual({ estado: 'PRESENTE' });
+    expect(boton.getAttribute('aria-pressed')).toBe('false');
+    peticion.flush({ success: true, data: { id_actividad_sesion: 15, id_actividad_ponente: 1, estado_asistencia: 'PRESENTE' } });
+    harness.detectChanges();
+    expect(boton.getAttribute('aria-pressed')).toBe('true');
+    expect(vista().querySelector('.resumen-ponentes')?.textContent).toContain('1 presentes · 1 ausentes · 0 pendientes');
+    expect(Array.from(vista().querySelectorAll('.indicadores strong')).map(e => e.textContent)).toEqual(['2', '1', '0', '1']);
   });
   it('guarda cambios autorizados una sola vez y conserva las horas confirmadas', async () => {
     await iniciar();
