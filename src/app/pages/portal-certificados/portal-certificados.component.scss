@@ -37,19 +37,32 @@ label { display: block; font-weight: 600; }
 .descargar { margin-top: 1rem; }
 .nueva { display: inline-flex; margin: 0 0 .5rem; }
 .resultados-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
-.resultados { border-top: 3px solid #d6ad4a; margin-bottom: 0; box-shadow: 0 4px 18px #1738540d; }
-.resultados p { color: #526879; line-height: 1.55; }
+.resultados {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  border-color: #dce5ed;
+  border-top: 3px solid var(--dorado-accion);
+  margin-bottom: 0;
+  box-shadow: 0 2px 4px #17385408, 0 8px 20px #1738540d;
+  overflow-wrap: anywhere;
+}
+.resultados p { margin: 0; color: #526879; line-height: 1.55; }
+.resultados > h2 { margin: 0; }
 .resultados-grid:not(:empty) { margin-bottom: 1.5rem; }
 .resultado-cabecera, .resultado-identidad { display: flex; align-items: center; gap: .8rem; }
-.resultado-cabecera { justify-content: space-between; flex-wrap: wrap; }
+.resultado-cabecera { justify-content: space-between; flex-wrap: wrap; margin-bottom: .35rem; }
 .resultado-identidad { min-width: 0; }
-.resultado-identidad h2 { margin: .2rem 0 0; overflow-wrap: anywhere; }
-.insignia { color: #124b72; background: #edf2f7; border-radius: .6rem; padding: .7rem; }
-.etiqueta { font-size: .7rem; color: #526879; letter-spacing: .08em; }
-.resultado-cabecera .estado { margin: 0; }
-.resultado-cabecera .estado-verificado { display: inline-flex; align-items: center; gap: .4rem; background: #e8f6ed; color: #17623f; font-weight: 600; }
-.estado-verificado svg { width: 1.1rem; height: 1.1rem; flex: none; }
-.resultados .codigo { padding-top: .85rem; border-top: 1px solid #e7edf3; font-size: .875rem; }
+.resultado-identidad h2 { margin: .15rem 0 0; font-size: 1.2rem; line-height: 1.3; }
+.insignia { flex: none; color: #124b72; background: #edf2f7; border-radius: .65rem; padding: .65rem; }
+.etiqueta { font-size: .7rem; font-weight: 600; color: #526879; letter-spacing: .08em; }
+.resultado-cabecera .estado { margin: 0; background: #edf2f7; color: #26465e; }
+.resultado-cabecera .estado-verificado { display: inline-flex; align-items: center; gap: .45rem; border-radius: .65rem; background: #e8f6ed; color: #17623f; font-weight: 600; }
+.estado-verificado svg { width: 1.85rem; height: 1.85rem; flex: none; }
+.resultados .actividad-certificado { color: #124b72; }
+.resultados .codigo { margin-top: .25rem; padding: .65rem .75rem; background: #f4f7fa; border: 1px solid #e7edf3; border-radius: .5rem; font-size: .875rem; }
+.resultado-acciones { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: auto; padding-top: .35rem; }
+.resultado-acciones .descargar { margin-top: 0; }
 .actividad-certificado { font-weight: 600; color: #124b72; overflow-wrap: anywhere; }
 footer { padding: 1rem var(--espacio-6, 1.5rem); text-align: left; border-top: 1px solid #dce5ed; font-size: .85rem; }
 footer span { display: block; margin-top: .4rem; color: #526879; }
