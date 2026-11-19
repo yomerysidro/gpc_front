@@ -45,6 +45,7 @@ export interface LoginResponse {
 }
 
 export interface LoginRequest {
+  readonly turnstileToken?: string;
   email: string;
   password: string;
 }

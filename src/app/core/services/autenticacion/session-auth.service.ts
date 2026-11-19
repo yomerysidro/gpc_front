@@ -42,8 +42,8 @@ export class SessionAuthService extends AuthService {
   readonly capacidadesSolicitudes = this.capacidadesActuales.asReadonly();
   readonly isAuthenticated = computed(() => this.usuarioActual() !== null);
 
-  login(email: string, password: string): Observable<ResultadoLogin> {
-    const body: LoginRequest = { email, password };
+  login(email: string, password: string, turnstileToken?: string): Observable<ResultadoLogin> {
+    const body: LoginRequest = { email, password, ...(turnstileToken ? { turnstileToken } : {}) };
 
     return this.http.post<LoginResponse>(`${this.api}/auth/login`, body, this.opciones()).pipe(
       switchMap(() => {

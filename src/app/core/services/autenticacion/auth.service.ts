@@ -19,7 +19,7 @@ export abstract class AuthService {
   abstract readonly capacidadesSolicitudes: Signal<CapacidadesSolicitudes | null>;
   abstract readonly isAuthenticated: Signal<boolean>;
 
-  abstract login(email: string, password: string): Observable<ResultadoLogin>;
+  abstract login(email: string, password: string, turnstileToken?: string): Observable<ResultadoLogin>;
   /** Carga /auth/me una sola vez; emite true si hay sesión. */
   abstract cargarSesion(): Observable<boolean>;
   /** Vuelve a pedir /auth/me aunque ya esté cargada (p. ej., tras cambiar los accesos del propio rol). */
