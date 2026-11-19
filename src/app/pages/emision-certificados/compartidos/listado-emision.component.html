@@ -87,6 +87,14 @@
     </div>
     <button type="button" class="btn btn-neutro" (click)="limpiarFiltros()">Limpiar filtros</button>
   </form>
+} @else if (recurso() === 'attendance' && paginaCompleta()) {
+  <form class="filtros" role="search" aria-label="Buscar participantes" [formGroup]="filtrosSesiones" (ngSubmit)="aplicarFiltros()">
+    <div class="form-field">
+      <label for="attendance-buscar-nombre">Buscar por nombre</label>
+      <input type="search" class="input" id="attendance-buscar-nombre" formControlName="nombre"
+        placeholder="Nombre del participante" (input)="aplicarFiltros()" />
+    </div>
+  </form>
 } @else if (!enDetalle()) {
 <form class="filtros" role="search" [attr.aria-label]="'Filtrar ' + config().titulo" [formGroup]="filtro" (ngSubmit)="cargar(1)">
   <div class="form-field">
@@ -127,7 +135,7 @@
     @else if (recurso() === 'attendance') {
       @if (catalogosSesiones.errorPersonas) { <p role="alert">{{ catalogosSesiones.errorPersonas }}</p> }
       @if (!paginaCompleta()) { <button class="btn" type="button" [disabled]="guardandoMarca() !== null" (click)="actualizarAsistencia()">Actualizar asistencia</button> }
-      @if (enDetalle() && !soloLecturaSesion() && (permitido('crear') || permitido('editar'))) {
+      @if (enDetalle() && !paginaCompleta() && !soloLecturaSesion() && (permitido('crear') || permitido('editar'))) {
         <div class="acciones guardado-asistencia" role="group" aria-label="Guardar selección de asistencia">
           <span role="status">{{ pendientesSesion().length }} cambios pendientes de esta sesión</span>
           @if (!accionesExternas()) {

@@ -181,10 +181,15 @@ export class AsistenciaSesionComponent {
     ).subscribe({ next: () => this.reintentos.next(), error: e => this.aviso.set(this.mensaje(e)) });
   }
 
+  protected totalPendientes(contadores: NonNullable<SesionCertificacion['contadores']>): number | string {
+    const { pendientes, participantes_sesion: conMarca } = contadores;
+    if (pendientes == null || conMarca == null) return 'Sin dato';
+    return pendientes + Math.max(0, (this.datos()?.participantes.length ?? conMarca) - conMarca);
+  }
+
   protected soloLectura(): boolean { return !this.sesion() || this.sesion()!.estado === 'Finalizada' || this.sesion()!.finalizada === true || this.sesion()!.puede_editar_asistencia === false; }
   protected reintentar(): void { if (!this.ocupado()) this.reintentos.next(); }
   protected ocupado(): boolean { return this.cargando() || this.seleccionando() || this.guardandoPonente() !== null || (this.listado()?.estaGuardando() ?? false); }
-  protected guardar(): void { if (!this.ocupado() && !this.soloLectura()) this.listado()?.guardarAsistencia(); }
   protected actualizar(): void {
     if (this.ocupado()) return;
     if (!this.listado()?.hayCambiosSinGuardar()) { this.reintentos.next(); return; }
