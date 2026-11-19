@@ -17,6 +17,8 @@ export interface Usuario {
   readonly rol: UsuarioRol | null;
   readonly estado: boolean;
   readonly bloqueado: boolean;
+  readonly intentosFallidos?: number;
+  readonly limiteIntentos?: number;
   /** ISO 8601; null si nunca inició sesión. */
   readonly ultimoAcceso: string | null;
 }
@@ -38,7 +40,9 @@ export interface UsuarioPayload {
 /** PUT /api/usuarios/{id}. */
 export interface UsuarioActualizarPayload {
   correo: string;
-  idRol: number;
+  idRol?: number;
+  password?: string;
+  password_confirmation?: string;
 }
 
 /** Query de GET /api/usuarios; los filtros sin valor no se envían. */

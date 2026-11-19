@@ -87,9 +87,12 @@
           </div>
           <div class="form-field">
             <label for="rol">Rol</label>
-            <select id="rol" class="input" formControlName="idRol" aria-required="true" aria-describedby="rol-error"
+            <select id="rol" class="input" formControlName="idRol" [attr.aria-required]="!modoEdicion" aria-describedby="rol-error"
               [attr.aria-invalid]="!!error('idRol')">
-              <option value="" disabled>Elige un rol</option>
+              <option value="" disabled>{{ modoEdicion ? 'Sin rol asignado' : 'Elige un rol' }}</option>
+              @if (rolActualFueraDeLista(); as rolActual) {
+                <option [value]="rolActual.id">{{ rolActual.nombre }}</option>
+              }
               @for (rol of roles(); track rol.id) {
                 <option [value]="rol.id">{{ rol.nombre }}</option>
               }
@@ -100,6 +103,50 @@
           </div>
         </div>
       </fieldset>
+
+      @if (puedeCambiarPassword()) {
+        <fieldset>
+          <legend>Cambiar contraseña</legend>
+          <p id="password-ayuda" class="form-ayuda">Usa al menos 8 caracteres. Si dejas los campos vacíos, se conserva la contraseña actual.</p>
+          <div class="fila">
+            <div class="form-field">
+              <label for="password">Nueva contraseña</label>
+              <div class="input-con-accion">
+                <input #campoPassword id="password" class="input" type="password" autocomplete="new-password" formControlName="password"
+                  aria-describedby="password-ayuda password-error" [attr.aria-invalid]="!!error('password')" />
+                <button type="button" class="btn btn-icono btn-sin-borde" aria-controls="password"
+                  [attr.aria-label]="campoPassword.type === 'password' ? 'Mostrar contraseña nueva' : 'Ocultar contraseña nueva'"
+                  (click)="campoPassword.type = campoPassword.type === 'password' ? 'text' : 'password'">
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    {{ campoPassword.type === 'password' ? 'visibility' : 'visibility_off' }}
+                  </span>
+                </button>
+              </div>
+              <div id="password-error" aria-live="polite">
+                @if (error('password'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="password_confirmation">Confirmar contraseña</label>
+              <div class="input-con-accion">
+                <input #campoConfirmacion id="password_confirmation" class="input" type="password" autocomplete="new-password"
+                  formControlName="password_confirmation" aria-describedby="password-confirmacion-error"
+                  [attr.aria-invalid]="!!error('password_confirmation')" />
+                <button type="button" class="btn btn-icono btn-sin-borde" aria-controls="password_confirmation"
+                  [attr.aria-label]="campoConfirmacion.type === 'password' ? 'Mostrar contraseña de confirmación' : 'Ocultar contraseña de confirmación'"
+                  (click)="campoConfirmacion.type = campoConfirmacion.type === 'password' ? 'text' : 'password'">
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    {{ campoConfirmacion.type === 'password' ? 'visibility' : 'visibility_off' }}
+                  </span>
+                </button>
+              </div>
+              <div id="password-confirmacion-error" aria-live="polite">
+                @if (error('password_confirmation'); as mensaje) { <p class="error-text">{{ mensaje }}</p> }
+              </div>
+            </div>
+          </div>
+        </fieldset>
+      }
 
       <div class="acciones">
         <a routerLink="/usuarios" class="btn">Cancelar</a>

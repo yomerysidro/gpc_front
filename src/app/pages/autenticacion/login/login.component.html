@@ -59,7 +59,7 @@
       </div>
 
       @if (turnstileSiteKey) {
-        <div #turnstileContainer class="form-field" aria-label="Verificación de seguridad"></div>
+        <div #turnstileContainer id="verificacion-seguridad" class="form-field" aria-label="Verificación de seguridad"></div>
         @if (errorTurnstile()) {
           <p class="error-text" role="alert">{{ errorTurnstile() }}</p>
           <button type="button" class="btn" (click)="cargarTurnstile()">Reintentar verificación</button>

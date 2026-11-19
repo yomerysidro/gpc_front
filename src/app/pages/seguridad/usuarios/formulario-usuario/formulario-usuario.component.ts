@@ -1,16 +1,17 @@
-import { afterNextRender, Component, DestroyRef, ElementRef, inject, signal } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ErrorApi } from '../../../../core/interfaces/api/api-response.interface';
 import { Rol } from '../../../../core/interfaces/roles/rol.interface';
 import { Usuario, UsuarioPayload } from '../../../../core/interfaces/usuarios/usuario.interface';
+import { AuthService } from '../../../../core/services/autenticacion/auth.service';
 import { RolesService } from '../../../../core/services/roles/roles.service';
 import { UsuariosService } from '../../../../core/services/usuarios/usuarios.service';
 import { PageTitleComponent } from '../../../../shared/components/page-title/page-title.component';
 import { AvisoUsuarios } from '../listar-usuarios/listar-usuarios.component';
 
-type Campo = 'dni' | 'nombres' | 'apellidoPaterno' | 'apellidoMaterno' | 'correo' | 'idRol';
+type Campo = 'dni' | 'nombres' | 'apellidoPaterno' | 'apellidoMaterno' | 'correo' | 'idRol' | 'password' | 'password_confirmation';
 
 /** Mensajes de validación del navegador; los del backend (422) tienen prioridad. */
 const MENSAJES: Record<Campo, Partial<Record<string, string>>> = {
@@ -20,6 +21,8 @@ const MENSAJES: Record<Campo, Partial<Record<string, string>>> = {
   apellidoMaterno: { maxlength: 'Máximo 150 caracteres.' },
   correo: { required: 'Ingresa el correo.', email: 'Ingresa un correo válido.', maxlength: 'Máximo 150 caracteres.' },
   idRol: { required: 'Elige un rol.' },
+  password: { minlength: 'Usa al menos 8 caracteres.' },
+  password_confirmation: {},
 };
 
 @Component({
@@ -30,6 +33,7 @@ const MENSAJES: Record<Campo, Partial<Record<string, string>>> = {
   styleUrl: './formulario-usuario.component.scss'
 })
 export class FormularioUsuarioComponent {
+  private readonly auth = inject(AuthService);
   private readonly usuariosService = inject(UsuariosService);
   private readonly rolesService = inject(RolesService);
   private readonly router = inject(Router);
@@ -38,9 +42,17 @@ export class FormularioUsuarioComponent {
 
   protected readonly modoEdicion = this.parametroId !== null;
   private readonly id = Number(this.parametroId);
+  protected readonly puedeCambiarPassword = computed(() => {
+    const rol = this.auth.usuario()?.rol;
+    return this.modoEdicion && (rol === 'Administrador' || rol === 'Administrador de Sistemas');
+  });
 
   protected readonly roles = signal<readonly Rol[]>([]);
   protected readonly usuario = signal<Usuario | null>(null);
+  protected readonly rolActualFueraDeLista = computed(() => {
+    const rol = this.usuario()?.rol;
+    return rol && !this.roles().some(disponible => disponible.id === rol.id) ? rol : null;
+  });
   protected readonly cargando = signal(this.modoEdicion);
   protected readonly errorCarga = signal<string | null>(null);
   protected readonly enviando = signal(false);
@@ -53,12 +65,14 @@ export class FormularioUsuarioComponent {
     apellidoPaterno: ['', Validators.maxLength(150)],
     apellidoMaterno: ['', Validators.maxLength(150)],
     correo: ['', [Validators.required, Validators.email, Validators.maxLength(150)]],
-    idRol: ['', Validators.required],
+    idRol: ['', this.modoEdicion ? [] : Validators.required],
+    password: ['', Validators.minLength(8)],
+    password_confirmation: [''],
   });
 
   constructor() {
     if (this.modoEdicion) {
-      // En edición solo se cambian correo y rol: los datos de la persona son de solo lectura.
+      // Los datos de la persona son de solo lectura en la edición de la cuenta.
       for (const campo of ['dni', 'nombres', 'apellidoPaterno', 'apellidoMaterno'] as const) {
         this.form.controls[campo].disable();
       }
@@ -95,7 +109,12 @@ export class FormularioUsuarioComponent {
 
     const control = this.form.controls[campo];
 
-    if (!control.touched || control.valid || !control.errors) return null;
+    if (!control.touched) return null;
+
+    if (campo === 'password_confirmation' && this.passwordsNoCoinciden()) {
+      return 'Las contraseñas no coinciden.';
+    }
+    if (control.valid || !control.errors) return null;
 
     const clave = Object.keys(control.errors)[0];
     return MENSAJES[campo][clave] ?? 'Revisa este campo.';
@@ -104,7 +123,9 @@ export class FormularioUsuarioComponent {
   protected guardar(): void {
     this.errorGeneral.set(null);
 
-    if (this.form.invalid) {
+    if (this.enviando()) return;
+
+    if (this.form.invalid || this.passwordsNoCoinciden()) {
       this.form.markAllAsTouched();
       this.enfocarPrimerError();
       return;
@@ -115,7 +136,14 @@ export class FormularioUsuarioComponent {
     this.enviando.set(true);
 
     const peticion = this.modoEdicion
-      ? this.usuariosService.actualizar(this.id, { correo: valores.correo.trim(), idRol })
+      ? this.usuariosService.actualizar(this.id, {
+          correo: valores.correo.trim(),
+          ...(idRol && idRol !== this.usuario()?.rol?.id ? { idRol } : {}),
+          ...(this.puedeCambiarPassword() && valores.password ? {
+            password: valores.password,
+            password_confirmation: valores.password_confirmation,
+          } : {}),
+        })
       : this.usuariosService.crear(this.payloadCreacion(valores, idRol));
 
     peticion.subscribe({
@@ -138,6 +166,11 @@ export class FormularioUsuarioComponent {
         }
       },
     });
+  }
+
+  private passwordsNoCoinciden(): boolean {
+    const { password, password_confirmation } = this.form.controls;
+    return this.puedeCambiarPassword() && password.value !== password_confirmation.value;
   }
 
   private cargarUsuario(): void {

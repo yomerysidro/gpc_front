@@ -3,6 +3,8 @@ export interface TurnstileApi {
     sitekey: string;
     action: 'login';
     size: 'flexible';
+    appearance: 'always';
+    language: 'es';
     'response-field': false;
     'refresh-expired': 'auto';
     callback: (token: string) => void;
