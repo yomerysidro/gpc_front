@@ -24,10 +24,6 @@ describe('Control de asistencia como página de sesión', () => {
   const responder = (url: string, data: unknown) => http.expectOne('/api' + url).flush({ success: true, data });
   const vista = (): HTMLElement => harness.routeNativeElement!;
   const pulsar = (texto: string) => { Array.from(vista().querySelectorAll('button')).find(b => b.textContent?.trim() === texto)!.click(); harness.detectChanges(); };
-  const respuestaDialogo = (texto: string) => {
-    const dialogo = vista().querySelector('app-dialogo-confirmacion dialog[open]')!;
-    Array.from(dialogo.querySelectorAll('button')).find(b => b.textContent?.trim() === texto)!.click(); harness.detectChanges();
-  };
   beforeEach(() => {
     permisos = new Set(['actividades.ver', 'participantes.ver', 'participantes.crear', 'participantes.editar']);
     const rutaReal = EMISION_CERTIFICADOS_ROUTES.find(r => r.path?.endsWith('/asistencia'))!;
@@ -105,17 +101,14 @@ describe('Control de asistencia como página de sesión', () => {
   it('guarda cambios autorizados una sola vez y conserva las horas confirmadas', async () => {
     await iniciar();
     (vista().querySelectorAll('.circulo-ausente')[0] as HTMLButtonElement).click(); harness.detectChanges();
-    expect(vista().textContent).toContain('Ausente · Sin guardar'); http.expectNone(r => r.method !== 'GET');
-    pulsar('Guardar asistencia'); pulsar('Guardar asistencia');
+    expect(vista().textContent).not.toContain('Guardar asistencia');
+    expect(vista().querySelector('.circulo-ausente')?.getAttribute('aria-pressed')).toBe('false');
+    (vista().querySelector('.circulo-ausente') as HTMLButtonElement).click();
     const patch = http.expectOne('/api/attendance/update/80'); expect(patch.request.method).toBe('PATCH'); expect(patch.request.body).toEqual({ estado: 'AUSENTE' });
     const salir = await (harness.routeDebugElement!.componentInstance as AsistenciaSesionComponent).puedeSalir(); expect(salir).toBeFalse();
     patch.flush({ success: true, data: { id_asistencia: 80 } });
     responder('/attendance/80', { ...marca, estado: 'AUSENTE' });
     responder('/activity-session/15', { ...sesion, contadores: { ...sesion.contadores, presentes: 0, ausentes: 1 } });
-    responder('/activity-session/15/participantes/candidatos', {
-      id_actividad: 7, id_actividad_sesion: 15,
-      participantes: [{ ...marca, nombre_completo: 'Ana Pérez', seleccionado: true, estado_asistencia: 'AUSENTE' }],
-    });
     harness.detectChanges();
     expect(vista().textContent).not.toContain('Sin guardar'); expect(vista().textContent).toContain('08:00');
     expect(vista().querySelectorAll('.circulo-ausente[aria-pressed="true"]').length).toBe(1);
@@ -160,22 +153,34 @@ describe('Control de asistencia como página de sesión', () => {
     http.expectNone(r => r.method !== 'GET');
   });
   it('conserva un bloqueo 409 por certificados y exige actualizar antes de reintentar', async () => {
-    await iniciar(); (vista().querySelector('.circulo-ausente') as HTMLButtonElement).click(); harness.detectChanges(); pulsar('Guardar asistencia');
+    await iniciar(); (vista().querySelector('.circulo-ausente') as HTMLButtonElement).click(); harness.detectChanges();
     http.expectOne('/api/attendance/update/80').flush({ message: 'Asistencia protegida por certificado.' }, { status: 409, statusText: 'Conflict' }); harness.detectChanges();
     expect(vista().textContent).toContain('409'); expect(vista().textContent).toContain('Asistencia protegida por certificado.');
     expect(Array.from(vista().querySelectorAll('.circulo-asistencia') as NodeListOf<HTMLButtonElement>).every(b => b.disabled)).toBeTrue();
     http.expectNone(r => r.method !== 'GET');
   });
-  it('confirma al salir, conserva cambios al cancelar y vuelve al detalle al descartar', async () => {
-    await iniciar(); (vista().querySelector('.circulo-ausente') as HTMLButtonElement).click(); harness.detectChanges();
-    const router = TestBed.inject(Router);
-    let navegacion = router.navigateByUrl('/certificaciones/actividades?id_actividad=7');
-    await new Promise(resolve => setTimeout(resolve, 0)); harness.detectChanges(); respuestaDialogo('Seguir editando');
-    expect(await navegacion).toBeFalse(); expect(router.url).toBe(ruta); expect(vista().textContent).toContain('Sin guardar');
-    await new Promise(resolve => setTimeout(resolve, 30));
-    navegacion = router.navigateByUrl('/certificaciones/actividades?id_actividad=7');
-    await new Promise(resolve => setTimeout(resolve, 0)); harness.detectChanges(); respuestaDialogo('Descartar cambios');
-    expect(await navegacion).toBeTrue(); expect(router.url).toBe('/certificaciones/actividades?id_actividad=7');
+  it('busca por nombre, muestra el total de inscritos y crea la marca al pulsar Presente', async () => {
+    const estado = { ...sesion, contadores: { ...sesion.contadores, participantes_sesion: 1, pendientes: 0 } };
+    await iniciar(estado);
+    expect(Array.from(vista().querySelectorAll('.indicadores strong')).map(e => e.textContent)).toEqual(['2', '1', '0', '1']);
+    const buscador = vista().querySelector<HTMLInputElement>('#attendance-buscar-nombre')!;
+    buscador.value = 'luis rios';
+    buscador.dispatchEvent(new Event('input'));
+    harness.detectChanges();
+    expect(vista().querySelectorAll('tbody tr').length).toBe(1);
+    expect(vista().querySelector('tbody')?.textContent).toContain('Luis Ríos');
+    expect(vista().querySelector('.indicadores strong')?.textContent).toBe('2');
+
+    (vista().querySelector('.circulo-presente') as HTMLButtonElement).click();
+    harness.detectChanges();
+    const peticion = http.expectOne('/api/attendance/create');
+    expect(peticion.request.body).toEqual({ id_participacion: 31, id_actividad_sesion: 15, estado: 'PRESENTE' });
+    peticion.flush({ success: true, data: { id_asistencia: 82 } });
+    responder('/attendance/82', { ...marca, id_asistencia: 82, id_participacion: 31 });
+    responder('/activity-session/15', { ...sesion, contadores: { ...sesion.contadores, presentes: 2, pendientes: 0 } });
+    harness.detectChanges();
+    expect(vista().querySelector('.circulo-presente')?.getAttribute('aria-pressed')).toBe('true');
+    expect(buscador.value).toBe('luis rios');
   });
   it('vuelve mediante Router al detalle de la actividad', async () => {
     await iniciar(); (vista().querySelector('.boton-volver') as HTMLButtonElement).click(); await harness.fixture.whenStable();
@@ -188,11 +193,12 @@ describe('Control de asistencia como página de sesión', () => {
     expect(vista().querySelector<HTMLSelectElement>('#attendance-id_actividad_sesion')!.disabled).toBeTrue();
     expect(vista().querySelector<HTMLSelectElement>('#attendance-id_participacion')!.disabled).toBeTrue();
   });
-  it('mantiene la paginación sin perder cambios y se adapta al ancho disponible', async () => {
+  it('mantiene la paginación y se adapta al ancho disponible', async () => {
     const filas = Array.from({ length: 12 }, (_, i) => ({ id_participacion: 30 + i, id_actividad: 7, id_persona: 40 + i }));
     await iniciar(sesion, filas, filas.map((p, i) => ({ ...marca, id_asistencia: 80 + i, id_participacion: p.id_participacion })));
-    (vista().querySelector('.circulo-ausente') as HTMLButtonElement).click(); harness.detectChanges(); pulsar('Siguiente');
-    expect(vista().querySelectorAll('tbody tr').length).toBe(2); pulsar('Anterior'); expect(vista().textContent).toContain('Sin guardar');
+    pulsar('Siguiente');
+    expect(vista().querySelectorAll('tbody tr').length).toBe(2); pulsar('Anterior');
+    expect(vista().querySelectorAll('tbody tr').length).toBe(10);
     for (const ancho of [360, 768, 1200]) {
       vista().style.width = ancho + 'px';
       expect(vista().querySelector('.indicadores')!.scrollWidth).toBeLessThanOrEqual(ancho);

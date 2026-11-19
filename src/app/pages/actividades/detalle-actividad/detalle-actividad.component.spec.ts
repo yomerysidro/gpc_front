@@ -304,12 +304,13 @@ describe('Detalle de actividad con las APIs existentes', () => {
     http.expectNone(req => req.method !== 'GET');
   });
 
-  async function prepararCierre(puedeFinalizarse?: boolean) {
+  async function prepararCierre(puedeFinalizarse?: boolean, incluirOtraSesion = false) {
     ['actividades.ver', 'actividades.editar', 'emision.ver', 'emision.crear', 'participantes.ver'].forEach(p => permisos.add(p));
     responder('/activity/7', actividad); catalogos(); responder('/participation', []); responder('/attendance/list', []);
     const sesion = { id_actividad_sesion: 15, id_actividad: 7, nombre: 'Jornada real', estado: 'Activo' };
     responder('/activity-session', [{ ...sesion, puede_finalizarse: puedeFinalizarse,
-      motivos_bloqueo_finalizacion: puedeFinalizarse === false ? ['Motivo de una respuesta anterior.'] : [] }]);
+      motivos_bloqueo_finalizacion: puedeFinalizarse === false ? ['Motivo de una respuesta anterior.'] : [] },
+      ...(incluirOtraSesion ? [{ ...sesion, id_actividad_sesion: 16, nombre: 'Segunda jornada' }] : [])]);
     await fixture.whenStable();
     return sesion;
   }
@@ -366,14 +367,18 @@ describe('Detalle de actividad con las APIs existentes', () => {
     http.expectNone(req => req.method !== 'GET');
   });
   it('finaliza solo la sesión, consulta capacidades y conserva la actividad Activa', async () => {
-    const sesion = await prepararCierre(false);
+    const sesion = await prepararCierre(false, true);
     const peticion = await confirmarCierre();
     peticion.flush({ success: true, data: { finalizada: true, sesion: { ...sesion, estado: 'Finalizada' }, estado_actividad: 'Activa', motivos_bloqueo: [] } });
     responder('/activity-session/15', { ...sesion, estado: 'Finalizada', puede_finalizarse: false, puede_certificarse: false, motivos_bloqueo_finalizacion: [], motivos_bloqueo_certificacion: ['Falta relación persistente con la sesión.'] });
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('.tarjeta-sesion').textContent).toContain('Finalizada');
     expect(texto()).toContain('Activa');
-    expect(Array.from(fixture.nativeElement.querySelectorAll('.cierre-sesion button[aria-label]') as NodeListOf<HTMLButtonElement>).every(b => b.disabled)).toBeTrue();
+    const tarjetas = fixture.nativeElement.querySelectorAll('.tarjeta-sesion') as NodeListOf<HTMLElement>;
+    expect(tarjetas[1].textContent).toContain('Segunda jornada');
+    expect(tarjetas[1].textContent).not.toContain('Finalizada');
+    expect(tarjetas[1].querySelector<HTMLButtonElement>('.cierre-sesion button')?.disabled).toBeFalse();
+    http.expectNone('/api/activity-session/16/finalizar');
     http.expectNone(req => req.method !== 'GET');
   });
   it('conserva Finalizada si falla la recarga de capacidades después de un cierre confirmado', async () => {
