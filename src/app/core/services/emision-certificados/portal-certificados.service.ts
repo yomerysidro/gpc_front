@@ -113,6 +113,7 @@ export class PortalCertificadosService {
 
   private urlPublica(url: string | null, codigo: string): string | null {
     const ruta = `/certificados/verificar/${codigo}?archivo=1`;
-    return url === `/api${ruta}` || url === `${environment.apiBaseUrl}${ruta}` ? url : null;
+    const destino = `${environment.apiBaseUrl}${ruta}`;
+    return url === `/api${ruta}` || url === destino ? destino : null;
   }
 }

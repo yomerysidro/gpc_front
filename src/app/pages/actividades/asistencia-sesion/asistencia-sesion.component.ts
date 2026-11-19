@@ -181,6 +181,10 @@ export class AsistenciaSesionComponent {
     ).subscribe({ next: () => this.reintentos.next(), error: e => this.aviso.set(this.mensaje(e)) });
   }
 
+  protected totalParticipantes(contadores: NonNullable<SesionCertificacion['contadores']>): number | string {
+    return this.datos()?.participantes.length ?? contadores.participantes_sesion ?? 'Sin dato';
+  }
+
   protected totalPendientes(contadores: NonNullable<SesionCertificacion['contadores']>): number | string {
     const { pendientes, participantes_sesion: conMarca } = contadores;
     if (pendientes == null || conMarca == null) return 'Sin dato';
