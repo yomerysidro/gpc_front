@@ -58,7 +58,16 @@
         </div>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" [disabled]="enviando()"
+      @if (turnstileSiteKey) {
+        <div #turnstileContainer class="form-field" aria-label="Verificación de seguridad"></div>
+        @if (errorTurnstile()) {
+          <p class="error-text" role="alert">{{ errorTurnstile() }}</p>
+          <button type="button" class="btn" (click)="cargarTurnstile()">Reintentar verificación</button>
+        }
+      }
+
+      <button type="submit" class="btn btn-primary btn-block"
+        [disabled]="enviando() || (!!turnstileSiteKey && !turnstileToken())"
         [attr.aria-busy]="enviando()">
         {{ enviando() ? 'Ingresando…' : 'Ingresar' }}
       </button>
