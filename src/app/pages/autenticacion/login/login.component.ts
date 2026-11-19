@@ -59,6 +59,8 @@ export class LoginComponent {
         sitekey: this.turnstileSiteKey,
         action: 'login',
         size: 'flexible',
+        appearance: 'always',
+        language: 'es',
         'response-field': false,
         'refresh-expired': 'auto',
         callback: token => {

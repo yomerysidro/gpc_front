@@ -74,18 +74,20 @@
               <th scope="col">Correo</th>
               <th scope="col">Rol</th>
               <th scope="col" class="col-centro">Estado</th>
+              <th scope="col" class="col-centro">Intentos fallidos</th>
               <th scope="col">Último acceso</th>
               <th *appHasPermission="'usuarios.editar'" scope="col" class="col-centro"><span class="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody>
             @for (usuario of usuarios(); track usuario.id; let numeroVisual = $index) {
-              <tr [class.registro-inactivo]="!usuario.estado"><td class="col-centro col-numero" data-label="N.º">{{ ((meta()?.page ?? 1) - 1) * (meta()?.perPage ?? 0) + numeroVisual + 1 }}</td>
+              <tr [class.registro-inactivo]="!usuario.estado || usuario.bloqueado"><td class="col-centro col-numero" data-label="N.º">{{ ((meta()?.page ?? 1) - 1) * (meta()?.perPage ?? 0) + numeroVisual + 1 }}</td>
                 <td class="nombre">{{ usuario.nombre }}</td>
                 <td class="dato">{{ usuario.dni }}</td>
                 <td class="correo">{{ usuario.correo }}</td>
                 <td>{{ usuario.rol?.nombre ?? 'Sin rol' }}</td>
                 <td class="col-centro"><ng-container *ngTemplateOutlet="estado; context: { $implicit: usuario }" /></td>
+                <td class="col-centro dato"><ng-container *ngTemplateOutlet="intentos; context: { $implicit: usuario }" /></td>
                 <td class="dato">
                   {{ usuario.ultimoAcceso ? (usuario.ultimoAcceso | date: 'dd/MM/yyyy HH:mm' : zonaLima) : 'Nunca' }}
                 </td>
@@ -101,7 +103,7 @@
       <!-- Celular: tarjetas apiladas -->
       <ul class="tarjetas" aria-label="Usuarios del sistema">
         @for (usuario of usuarios(); track usuario.id) {
-          <li class="tarjeta" [class.registro-inactivo]="!usuario.estado">
+          <li class="tarjeta" [class.registro-inactivo]="!usuario.estado || usuario.bloqueado">
             <div class="tarjeta-cabecera">
               <span class="nombre">{{ usuario.nombre }}</span>
               <ng-container *ngTemplateOutlet="estado; context: { $implicit: usuario }" />
@@ -110,6 +112,7 @@
             <dl class="tarjeta-datos">
               <div><dt>DNI</dt><dd class="dato">{{ usuario.dni }}</dd></div>
               <div><dt>Rol</dt><dd>{{ usuario.rol?.nombre ?? 'Sin rol' }}</dd></div>
+              <div><dt>Intentos fallidos</dt><dd class="dato"><ng-container *ngTemplateOutlet="intentos; context: { $implicit: usuario }" /></dd></div>
               <div><dt>Último acceso</dt><dd class="dato">
                 {{ usuario.ultimoAcceso ? (usuario.ultimoAcceso | date: 'dd/MM/yyyy HH:mm' : zonaLima) : 'Nunca' }}
               </dd></div>
@@ -140,17 +143,39 @@
   </div>
 </section>
 
+<ng-template #intentos let-usuario>
+  @if (usuario.intentosFallidos != null && usuario.limiteIntentos != null) {
+    {{ usuario.intentosFallidos }} de {{ usuario.limiteIntentos }}
+  } @else {
+    {{ usuario.intentosFallidos ?? '—' }}
+  }
+</ng-template>
+
 <ng-template #estado let-usuario>
   <span class="badges">
-    <span class="badge" [class.badge-exito]="usuario.estado" [attr.data-estado]="usuario.estado ? 'Activo' : 'Inactivo'">{{ usuario.estado ? 'Activo' : 'Inactivo' }}</span>
-    @if (usuario.bloqueado) {
-      <span class="badge badge-advertencia">Bloqueado</span>
+    @if (usuario.estado && usuario.bloqueado) {
+      <span class="badge badge-advertencia">
+        <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+        Bloqueado
+      </span>
+    } @else {
+      <span class="badge" [class.badge-exito]="usuario.estado" [attr.data-estado]="usuario.estado ? 'Activo' : 'Inactivo'">
+        <span class="material-symbols-outlined" aria-hidden="true">{{ usuario.estado ? 'lock_open' : 'lock' }}</span>
+        {{ usuario.estado ? 'Activo' : 'Inactivo' }}
+      </span>
     }
   </span>
 </ng-template>
 
 <ng-template #acciones let-usuario let-conTexto="conTexto">
   <div class="acciones" [class.acciones-con-texto]="conTexto">
+    @if (usuario.bloqueado) {
+      <button type="button" class="btn btn-neutro" [disabled]="procesando() !== null"
+        (click)="desbloquear(usuario)" [attr.aria-label]="'Desbloquear a ' + usuario.nombre">
+        <span class="material-symbols-outlined" aria-hidden="true">lock_open</span>
+        Desbloquear
+      </button>
+    }
     <a class="btn" [class.btn-icono]="!conTexto" [class.btn-sin-borde]="!conTexto"
       [routerLink]="['/usuarios', usuario.id, 'editar']"
       [attr.aria-label]="conTexto ? null : 'Editar a ' + usuario.nombre" [attr.title]="conTexto ? null : 'Editar'">
@@ -164,14 +189,6 @@
       <span class="material-symbols-outlined" aria-hidden="true">{{ usuario.estado ? 'person_off' : 'how_to_reg' }}</span>
       @if (conTexto) { {{ usuario.estado ? 'Desactivar' : 'Activar' }} }
     </button>
-    @if (usuario.bloqueado) {
-      <button type="button" class="btn" [class.btn-icono]="!conTexto" [class.btn-sin-borde]="!conTexto"
-        [disabled]="procesando() === usuario.id" (click)="desbloquear(usuario)"
-        [attr.aria-label]="conTexto ? null : 'Desbloquear a ' + usuario.nombre" [attr.title]="conTexto ? null : 'Desbloquear'">
-        <span class="material-symbols-outlined" aria-hidden="true">lock_open</span>
-        @if (conTexto) { Desbloquear }
-      </button>
-    }
     <button type="button" class="btn" [class.btn-icono]="!conTexto" [class.btn-sin-borde]="!conTexto"
       [disabled]="procesando() === usuario.id" (click)="reenviarEnlace(usuario)"
       [attr.aria-label]="conTexto ? null : 'Reenviar enlace de contraseña a ' + usuario.nombre"

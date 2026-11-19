@@ -53,6 +53,10 @@ tr.registro-inactivo .nombre,
   gap: var(--espacio-1);
 }
 
+.badges .material-symbols-outlined {
+  font-size: 1rem;
+}
+
 .acciones {
   display: flex;
   justify-content: flex-end;
