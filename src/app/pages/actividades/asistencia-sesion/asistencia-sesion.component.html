@@ -38,7 +38,6 @@
       <button class="btn" type="button" [disabled]="ocupado()" (click)="consultarCandidatos()">Seleccionar participante</button>
     }
     <button class="btn" type="button" [disabled]="ocupado() || !datos()" (click)="actualizar()"><span class="material-symbols-outlined" aria-hidden="true">refresh</span>Actualizar asistencia</button>
-    @if (!soloLectura() && listado()?.cambiosPendientes()) { <button class="btn btn-primary" type="button" [disabled]="!listado()?.puedeGuardarAsistencia()" (click)="guardar()">Guardar asistencia</button> }
   </div>
   @if (puedeAgregar() && candidatos(); as filas) {
     <div class="seleccion">
@@ -60,10 +59,10 @@
 @if (aviso()) { <p role="status">{{ aviso() }}</p> }
 @if (sesion()?.contadores; as c) {
   <div class="indicadores" aria-label="Resumen de asistencia" aria-live="polite">
-    <div><span class="material-symbols-outlined" aria-hidden="true">groups</span><strong>{{ c.participantes_sesion ?? 'Sin dato' }}</strong><span>Participantes</span></div>
+    <div><span class="material-symbols-outlined" aria-hidden="true">groups</span><strong>{{ datos()?.participantes.length ?? c.participantes_sesion ?? 'Sin dato' }}</strong><span>Participantes</span></div>
     <div><span class="material-symbols-outlined" aria-hidden="true">co_present</span><strong>{{ c.presentes ?? 'Sin dato' }}</strong><span>Presentes</span></div>
     <div><span class="material-symbols-outlined" aria-hidden="true">person_off</span><strong>{{ c.ausentes ?? 'Sin dato' }}</strong><span>Ausentes</span></div>
-    <div><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span><strong>{{ c.pendientes ?? 'Sin dato' }}</strong><span>Pendientes</span></div>
+    <div><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span><strong>{{ totalPendientes(c) }}</strong><span>Pendientes</span></div>
   </div>
 }
 @if (datos(); as contexto) {

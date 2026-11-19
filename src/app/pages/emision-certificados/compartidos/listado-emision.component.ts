@@ -57,7 +57,6 @@ export class ListadoEmisionComponent implements OnChanges {
   estaGuardando(): boolean { return this.guardandoSeleccion() || this.guardandoMarca() !== null || !!this.formulario()?.enviando(); }
   cambiosPendientes(): number { return this.pendientesSesion().length; }
   puedeGuardarAsistencia(): boolean { return this.enDetalle() && !!this.cambiosPendientes() && !this.estaGuardando() && !this.cargando() && !this.requiereActualizar() && !this.soloLecturaSesion() && this.pendientesSesion().every(m => this.permitido(m.asistencia ? 'editar' : 'crear')); }
-  guardarAsistencia(): void { if (this.puedeGuardarAsistencia()) this.guardarSeleccion(); }
   descartarCambios(): void { this.descartarSeleccion(); }
   hayCambiosSinGuardar(): boolean { return !!this.cambiosPendientes() || !!this.formulario()?.hayCambiosSinGuardar(); }
   refrescarAsistencia(): void { this.actualizarAsistencia(); }
@@ -99,15 +98,16 @@ export class ListadoEmisionComponent implements OnChanges {
     if (fila['id_asistencia'] && (!Number.isSafeInteger(Number(fila['id_asistencia'])) || Number(fila['id_asistencia']) < 1)) return;
     const actividad = this.filtrosSesiones.controls.actividad.value;
     if (!this.catalogosSesiones.matriz(actividad, String(sesion)).some(registro => Number(registro['id_participacion']) === participacion)) return;
-    if (this.enDetalle()) {
+    if (this.enDetalle() && !this.paginaCompleta()) {
       const anterior = this.borrador(fila);
       this.marcasPendientes.update(marcas => [...marcas.filter(m => m.participacion !== participacion || m.sesion !== sesion),
         ...(anterior?.estado === estado || fila['estado'] === estado ? [] : [{ participacion, sesion, estado, asistencia: fila['id_asistencia'] ? Number(fila['id_asistencia']) : undefined }])]);
       this.aviso.set(null); return;
     }
+    if (fila['estado'] === estado) return;
     this.guardandoMarca.set(participacion); this.errorOperacion.set(null); this.aviso.set(null);
     let recibido = false;
-    this.marcacion = this.confirmarMarca({ participacion, sesion, estado }, () => recibido = true).pipe(
+    this.marcacion = this.confirmarMarca({ participacion, sesion, estado, asistencia: fila['id_asistencia'] ? Number(fila['id_asistencia']) : undefined }, () => recibido = true).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: registro => {
