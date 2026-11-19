@@ -42,12 +42,12 @@ describe('Control de asistencia como página de sesión', () => {
   async function iniciar(actual = sesion, filas = participantes, marcas: unknown[] = [marca], estados = false) {
     harness = await RouterTestingHarness.create(ruta);
     responder('/activity/7', actividad); responder('/activity-session/15', actual); harness.detectChanges();
-    responder('/activity-session/15/participantes', {
+    responder('/activity-session/15/participantes' + (actual.puede_editar_asistencia ? '/candidatos' : ''), {
       id_actividad: 7, id_actividad_sesion: 15,
       participantes: filas.filter(p => p.id_actividad === 7).map(p => {
         const asistencia = (marcas as typeof marca[]).find(m => m.id_participacion === p.id_participacion && m.id_actividad_sesion === 15);
         return {
-          id_participacion: p.id_participacion, nombre_completo: p.id_persona === 40 ? 'Ana Pérez' : 'Luis Ríos',
+          id_participacion: p.id_participacion, fecha_inscripcion: '2026-10-29', nombre_completo: p.id_persona === 40 ? 'Ana Pérez' : 'Luis Ríos',
           seleccionado: !!asistencia, id_asistencia: asistencia?.id_asistencia ?? null,
           estado_asistencia: asistencia?.estado ?? null, hora_entrada: asistencia?.hora_entrada ?? null,
         };
@@ -68,16 +68,17 @@ describe('Control de asistencia como página de sesión', () => {
     expect(vista().querySelector('h1')!.textContent).toContain('Control de asistencia — Sesión N.º 003');
     expect(vista().textContent).toContain('Actividad municipal'); expect(vista().textContent).toContain('12/11/2026');
     expect(Array.from(vista().querySelectorAll('.indicadores strong')).map(e => e.textContent)).toEqual(['2', '1', '0', '1']);
-    expect(vista().querySelectorAll('tbody tr').length).toBe(1);
+    expect(vista().querySelectorAll('tbody tr').length).toBe(2);
     expect(vista().querySelector('tbody')?.textContent).toContain('Ana Pérez');
     expect(vista().querySelector('tbody')?.textContent).not.toContain('Celia');
-    expect(vista().querySelector('tbody')?.textContent).not.toContain('Luis Ríos');
+    expect(vista().querySelector('tbody')?.textContent).toContain('Luis Ríos');
+    expect(vista().querySelector('tbody')?.textContent).toContain('29/10/2026');
     expect(vista().querySelector('.ponentes')?.textContent).toContain('Ana Pérez');
     expect(vista().querySelector('.ponentes')?.textContent).toContain('Especialista');
     expect(vista().querySelector('.ponentes')?.textContent).toContain('Facilitadora');
     expect(vista().querySelectorAll('.circulo-ausente[aria-pressed="true"]').length).toBe(0);
     expect(vista().querySelector('dialog[open]')).toBeNull();
-    expect(vista().querySelectorAll('thead th').length).toBe(6);
+    expect(vista().querySelectorAll('thead th').length).toBe(7);
     expect(vista().textContent).not.toContain('No determinable');
     expect(vista().textContent).not.toContain('En el modal puedes');
   });
@@ -86,7 +87,7 @@ describe('Control de asistencia como página de sesión', () => {
     await iniciar(sesion, participantes, [{ ...marca, id_participacion: 31 }], true);
     const boton = vista().querySelector<HTMLButtonElement>('.acciones-ponente button')!;
     expect(vista().querySelector('tbody')?.textContent).toContain('Luis Ríos');
-    expect(vista().querySelector('tbody')?.textContent).not.toContain('Ana Pérez');
+    expect(vista().querySelector('tbody')?.textContent).toContain('Ana Pérez');
     expect(vista().querySelector('.resumen-ponentes')?.textContent).toContain('1 pendientes');
     boton.click();
     harness.detectChanges();
@@ -111,7 +112,7 @@ describe('Control de asistencia como página de sesión', () => {
     patch.flush({ success: true, data: { id_asistencia: 80 } });
     responder('/attendance/80', { ...marca, estado: 'AUSENTE' });
     responder('/activity-session/15', { ...sesion, contadores: { ...sesion.contadores, presentes: 0, ausentes: 1 } });
-    responder('/activity-session/15/participantes', {
+    responder('/activity-session/15/participantes/candidatos', {
       id_actividad: 7, id_actividad_sesion: 15,
       participantes: [{ ...marca, nombre_completo: 'Ana Pérez', seleccionado: true, estado_asistencia: 'AUSENTE' }],
     });
@@ -138,7 +139,7 @@ describe('Control de asistencia como página de sesión', () => {
     post.flush({ success: true, data: { ...datos, participantes: [seleccionado] } });
     responder('/activity/7', actividad);
     responder('/activity-session/15', sesion);
-    responder('/activity-session/15/participantes', { ...datos, participantes: [seleccionado] });
+    responder('/activity-session/15/participantes/candidatos', { ...datos, participantes: [seleccionado] });
     harness.detectChanges();
     expect(vista().querySelector('tbody')?.textContent).toContain('Luis Ríos');
     expect(vista().querySelectorAll('.circulo-ausente[aria-pressed="true"]').length).toBe(1);

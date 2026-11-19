@@ -189,8 +189,8 @@ export class ListadoEmisionComponent implements OnChanges {
       this.carga?.unsubscribe();
       const contexto = this.datosContexto()!;
       const sesion = Number(contexto.sesiones[0]?.['id_actividad_sesion']);
-      const consulta: Observable<readonly RegistroEmision[]> = contexto.soloSeleccionados
-        ? this.api.participantesSesion(sesion).pipe(map(respuesta => {
+      const consulta: Observable<readonly RegistroEmision[]> = contexto.soloSeleccionados || contexto.incluirCandidatos
+        ? this.api.participantesSesion(sesion, contexto.incluirCandidatos).pipe(map(respuesta => {
           if (Number(respuesta.id_actividad) !== contexto.actividad.id_actividad || Number(respuesta.id_actividad_sesion) !== sesion) {
             throw new Error('Laravel no confirmó los participantes de esta sesión.');
           }
@@ -201,8 +201,8 @@ export class ListadoEmisionComponent implements OnChanges {
           }));
           this.catalogosSesiones.usarContexto({
             ...contexto, asistencias,
-            participantes: [...new Map(participantes.map(p => [p.id_participacion, {
-              id: p.id_participacion, nombres: p.nombre_completo || 'Nombre no disponible', apellidos: '',
+            participantes: [...new Map((contexto.incluirCandidatos ? respuesta.participantes : participantes).map(p => [p.id_participacion, {
+              id: p.id_participacion, nombres: p.nombre_completo || 'Nombre no disponible', apellidos: '', fechaInscripcion: p.fecha_inscripcion,
             }])).values()],
           });
           return asistencias;
@@ -449,7 +449,7 @@ export class ListadoEmisionComponent implements OnChanges {
       if (nombre === 'id_actividad') return this.mostrar(registro['actividadNombre']);
       if (nombre === 'id_participacion') return this.mostrar(registro['participanteNombre']);
       if (nombre === 'id_actividad_sesion') return this.mostrar(registro['sesionNombre']);
-      if (nombre === 'fecha') {
+      if (nombre === 'fecha' || nombre === 'fecha_inscripcion') {
         const fecha = String(registro[nombre] ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/);
         if (fecha) return `${fecha[3]}/${fecha[2]}/${fecha[1]}`;
       }

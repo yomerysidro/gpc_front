@@ -19,9 +19,10 @@ export const normalizarBusqueda = (valor: string): string => valor.normalize('NF
 export interface DatosAsistenciaContextual {
   actividad: { id_actividad: number; nombre: string };
   sesiones: readonly RegistroEmision[];
-  participantes: readonly { id: number; nombres: string; apellidos: string }[];
+  participantes: readonly { id: number; nombres: string; apellidos: string; fechaInscripcion?: string | null }[];
   asistencias: readonly RegistroEmision[];
   soloSeleccionados?: boolean;
+  incluirCandidatos?: boolean;
 }
 
 /** Modelo de presentación exclusivo de estas pestañas. Las claves CRUD no cambian. */
@@ -45,7 +46,7 @@ export class SesionesAsistenciaListado {
   usarContexto(datos: DatosAsistenciaContextual): void {
     this.actividades = [datos.actividad];
     this.sesiones = datos.sesiones.filter(s => Number(s['id_actividad']) === datos.actividad.id_actividad);
-    this.participaciones = datos.participantes.map(p => ({ id_participacion: p.id, id_actividad: datos.actividad.id_actividad }));
+    this.participaciones = datos.participantes.map(p => ({ id_participacion: p.id, id_actividad: datos.actividad.id_actividad, fecha_inscripcion: p.fechaInscripcion ?? null }));
     this.nombresParticipaciones = new Map(datos.participantes.map(p => [p.id, [p.nombres, p.apellidos].filter(Boolean).join(' ')]));
     this.asistencias = datos.asistencias;
     this.soloSeleccionados = datos.soloSeleccionados === true;
@@ -99,7 +100,7 @@ export class SesionesAsistenciaListado {
     return this.participaciones.filter(fila => String(fila['id_actividad']) === actividad).flatMap(participacion => {
       const marcas = this.asistencias.filter(marca => Number(marca['id_participacion']) === Number(participacion['id_participacion']) && String(marca['id_actividad_sesion']) === sesion);
       if (this.soloSeleccionados && !marcas.some(marca => marca['id_asistencia'] != null)) return [];
-      return [{ ...marcas[0], id_participacion: participacion['id_participacion'], id_actividad_sesion: Number(sesion), actividadFiltro: Number(actividad),
+      return [{ ...marcas[0], fecha_inscripcion: participacion['fecha_inscripcion'], id_participacion: participacion['id_participacion'], id_actividad_sesion: Number(sesion), actividadFiltro: Number(actividad),
         sesionNombre: this.sesiones.find(fila => String(fila['id_actividad_sesion']) === sesion)?.['nombre'] ?? 'Nombre no disponible',
         actividadNombre: this.actividades.find(fila => String(fila['id_actividad']) === actividad)?.['nombre'] ?? 'Nombre no disponible',
         participanteNombre: this.nombresParticipaciones.get(Number(participacion['id_participacion'])) || this.nombres.get(Number(participacion['id_persona'])) || 'Nombre no disponible', duplicada: marcas.length > 1 }];

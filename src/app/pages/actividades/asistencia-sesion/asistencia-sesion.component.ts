@@ -77,17 +77,20 @@ export class AsistenciaSesionComponent {
         if (actividad.id_actividad !== this.actividadId || Number(sesion.id_actividad) !== this.actividadId || Number(sesion.id_actividad_sesion) !== this.sesionId) throw new Error('No se pudo verificar la sesión de esta actividad.');
         this.sesion.set(sesion as SesionCertificacion & RegistroEmision);
         this.estadoInicial.set({ campo: '', valor: '', pagina: 1, filtrosSesiones: { ...FILTROS_SESIONES_VACIOS, actividad: String(this.actividadId), sesion: String(this.sesionId) } });
+        const incluirCandidatos = !this.soloLectura();
         return forkJoin({
-          seleccion: this.api.participantesSesion(this.sesionId),
+          seleccion: this.api.participantesSesion(this.sesionId, incluirCandidatos),
           ponentes: this.consultarPonentes(),
         }).pipe(map(({ seleccion, ponentes }) => {
-          const filas = this.verificarSeleccion(seleccion).filter(p => p.seleccionado && p.id_asistencia != null);
-          const participantes = [...new Map(filas.map(p => [p.id_participacion, p])).values()];
+          const participantesSesion = this.verificarSeleccion(seleccion);
+          const filas = participantesSesion.filter(p => p.seleccionado && p.id_asistencia != null);
+          const participantes = [...new Map((incluirCandidatos ? participantesSesion : filas).map(p => [p.id_participacion, p])).values()];
           this.datos.set({
             actividad: { id_actividad: actividad.id_actividad, nombre: actividad.nombre },
             sesiones: [sesion as unknown as RegistroEmision],
-            soloSeleccionados: true,
-            participantes: participantes.map(p => ({ id: p.id_participacion, nombres: p.nombre_completo || 'Nombre no disponible', apellidos: '' })),
+            soloSeleccionados: !incluirCandidatos,
+            incluirCandidatos,
+            participantes: participantes.map(p => ({ id: p.id_participacion, nombres: p.nombre_completo || 'Nombre no disponible', apellidos: '', fechaInscripcion: p.fecha_inscripcion })),
             asistencias: filas.map(p => ({
               id_participacion: p.id_participacion, id_actividad_sesion: this.sesionId, id_asistencia: p.id_asistencia,
               estado: p.estado_asistencia, hora_entrada: p.hora_entrada, hora_salida: p.hora_salida,

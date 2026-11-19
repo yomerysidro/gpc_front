@@ -8,6 +8,7 @@ export interface ContadoresSesion {
 export interface ParticipanteSesion {
   id_participacion: number;
   nombre_completo: string;
+  fecha_inscripcion?: string | null;
   seleccionado: boolean;
   id_asistencia: number | null;
   estado_asistencia: string | null;
