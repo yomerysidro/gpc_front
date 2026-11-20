@@ -8,7 +8,6 @@ import { inicioGuard } from './core/guards/inicio.guard';
 import { accesoGrupoGuard, permissionGuard } from './core/guards/permission.guard';
 import { PrivateLayoutComponent } from './components/layouts/private-layout/private-layout.component';
 import { LoginComponent } from './pages/autenticacion/login/login.component';
-import { RecuperarPasswordComponent } from './pages/autenticacion/recuperar-password/recuperar-password.component';
 import { RestablecerPasswordComponent } from './pages/autenticacion/restablecer-password/restablecer-password.component';
 import { AccesoDenegadoComponent } from './pages/autenticacion/acceso-denegado/acceso-denegado.component';
 import { HomeComponent } from './pages/home/home.component';
@@ -75,7 +74,7 @@ export const routes: Routes = [
   { path: '', pathMatch: 'full', canActivate: [inicioGuard], children: [] },
 
   { path: 'login', component: LoginComponent, canActivate: [guestGuard] },
-  { path: 'recuperar-password', component: RecuperarPasswordComponent, canActivate: [guestGuard] },
+  { path: 'recuperar-password', pathMatch: 'full', redirectTo: '/login' },
   // El enlace del correo apunta aquí (FRONTEND_URL/reset-password?token=…&email=…).
   { path: 'reset-password', component: RestablecerPasswordComponent },
   { path: 'acceso-denegado', component: AccesoDenegadoComponent },
