@@ -75,6 +75,7 @@ export class DetalleActividadComponent {
           ...this.capacidadSesion(id), ...resultado.sesion, finalizada: true, puede_finalizarse: false,
           motivos_bloqueo_finalizacion: [], puede_certificarse: false, motivos_bloqueo_certificacion: [],
         });
+        this.liberarFinalizacion(id);
         return this.sesionesApi.estadoSesionCertificacion(id);
       }),
       tap(estado => {
@@ -84,13 +85,17 @@ export class DetalleActividadComponent {
         }
         this.aplicarEstadoSesion(id, estado);
       }),
-      finalize(() => this.finalizandoSesion.set(null)),
+      finalize(() => this.liberarFinalizacion(id)),
     ).subscribe({
       error: error => this.erroresCertificacion.update(errores => ({
         ...errores, [id]: [error.mensaje || error.message, ...Object.values(error.errores ?? {}).flat()].filter(Boolean).join(' '),
       })),
     }));
   }
+  private liberarFinalizacion(id: number): void {
+    if (this.finalizandoSesion() === id) this.finalizandoSesion.set(null);
+  }
+
   private aplicarEstadoSesion(id: number, estado: SesionCertificacion): void {
     const nombreEstado = estado.finalizada === true ? 'Finalizada' : estado.estado;
     this.capacidadesSesiones.update(mapa => new Map(mapa).set(id, estado));
