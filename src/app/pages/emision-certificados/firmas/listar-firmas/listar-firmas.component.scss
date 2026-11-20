@@ -22,6 +22,8 @@ td, th, p { overflow-wrap: anywhere; }
 .encender .material-symbols-outlined { color: #b42318; }
 .apagar .material-symbols-outlined { color: #21643b; }
 .solo-lectura { color: #657587; font-size: .8rem; }
+#ayuda-imagen-firma { display: block; margin: .4rem 0 .8rem; }
+.vista-firma { display: block; max-width: min(100%, 18rem); max-height: 6rem; margin: .75rem 0; }
 .aviso { color: #21643b; }
 button:disabled { opacity: .55; cursor: not-allowed; }
 button:focus-visible, input:focus-visible { outline: 2px solid #075a9b; outline-offset: 2px; }

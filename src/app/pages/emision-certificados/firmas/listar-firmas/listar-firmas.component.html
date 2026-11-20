@@ -10,26 +10,51 @@
       <div class="acciones"><button type="button" class="btn confirmar" [disabled]="ocupada()" (click)="deshabilitar()">Confirmar deshabilitación</button><button type="button" class="btn" [disabled]="ocupada()" (click)="cancelarBaja()">Cancelar</button></div>
     </section>
   }
+  @if (firmanteImagen(); as t) {
+    <section class="confirmacion card" aria-labelledby="titulo-imagen-firma">
+      <h2 id="titulo-imagen-firma">{{ t.tiene_imagen_firma ? 'Cambiar imagen de firma' : 'Subir imagen de firma' }}</h2>
+      <p>{{ t.nombre }} · {{ t.cargo }}</p>
+      <label for="imagen-firma">Archivo de imagen</label>
+      <input #archivoFirma id="imagen-firma" type="file" accept="image/png,image/jpeg" aria-describedby="ayuda-imagen-firma"
+        [disabled]="ocupada()" (change)="elegirImagen(archivoFirma)" />
+      <small id="ayuda-imagen-firma">PNG o JPEG. Máximo 1 MB y 1600 × 800 píxeles.</small>
+      @if (vistaFirma(); as vista) {
+        <img class="vista-firma" [src]="vista" alt="Vista previa de la imagen de firma" />
+      }
+      <div class="acciones">
+        <button type="button" class="btn confirmar" [disabled]="ocupada() || !vistaFirma()" (click)="guardarImagen()">
+          {{ t.habilitado_firma_certificados ? 'Guardar imagen' : 'Habilitar y guardar imagen' }}
+        </button>
+        <button type="button" class="btn" [disabled]="ocupada()" (click)="cancelarImagen()">Cancelar</button>
+      </div>
+    </section>
+  }
   @if (aviso()) { <p role="status" class="aviso">{{ aviso() }}</p> }
   @if (error()) { <p role="alert">{{ error() }}</p> }
   <section class="card" aria-label="Trabajadores municipales" [attr.aria-busy]="ocupada()">
     <div class="busqueda-firmantes"><label for="buscar-funcionario">Buscar por nombre, cargo o área</label><input id="buscar-funcionario" class="input" type="search" placeholder="Nombre, cargo o área" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" /></div>
     @if (cargando()) { <p role="status">Consultando trabajadores...</p> }
-    @if (guardando() !== null) { <p role="status">Guardando habilitación...</p> }
+    @if (guardando() !== null) { <p role="status">Guardando cambios...</p> }
     <table class="table tabla-firmantes">
-      <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th scope="col">Nombre completo</th><th scope="col">Cargo</th><th scope="col">Área municipal</th><th scope="col" class="col-centro">Estado laboral</th><th scope="col">Habilitación de firma</th><th scope="col" class="col-centro">Acciones</th></tr></thead>
+      <thead><tr><th scope="col" class="col-centro col-numero">N.º</th><th scope="col">Nombre completo</th><th scope="col">Cargo</th><th scope="col">Área municipal</th><th scope="col" class="col-centro">Estado laboral</th><th scope="col">Habilitación de firma</th><th scope="col">Imagen de firma</th><th scope="col" class="col-centro">Acciones</th></tr></thead>
       <tbody>
         @for (t of filtrados(); track t.id_persona_trabajador; let numeroVisual = $index) {
-          <tr><td class="col-centro col-numero" data-label="N.º">{{ numeroVisual + 1 }}</td><td data-label="Nombre completo">{{ t.nombre }}</td><td data-label="Cargo">{{ t.cargo || 'Cargo no informado' }}</td><td data-label="Área municipal">{{ t.area || 'Área no informada' }}</td><td data-label="Estado laboral" class="col-centro"><span class="estado" [class.activo]="t.vigente">{{ t.vigente ? 'Activo' : 'Inactivo' }}</span></td><td data-label="Habilitación de firma"><span class="estado" [class.habilitado]="t.habilitado_firma_certificados">{{ t.habilitado_firma_certificados ? 'Habilitado' : 'No habilitado' }}</span></td><td data-label="Acciones" class="col-centro">
+          <tr><td class="col-centro col-numero" data-label="N.º">{{ numeroVisual + 1 }}</td><td data-label="Nombre completo">{{ t.nombre }}</td><td data-label="Cargo">{{ t.cargo || 'Cargo no informado' }}</td><td data-label="Área municipal">{{ t.area || 'Área no informada' }}</td><td data-label="Estado laboral" class="col-centro"><span class="estado" [class.activo]="t.vigente">{{ t.vigente ? 'Activo' : 'Inactivo' }}</span></td><td data-label="Habilitación de firma"><span class="estado" [class.habilitado]="t.habilitado_firma_certificados">{{ t.habilitado_firma_certificados ? 'Habilitado' : 'No habilitado' }}</span></td><td data-label="Imagen de firma">
+            @if (puedeAdministrar() && puedeHabilitar(t)) {
+              <button type="button" class="btn" [disabled]="ocupada() || !!confirmarBaja() || !!firmanteImagen()" (click)="abrirImagen(t)">
+                {{ t.tiene_imagen_firma ? 'Cambiar imagen' : 'Subir imagen' }}
+              </button>
+            } @else { {{ t.tiene_imagen_firma ? 'Registrada' : 'Pendiente' }} }
+          </td><td data-label="Acciones" class="col-centro">
             @if (puedeAdministrar()) {
               @if (t.habilitado_firma_certificados) {
-                <button type="button" class="btn interruptor apagar" [disabled]="ocupada() || !!confirmarBaja()" (click)="solicitarBaja(t)" aria-label="Deshabilitar firmante" title="Deshabilitar firmante"><span class="material-symbols-outlined" aria-hidden="true">toggle_on</span></button>
+                <button type="button" class="btn interruptor apagar" [disabled]="ocupada() || !!confirmarBaja() || !!firmanteImagen()" (click)="solicitarBaja(t)" aria-label="Deshabilitar firmante" title="Deshabilitar firmante"><span class="material-symbols-outlined" aria-hidden="true">toggle_on</span></button>
               } @else {
-                <button type="button" class="btn interruptor encender" [disabled]="ocupada() || !!confirmarBaja() || !puedeHabilitar(t)" (click)="habilitar(t)" aria-label="Habilitar firmante" title="Habilitar firmante"><span class="material-symbols-outlined" aria-hidden="true">toggle_off</span></button>
+                <button type="button" class="btn interruptor encender" [disabled]="ocupada() || !!confirmarBaja() || !!firmanteImagen() || !puedeHabilitar(t)" (click)="habilitar(t)" aria-label="Habilitar firmante" title="Habilitar firmante"><span class="material-symbols-outlined" aria-hidden="true">toggle_off</span></button>
               }
             } @else { <span class="solo-lectura">Solo lectura</span> }
           </td></tr>
-        } @empty { @if (!cargando() && !error()) { <tr><td colspan="7">No hay trabajadores con estos criterios.</td></tr> } }
+        } @empty { @if (!cargando() && !error()) { <tr><td colspan="8">No hay trabajadores con estos criterios.</td></tr> } }
       </tbody>
     </table>
   </section>

@@ -11,4 +11,5 @@ export interface TrabajadorMunicipal {
   disponible_asignacion: boolean;
   elegible_laboralmente: boolean;
   habilitado_firma_certificados: boolean;
+  tiene_imagen_firma?: boolean;
 }

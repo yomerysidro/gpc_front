@@ -42,11 +42,36 @@ describe('Habilitación persistida de firmantes municipales', () => {
     expect(r.request.body).toEqual(trabajador.habilitado_firma_certificados ? { id_persona_trabajador: trabajador.id_persona_trabajador } : null);
     r.flush({ success: true, data: { completada: true, persistido: true, reintento, funcionario: trabajador } });
   }
-  it('consulta los cuatro vínculos reales y las siete columnas sin habilitar automáticamente', () => {
+  it('consulta los cuatro vínculos reales y las ocho columnas sin habilitar automáticamente', () => {
     cargar(); expect(vista().querySelector('h1')?.textContent).toBe('Gestión de firmantes municipales');
     expect(vista().querySelectorAll('tbody tr').length).toBe(4);
-    expect(Array.from(vista().querySelectorAll('th')).map(t => t.textContent)).toEqual(['N.º', 'Nombre completo', 'Cargo', 'Área municipal', 'Estado laboral', 'Habilitación de firma', 'Acciones']);
+    expect(Array.from(vista().querySelectorAll('th')).map(t => t.textContent)).toEqual(['N.º', 'Nombre completo', 'Cargo', 'Área municipal', 'Estado laboral', 'Habilitación de firma', 'Imagen de firma', 'Acciones']);
     expect(vista().querySelectorAll('[title="Habilitar firmante"]').length).toBe(4); http.expectNone(() => true);
+  });
+  it('sube la imagen por archivo al habilitar al trabajador seleccionado', () => {
+    cargar([maria]);
+    boton('Subir imagen').click();
+    f.detectChanges();
+    const input = vista().querySelector<HTMLInputElement>('#imagen-firma')!;
+    const archivos = new DataTransfer();
+    archivos.items.add(new File(['imagen de prueba'], 'firma.png', { type: 'image/png' }));
+    input.files = archivos.files;
+    input.dispatchEvent(new Event('change'));
+    f.detectChanges();
+    expect(vista().querySelector('img.vista-firma')?.getAttribute('src')).toMatch(/^blob:/);
+
+    boton('Habilitar y guardar imagen').click();
+    const solicitud = http.expectOne(base + '/habilitar');
+    expect(solicitud.request.method).toBe('POST');
+    expect(solicitud.request.body instanceof FormData).toBeTrue();
+    expect(solicitud.request.body.get('id_persona_trabajador')).toBe('2');
+    expect(solicitud.request.body.get('imagen_firma').name).toBe('firma.png');
+    const registrada = { ...habilitada, tiene_imagen_firma: true };
+    solicitud.flush({ success: true, data: { completada: true, persistido: true, funcionario: registrada } });
+
+    cargar([registrada]);
+    expect(vista().querySelector('img.vista-firma')).toBeNull();
+    expect(boton('Cambiar imagen')).toBeDefined();
   });
   it('mantiene ambas Maria por ID laboral y muestra cargo y área independientes', () => {
     cargar(); f.componentInstance.busqueda.set('maria'); f.detectChanges();
