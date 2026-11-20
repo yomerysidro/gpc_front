@@ -69,7 +69,7 @@
     </div>
   }
 </section>
-<app-dialogo #modalSesion class="modal-sesion-detalle" [titulo]="sesionEditando() ? 'Editar sesión' : 'Registrar sesión'" [mostrarCerrar]="true" [cierreControlado]="true" (cierreSolicitado)="cerrarSesion()" (cerrado)="formularioSesion.set(false)">
+<app-dialogo #modalSesion ancho="amplio" class="modal-sesion-detalle" [titulo]="sesionEditando() ? 'Editar sesión' : 'Registrar sesión'" [mostrarCerrar]="true" [cierreControlado]="true" (cierreSolicitado)="cerrarSesion()" (cerrado)="formularioSesion.set(false)">
   @if (formularioSesion()) { <p>Actividad: <strong>{{ actividad()?.nombre }}</strong></p><app-formulario-emision #editorSesion recurso="activity-session" [id]="sesionEditando()" [enDialogo]="true" [actividadContexto]="actividadContexto()" (guardado)="sesionGuardada()" (cancelar)="cerrarSesion()" /> }
 </app-dialogo>
 <app-dialogo #modalDetalle class="modal-detalle-sesion" titulo="Detalle de sesión" [mostrarCerrar]="true">

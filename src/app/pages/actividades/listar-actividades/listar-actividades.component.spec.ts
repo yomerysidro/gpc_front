@@ -308,6 +308,8 @@ describe('Pantalla de Actividades', () => {
     respuesta.complete();
     await fixture.whenStable();
     expect($('tbody .badge-exito')).toBeNull();
+    expect($('tbody .badge')).toBeNull();
+    await escribir('#filtrar-estado', 'Cerrada');
     expect($('tbody .badge').textContent).toBe('Cerrada');
     await abrirPanel();
     expect($<HTMLButtonElement>('button[title="Cerrar actividad"]').disabled).toBeTrue();
@@ -361,7 +363,7 @@ describe('Pantalla de Actividades', () => {
   });
 
   it('ofrece el enlace de detalle y el engranaje por fila y conserva las seis tarjetas de gestión', async () => {
-    expect($('#filtrar-tipo')).toBeNull(); expect($('#filtrar-estado')).toBeNull();
+    expect($('#filtrar-tipo')).toBeNull(); expect($<HTMLSelectElement>('#filtrar-estado').value).toBe('Activa');
     expect($('#buscar-actividad')).not.toBeNull(); expect($('#filtrar-area')).not.toBeNull();
     expect($('tbody .nombre-actividad').textContent?.trim()).toBe(ACTIVIDAD.nombre);
     expect($('tbody .badge').textContent?.trim()).toBe('Activa');

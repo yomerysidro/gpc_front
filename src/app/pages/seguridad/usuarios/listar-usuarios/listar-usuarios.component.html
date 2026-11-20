@@ -1,10 +1,10 @@
 <section class="usuarios">
   <div class="encabezado">
     <app-page-title title="Gestión de Usuarios" />
-    <a *appHasPermission="'usuarios.crear'" routerLink="/usuarios/nuevo" class="btn btn-primary">
+    <button *appHasPermission="'usuarios.crear'" type="button" (click)="abrirNuevo(modalUsuario)" class="btn btn-primary">
       <span class="material-symbols-outlined" aria-hidden="true">add</span>
       Nuevo usuario
-    </a>
+    </button>
   </div>
 
   <div role="status">
@@ -205,3 +205,10 @@
     ? 'Podrá volver a iniciar sesión con su correo y su contraseña.'
     : 'No podrá iniciar sesión hasta que su cuenta se vuelva a activar.'"
   [confirmar]="activarConfirmacion() ? 'Activar' : 'Desactivar'" />
+
+<app-dialogo #modalUsuario titulo="Nuevo usuario" ancho="amplio" [mostrarCerrar]="true" [cierreControlado]="true"
+  (cierreSolicitado)="!editorUsuario()?.ocupado() && modalUsuario.cerrar()" (cerrado)="nuevoUsuario.set(false)">
+  @if (nuevoUsuario()) {
+    <app-formulario-usuario #editorUsuario [enDialogo]="true" (cancelado)="modalUsuario.cerrar()" (guardado)="usuarioCreado($event, modalUsuario)" />
+  }
+</app-dialogo>

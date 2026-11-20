@@ -25,6 +25,8 @@ const MENSAJES: Record<Campo, Partial<Record<string, string>>> = {
   password_confirmation: {},
 };
 
+import { input, output } from '@angular/core';
+
 @Component({
   selector: 'app-formulario-usuario',
   standalone: true,
@@ -33,6 +35,10 @@ const MENSAJES: Record<Campo, Partial<Record<string, string>>> = {
   styleUrl: './formulario-usuario.component.scss'
 })
 export class FormularioUsuarioComponent {
+  readonly enDialogo = input(false);
+  readonly cancelado = output<void>();
+  readonly guardado = output<AvisoUsuarios>();
+  ocupado(): boolean { return this.enviando(); }
   private readonly auth = inject(AuthService);
   private readonly usuariosService = inject(UsuariosService);
   private readonly rolesService = inject(RolesService);
@@ -151,7 +157,8 @@ export class FormularioUsuarioComponent {
         const aviso: AvisoUsuarios = this.modoEdicion
           ? { tipo: 'exito', texto: `Se guardaron los cambios de ${this.usuario()?.nombre ?? 'el usuario'}.` }
           : { tipo: 'exito', texto: 'Usuario creado. Se envió un enlace a su correo para crear su contraseña.' };
-        void this.router.navigate(['/usuarios'], { state: { aviso } });
+        if (this.enDialogo()) this.guardado.emit(aviso);
+        else void this.router.navigate(['/usuarios'], { state: { aviso } });
       },
       error: (error: ErrorApi) => {
         this.enviando.set(false);

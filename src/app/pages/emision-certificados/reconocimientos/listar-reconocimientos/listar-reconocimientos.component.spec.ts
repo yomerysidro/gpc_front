@@ -67,7 +67,8 @@ describe('Reconocimientos y relaciones autorizadas de Gestión', () => {
     expect(tarjeta.textContent).toContain('Certificado #9 · Activo');
     expect(tarjeta.textContent).toContain('CODIGO-LARAVEL');
     expect(tarjeta.querySelector('iframe, a[download]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('a[href="/certificaciones/reconocimientos/nuevo"]').textContent).toContain('Registrar reconocimiento');
+    expect(Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .some(boton => boton.textContent?.includes('Registrar reconocimiento'))).toBeTrue();
     http.expectNone(req => req.url.includes('/firmas/') || req.method !== 'GET');
   });
 

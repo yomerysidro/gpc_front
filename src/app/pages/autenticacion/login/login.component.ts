@@ -167,6 +167,6 @@ export class LoginComponent {
 
     return returnUrl?.startsWith('/') && !returnUrl.startsWith('//')
       ? returnUrl
-      : this.auth.rutaInicial();
+      : '/inicio';
   }
 }

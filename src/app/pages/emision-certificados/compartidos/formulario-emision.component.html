@@ -11,11 +11,18 @@
   <form [formGroup]="form()" (ngSubmit)="guardar()" [attr.aria-busy]="enviando()">
     <fieldset [disabled]="enviando()" class="card">
       <legend [class.sr-only]="enDialogo()">{{ id() === null ? 'Nuevo registro' : 'Editar registro #' + id() }}</legend>
-      <div class="grid">
+      <div class="grid" [class.grid-compacta]="enDialogo() && recurso() === 'activity-session'">
         @for (campo of config.campos; track campo.nombre) {
           <div class="form-field">
             <label [for]="recurso() + '-' + campo.nombre">{{ campo.titulo }}{{ opcional(campo) ? ' (opcional)' : '' }}</label>
-            @if (clasificacion() && recurso() === 'tipos-certificado' && campo.nombre === 'estado') {
+            @if (recurso() === 'activity-session' && campo.nombre === 'estado' && id() === null) {
+              <div class="estado-sesion">
+                <input type="checkbox" role="switch" [id]="recurso() + '-' + campo.nombre"
+                  [checked]="form().controls[campo.nombre].value === 'Activo'"
+                  (change)="form().controls[campo.nombre].setValue($any($event.target).checked ? 'Activo' : 'Inactivo')" />
+                <span>{{ form().controls[campo.nombre].value }}</span>
+              </div>
+            } @else if (clasificacion() && recurso() === 'tipos-certificado' && campo.nombre === 'estado') {
               <select class="input" [id]="recurso() + '-' + campo.nombre" [formControlName]="campo.nombre"
                 [attr.aria-invalid]="!!errorCampo(campo)" [attr.aria-describedby]="recurso() + '-' + campo.nombre + '-error'">
                 @for (estado of estadosClasificaciones; track estado.valor) { <option [value]="estado.valor">{{ estado.etiqueta }}</option> }

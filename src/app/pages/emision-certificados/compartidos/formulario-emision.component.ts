@@ -121,6 +121,7 @@ export class FormularioEmisionComponent implements OnChanges {
         });
       }
     }
+    if (this.recurso() === 'activity-session' && this.id() === null) controles['estado'].setValue('Activo');
     if (this.clasificacion() && this.recurso() === 'tipos-certificado') {
       controles['estado'].setValue('1');
       controles['estado'].addValidators(Validators.pattern(/^[01]$/));

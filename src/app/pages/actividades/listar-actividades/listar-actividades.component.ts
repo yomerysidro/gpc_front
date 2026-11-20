@@ -107,7 +107,7 @@ export class ListarActividadesComponent {
     });
     return [...tipos.values()];
   });
-  protected readonly filtros = signal<FiltrosActividad>({ nombre: '', area: '', tipo: '', estado: '' });
+  protected readonly filtros = signal<FiltrosActividad>({ nombre: '', area: '', tipo: '', estado: 'Activa' });
   protected readonly filtradas = computed(() => filtrarActividades(this.actividades(), this.filtros()));
   protected readonly estados = ESTADOS_ACTIVIDAD;
   protected readonly porPagina = signal(10);
@@ -157,7 +157,7 @@ export class ListarActividadesComponent {
     const parametros = this.route?.snapshot.queryParamMap;
     if (parametros) {
       this.filtros.set({ nombre: parametros.get('nombre') ?? '', area: parametros.get('area') ?? '',
-        tipo: parametros.get('tipo') ?? '', estado: parametros.get('estado') ?? '' });
+        tipo: parametros.get('tipo') ?? '', estado: parametros.get('estado') ?? 'Activa' });
       const pagina = Number(parametros.get('pagina'));
       const tamano = Number(parametros.get('tamano'));
       if (Number.isSafeInteger(pagina) && pagina > 0) this.pagina.set(pagina);
@@ -243,7 +243,7 @@ export class ListarActividadesComponent {
   }
 
   protected limpiarFiltros(): void {
-    this.filtros.set({ nombre: '', area: '', tipo: '', estado: '' });
+    this.filtros.set({ nombre: '', area: '', tipo: '', estado: 'Activa' });
     this.pagina.set(1);
   }
 

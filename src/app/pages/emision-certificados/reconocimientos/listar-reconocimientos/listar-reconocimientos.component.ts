@@ -1,4 +1,4 @@
-import { afterNextRender, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -11,13 +11,36 @@ import { PageTitleComponent } from '../../../../shared/components/page-title/pag
 import { ReconocimientoCardComponent } from '../components/reconocimiento-card/reconocimiento-card.component';
 import { CertificadoReconocimientoVista, RelacionReconocimiento } from '../reconocimiento-vista.interface';
 
+import { DialogoComponent } from '../../../../shared/components/dialogo/dialogo.component';
+import { FormularioEmisionComponent } from '../../compartidos/formulario-emision.component';
+
 @Component({
   selector: 'app-listar-reconocimientos', standalone: true,
-  imports: [RouterLink, ReactiveFormsModule, PageTitleComponent, ReconocimientoCardComponent],
+  imports: [RouterLink, ReactiveFormsModule, PageTitleComponent, ReconocimientoCardComponent, DialogoComponent, FormularioEmisionComponent],
   templateUrl: './listar-reconocimientos.component.html',
   styleUrls: ['../../compartidos/emision.scss', './listar-reconocimientos.component.scss'],
 })
 export class ListarReconocimientosComponent {
+  protected readonly registroAbierto = signal(false);
+  protected readonly modalRegistro = viewChild.required<DialogoComponent>('modalRegistro');
+  protected readonly editorRegistro = viewChild<FormularioEmisionComponent>('editorRegistro');
+
+  protected abrirRegistro(): void {
+    this.registroAbierto.set(true);
+    this.modalRegistro().abrir();
+  }
+
+  protected cerrarRegistro(): void {
+    if (!this.editorRegistro()?.enviando()) this.modalRegistro().cerrar();
+  }
+
+  protected registroGuardado(): void {
+    this.modalRegistro().cerrar();
+    this.mensaje.set('Reconocimiento registrado correctamente.');
+    this.cargarEstados();
+    this.cargar();
+  }
+
   private readonly api = inject(EmisionCertificadosService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly auth = inject(AuthService);

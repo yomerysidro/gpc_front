@@ -60,3 +60,14 @@
   .card { padding: 1rem; }
   .icono-pagina { display: none; }
 }
+
+.datos-decision {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  margin: 0 0 1rem;
+  dt { font-weight: 600; }
+  dd { margin: .25rem 0 0; overflow-wrap: anywhere; }
+}
+
+@media (min-width: 760px) { .detalle { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
