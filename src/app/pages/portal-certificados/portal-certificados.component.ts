@@ -1,4 +1,4 @@
-import { afterNextRender, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -6,11 +6,12 @@ import { catchError, distinctUntilChanged, EMPTY, filter, from, map, mergeMap, S
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CertificadoPublico, FORMATO_CODIGO_PUBLICO, PortalCertificadosService } from '../../core/services/emision-certificados/portal-certificados.service';
 import { ArchivoPdf } from '../../core/interfaces/emision-certificados/documento-digital.interface';
+import { DialogoComponent } from '../../shared/components/dialogo/dialogo.component';
 import { PdfContinuoComponent } from '../emision-certificados/compartidos/pdf-continuo.component';
 
 @Component({
   selector: 'app-portal-certificados', standalone: true,
-  imports: [ReactiveFormsModule, DatePipe, PdfContinuoComponent, RouterLink],
+  imports: [ReactiveFormsModule, DatePipe, PdfContinuoComponent, RouterLink, DialogoComponent],
   templateUrl: './portal-certificados.component.html',
   styleUrl: './portal-certificados.component.scss',
 })
@@ -22,6 +23,7 @@ export class PortalCertificadosComponent {
   private readonly codigoInicial = this.route?.snapshot.queryParamMap.get('codigo') ?? null;
   private consulta?: Subscription;
   private descarga?: Subscription;
+  private readonly dialogoCertificado = viewChild<DialogoComponent>('dialogoCertificado');
   protected readonly dni = this.fb.control('', [Validators.required, Validators.pattern(/^[0-9]{8}$/)]);
   protected readonly codigo = this.fb.control('', [Validators.required, Validators.pattern(FORMATO_CODIGO_PUBLICO)]);
   protected readonly modo = signal<'dni' | 'codigo'>('dni');
@@ -128,7 +130,12 @@ export class PortalCertificadosComponent {
     const r = certificado ?? this.resultado();
     if (!r || r.estado !== 'disponible' || !r.urlPdf || this.cargandoPdf()) return;
     this.limpiarPdf();
-    this.resultado.set(r); this.detalle.set(true); this.errorPdf.set(''); this.cargandoPdf.set(true);
+    this.resultado.set(r);
+    if (!this.detalle()) {
+      this.detalle.set(true);
+      this.dialogoCertificado()?.abrir();
+    }
+    this.cargandoPdf.set(true);
     this.descarga = this.api.archivo(r).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: archivo => {
         this.archivo.set(archivo); this.urlDescarga.set(URL.createObjectURL(archivo.blob)); this.cargandoPdf.set(false);
@@ -147,7 +154,16 @@ export class PortalCertificadosComponent {
     });
   }
 
-  protected volver(): void { this.limpiarPdf(); this.detalle.set(false); if (this.modo() === 'dni') this.resultado.set(null); }
+  protected volver(): void {
+    this.cerrarDetalle();
+    if (this.modo() === 'dni') this.resultado.set(null);
+  }
+
+  private cerrarDetalle(): void {
+    if (this.detalle()) this.dialogoCertificado()?.cerrar();
+    this.detalle.set(false);
+    this.limpiarPdf();
+  }
   protected falloVisor(): void { this.errorPdf.set('No se pudo visualizar el PDF. Puedes descargar el archivo autorizado.'); }
 
   private registrarReintento(estado: number | undefined, abrirPdf: boolean): void {
@@ -164,6 +180,6 @@ export class PortalCertificadosComponent {
     this.resultadosDni.set(null);
     this.reintento.set(null);
     this.codigosVerificadosDni.set(new Set());
-    this.limpiarPdf(); this.detalle.set(false);
+    this.cerrarDetalle();
   }
 }
