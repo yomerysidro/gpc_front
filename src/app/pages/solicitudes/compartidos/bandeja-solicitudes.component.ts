@@ -61,6 +61,16 @@ export class BandejaSolicitudesComponent implements OnInit {
   protected readonly pagina = signal<PaginaSolicitudes<Solicitud> | null>(null);
   protected readonly cargando = signal(false);
   protected readonly ocupado = signal(false);
+  protected readonly pestanaRevision = signal<'revision' | 'derivadas' | 'aprobadas'>('revision');
+  protected readonly pestanasRevision = [
+    { id: 'revision', titulo: 'Por revisar', icono: 'fact_check' },
+    { id: 'derivadas', titulo: 'Enviadas a Gerencia', icono: 'forward_to_inbox' },
+    { id: 'aprobadas', titulo: 'Solicitudes aprobadas', icono: 'check_circle' },
+  ] as const;
+  protected readonly estadoSeguimiento = computed(() => {
+    const pestana = this.pestanaRevision();
+    return pestana === 'derivadas' ? 'Pendiente de aprobación' : pestana === 'aprobadas' ? 'Aprobada' : null;
+  });
   protected readonly pestanaGerencia = signal<'pendientes' | 'aprobadas'>('pendientes');
   protected readonly error = signal<string | null>(null);
   protected readonly aviso = signal<string | null>(null);
@@ -105,7 +115,18 @@ export class BandejaSolicitudesComponent implements OnInit {
     if (this.bandeja() === 'propias' && estado?.['solicitudEnviada']) {
       this.aviso.set('Solicitud enviada y confirmada por Laravel.');
     }
-    if (this.bandeja() !== 'gerencia' || !this.route) this.cargar();
+    if (this.bandeja() === 'revision' && this.route) {
+      this.route.queryParamMap.pipe(
+        map(params => params.get('pestana')),
+        map(pestana => pestana === 'derivadas' || pestana === 'aprobadas' ? pestana : 'revision' as const),
+        distinctUntilChanged(), takeUntilDestroyed(this.destroyRef),
+      ).subscribe(pestana => {
+        if (this.detalle() || this.cargandoDetalle()) this.dialogo().cerrar();
+        this.pestanaRevision.set(pestana);
+        this.aviso.set(null);
+        this.limpiar();
+      });
+    } else if (this.bandeja() !== 'gerencia' || !this.route) this.cargar();
     if (this.bandeja() === 'propias' && this.api.integrado) this.api.contexto().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: contexto => this.puedeCrear.set(contexto.puedeCrear), error: error => this.error.set(mensajeSolicitudes(error)),
     });
@@ -121,6 +142,8 @@ export class BandejaSolicitudesComponent implements OnInit {
   protected cargar(numero = 1): void {
     if (!this.api.integrado) { this.pagina.set(null); this.cargando.set(false); this.error.set(null); return; }
     const filtros = this.filtros.getRawValue();
+    const seguimiento = this.estadoSeguimiento();
+    if (seguimiento) filtros.estado = seguimiento;
     if (this.bandeja() === 'gerencia') filtros.estado = this.pestanaGerencia() === 'aprobadas' ? 'Aprobada' : 'Pendiente de aprobación';
     if (filtros.desde && filtros.hasta && filtros.hasta < filtros.desde) { this.error.set('La fecha final del filtro no puede preceder a la inicial.'); return; }
     this.carga?.unsubscribe(); this.cargando.set(true); this.error.set(null);
@@ -137,6 +160,7 @@ export class BandejaSolicitudesComponent implements OnInit {
     this.cargar();
   }
   protected acciones(fila: Solicitud): readonly AccionSolicitud[] {
+    if (this.estadoSeguimiento()) return [];
     if (this.bandeja() === 'gerencia' && (this.pestanaGerencia() === 'aprobadas' || fila.estado !== 'Pendiente de aprobación')) return [];
     const permitidas: readonly AccionSolicitud[] = this.bandeja() === 'propias' ? ['Enviar'] : this.bandeja() === 'revision'
       ? ['Iniciar revisión', 'Derivar'] : ['Aprobar', 'Rechazar'];
