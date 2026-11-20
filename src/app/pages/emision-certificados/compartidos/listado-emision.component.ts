@@ -189,8 +189,8 @@ export class ListadoEmisionComponent implements OnChanges {
       this.carga?.unsubscribe();
       const contexto = this.datosContexto()!;
       const sesion = Number(contexto.sesiones[0]?.['id_actividad_sesion']);
-      const consulta: Observable<readonly RegistroEmision[]> = contexto.soloSeleccionados || contexto.incluirCandidatos
-        ? this.api.participantesSesion(sesion, contexto.incluirCandidatos).pipe(map(respuesta => {
+      const consulta: Observable<readonly RegistroEmision[]> = contexto.soloSeleccionados
+        ? this.api.participantesSesion(sesion).pipe(map(respuesta => {
           if (Number(respuesta.id_actividad) !== contexto.actividad.id_actividad || Number(respuesta.id_actividad_sesion) !== sesion) {
             throw new Error('Laravel no confirmó los participantes de esta sesión.');
           }
@@ -201,7 +201,7 @@ export class ListadoEmisionComponent implements OnChanges {
           }));
           this.catalogosSesiones.usarContexto({
             ...contexto, asistencias,
-            participantes: [...new Map((contexto.incluirCandidatos ? respuesta.participantes : participantes).map(p => [p.id_participacion, {
+            participantes: [...new Map(participantes.map(p => [p.id_participacion, {
               id: p.id_participacion, nombres: p.nombre_completo || 'Nombre no disponible', apellidos: '', fechaInscripcion: p.fecha_inscripcion,
             }])).values()],
           });

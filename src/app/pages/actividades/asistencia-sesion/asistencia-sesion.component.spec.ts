@@ -35,10 +35,10 @@ describe('Control de asistencia como página de sesión', () => {
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
-  async function iniciar(actual = sesion, filas = participantes, marcas: unknown[] = [marca], estados = false) {
+  async function iniciar(actual = sesion, filas = participantes, marcas: unknown[] = [marca], estados = false, conPonentes = true) {
     harness = await RouterTestingHarness.create(ruta);
     responder('/activity/7', actividad); responder('/activity-session/15', actual); harness.detectChanges();
-    responder('/activity-session/15/participantes' + (actual.puede_editar_asistencia ? '/candidatos' : ''), {
+    responder('/activity-session/15/participantes', {
       id_actividad: 7, id_actividad_sesion: 15,
       participantes: filas.filter(p => p.id_actividad === 7).map(p => {
         const asistencia = (marcas as typeof marca[]).find(m => m.id_participacion === p.id_participacion && m.id_actividad_sesion === 15);
@@ -50,10 +50,10 @@ describe('Control de asistencia como página de sesión', () => {
       }),
     });
     if (permisos.has('ponentes-firmantes.ver')) {
-      responder('/activity/7/sessions/15/ponentes', { id_actividad: 7, id_sesion: 15, ponentes_disponibles: [], vinculos: [
+      responder('/activity/7/sessions/15/ponentes', { id_actividad: 7, id_sesion: 15, ponentes_disponibles: [], vinculos: conPonentes ? [
         { id_actividad: 7, id_actividad_sesion: 15, id_actividad_ponente: 1, id_persona_ponente: 10, id_persona: 40, nombres: 'Ana', apellido_paterno: 'Pérez', estado_asistencia: estados ? null : undefined },
         { id_actividad: 7, id_actividad_sesion: 15, id_actividad_ponente: 2, id_persona_ponente: 11, nombres: 'Celia', estado_asistencia: estados ? 'AUSENTE' : undefined },
-      ] });
+      ] : [] });
       responder('/person-speakers/list', [{ id_persona_ponente: 10, cargo: 'Especialista' }, { id_persona_ponente: 11, cargo: 'Facilitadora' }]);
     }
     harness.detectChanges(); await harness.fixture.whenStable(); harness.detectChanges();
@@ -63,11 +63,11 @@ describe('Control de asistencia como página de sesión', () => {
     await iniciar(sesion, participantes, [marca, { ...marca, id_asistencia: 81, id_participacion: 31, id_actividad_sesion: 16, estado: 'AUSENTE' }]);
     expect(vista().querySelector('h1')!.textContent).toContain('Control de asistencia — Sesión N.º 003');
     expect(vista().textContent).toContain('Actividad municipal'); expect(vista().textContent).toContain('12/11/2026');
-    expect(Array.from(vista().querySelectorAll('.indicadores strong')).map(e => e.textContent)).toEqual(['2', '1', '0', '1']);
-    expect(vista().querySelectorAll('tbody tr').length).toBe(2);
+    expect(Array.from(vista().querySelectorAll('.indicadores strong')).map(e => e.textContent)).toEqual(['1', '1', '0', '1']);
+    expect(vista().querySelectorAll('tbody tr').length).toBe(1);
     expect(vista().querySelector('tbody')?.textContent).toContain('Ana Pérez');
     expect(vista().querySelector('tbody')?.textContent).not.toContain('Celia');
-    expect(vista().querySelector('tbody')?.textContent).toContain('Luis Ríos');
+    expect(vista().querySelector('tbody')?.textContent).not.toContain('Luis Ríos');
     expect(vista().querySelector('tbody')?.textContent).toContain('29/10/2026');
     expect(vista().querySelector('.ponentes')?.textContent).toContain('Ana Pérez');
     expect(vista().querySelector('.ponentes')?.textContent).toContain('Especialista');
@@ -78,12 +78,20 @@ describe('Control de asistencia como página de sesión', () => {
     expect(vista().textContent).not.toContain('No determinable');
     expect(vista().textContent).not.toContain('En el modal puedes');
   });
+  it('una sesión nueva muestra cero participantes y ningún ponente asignado', async () => {
+    permisos.add('ponentes-firmantes.ver');
+    await iniciar({ ...sesion, contadores: { ...sesion.contadores, participantes_sesion: 0, presentes: 0, pendientes: 0 } }, participantes, [], false, false);
+    expect(vista().querySelector('.indicadores strong')?.textContent).toBe('0');
+    expect(vista().textContent).toContain('No hay participantes inscritos en esta sesión.');
+    expect(vista().querySelector('.acciones-ponente')).toBeNull();
+    http.expectNone('/api/activity-session/15/participantes/candidatos');
+  });
   it('guarda la asistencia del ponente y mantiene separados los indicadores', async () => {
     permisos.add('ponentes-firmantes.ver');
     await iniciar(sesion, participantes, [{ ...marca, id_participacion: 31 }], true);
     const boton = vista().querySelector<HTMLButtonElement>('.acciones-ponente button')!;
     expect(vista().querySelector('tbody')?.textContent).toContain('Luis Ríos');
-    expect(vista().querySelector('tbody')?.textContent).toContain('Ana Pérez');
+    expect(vista().querySelector('tbody')?.textContent).not.toContain('Ana Pérez');
     expect(vista().querySelector('.resumen-ponentes')?.textContent).toContain('1 pendientes');
     boton.click();
     harness.detectChanges();
@@ -96,7 +104,7 @@ describe('Control de asistencia como página de sesión', () => {
     harness.detectChanges();
     expect(boton.getAttribute('aria-pressed')).toBe('true');
     expect(vista().querySelector('.resumen-ponentes')?.textContent).toContain('1 presentes · 1 ausentes · 0 pendientes');
-    expect(Array.from(vista().querySelectorAll('.indicadores strong')).map(e => e.textContent)).toEqual(['2', '1', '0', '1']);
+    expect(Array.from(vista().querySelectorAll('.indicadores strong')).map(e => e.textContent)).toEqual(['1', '1', '0', '1']);
   });
   it('guarda cambios autorizados una sola vez y conserva las horas confirmadas', async () => {
     await iniciar();
@@ -128,14 +136,14 @@ describe('Control de asistencia como página de sesión', () => {
     pulsar('Agregar a la sesión');
     const post = http.expectOne(r => r.method === 'POST' && r.url === '/api/activity-session/15/participantes');
     expect(post.request.body).toEqual({ ids_participacion: [31] });
-    const seleccionado = { ...candidato, seleccionado: true, id_asistencia: 82, estado_asistencia: 'AUSENTE' };
+    const seleccionado = { ...candidato, seleccionado: true, id_asistencia: 82, estado_asistencia: 'INSCRITO' };
     post.flush({ success: true, data: { ...datos, participantes: [seleccionado] } });
     responder('/activity/7', actividad);
     responder('/activity-session/15', sesion);
-    responder('/activity-session/15/participantes/candidatos', { ...datos, participantes: [seleccionado] });
+    responder('/activity-session/15/participantes', { ...datos, participantes: [seleccionado] });
     harness.detectChanges();
     expect(vista().querySelector('tbody')?.textContent).toContain('Luis Ríos');
-    expect(vista().querySelectorAll('.circulo-ausente[aria-pressed="true"]').length).toBe(1);
+    expect(vista().querySelector('tbody')?.textContent).toContain('Pendiente');
   });
   for (const actual of [{ ...sesion, estado: 'Finalizada', puede_editar_asistencia: false }, { ...sesion, puede_editar_asistencia: false }]) {
     it('respeta la consulta protegida: ' + actual.estado + ' sin edición', async () => {
@@ -159,9 +167,8 @@ describe('Control de asistencia como página de sesión', () => {
     expect(Array.from(vista().querySelectorAll('.circulo-asistencia') as NodeListOf<HTMLButtonElement>).every(b => b.disabled)).toBeTrue();
     http.expectNone(r => r.method !== 'GET');
   });
-  it('busca por nombre, muestra el total de inscritos y crea la marca al pulsar Presente', async () => {
-    const estado = { ...sesion, contadores: { ...sesion.contadores, participantes_sesion: 1, pendientes: 0 } };
-    await iniciar(estado);
+  it('busca por nombre, muestra el total de inscritos y registra Presente en la sesión', async () => {
+    await iniciar(sesion, participantes, [marca, { ...marca, id_asistencia: 82, id_participacion: 31, estado: 'INSCRITO' }]);
     expect(Array.from(vista().querySelectorAll('.indicadores strong')).map(e => e.textContent)).toEqual(['2', '1', '0', '1']);
     const buscador = vista().querySelector<HTMLInputElement>('#attendance-buscar-nombre')!;
     buscador.value = 'luis rios';
@@ -173,8 +180,8 @@ describe('Control de asistencia como página de sesión', () => {
 
     (vista().querySelector('.circulo-presente') as HTMLButtonElement).click();
     harness.detectChanges();
-    const peticion = http.expectOne('/api/attendance/create');
-    expect(peticion.request.body).toEqual({ id_participacion: 31, id_actividad_sesion: 15, estado: 'PRESENTE' });
+    const peticion = http.expectOne('/api/attendance/update/82');
+    expect(peticion.request.body).toEqual({ estado: 'PRESENTE' });
     peticion.flush({ success: true, data: { id_asistencia: 82 } });
     responder('/attendance/82', { ...marca, id_asistencia: 82, id_participacion: 31 });
     responder('/activity-session/15', { ...sesion, contadores: { ...sesion.contadores, presentes: 2, pendientes: 0 } });

@@ -2,6 +2,7 @@ export interface InscripcionPayload {
   id_persona: number;
   id_actividad: number;
   id_tipo_participacion: number;
+  id_actividad_sesion?: number;
   fecha_inscripcion: string;
   estado: string;
 }

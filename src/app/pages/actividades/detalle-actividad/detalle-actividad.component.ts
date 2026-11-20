@@ -131,8 +131,9 @@ export class DetalleActividadComponent {
     this.contextoInscripcion.set({ actividad, sesion: { id: Number(sesion['id_actividad_sesion']), nombre: String(sesion['nombre'] || 'Nombre no disponible') } });
   }
   protected inscripcionGuardada(): void {
-    this.avisoInscripcion.set('Inscripción confirmada en la actividad. No se ha registrado asistencia.');
+    this.avisoInscripcion.set('Inscripción confirmada en la sesión. La asistencia queda pendiente.');
     this.cargarParticipantes();
+    this.cargarSesiones();
   }
   protected readonly actividadContexto = computed(() => {
     const actividad = this.actividad();
@@ -311,7 +312,9 @@ export class DetalleActividadComponent {
     this.cargandoSesiones.set(true); this.errorSesiones.set(null);
     this.solicitudes.add(this.sesionesApi.listarTodos('activity-session').subscribe({
       next: filas => {
-        const sesiones = filas.filter(fila => Number(fila['id_actividad']) === id);
+        const sesiones = filas.filter(fila => Number(fila['id_actividad']) === id)
+          .sort((primera, segunda) => Number(primera['id_actividad_sesion']) - Number(segunda['id_actividad_sesion']))
+          .map((fila, indice): RegistroEmision => ({ ...fila, numero_sesion: indice + 1 }));
         this.sesiones.set(sesiones);
         const capacidades = new Map<number, SesionCertificacion>();
         for (const sesion of sesiones) if (typeof sesion['puede_finalizarse'] === 'boolean' || sesion['contadores']) capacidades.set(Number(sesion['id_actividad_sesion']), sesion as unknown as SesionCertificacion);

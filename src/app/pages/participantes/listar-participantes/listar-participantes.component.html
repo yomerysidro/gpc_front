@@ -97,7 +97,7 @@
 }
 <app-dialogo #dialogoFormulario class="modal-participante" [titulo]="editando() === null ? 'Inscribir participante' : 'Editar inscripción'" [mostrarCerrar]="!!contextoIntegrado()" [cierreControlado]="!!contextoIntegrado()" (cierreSolicitado)="cerrarFormulario()" (cerrado)="alCerrarFormulario()">
   @if (formularioAbierto()) {
-    @if (contextoIntegrado(); as contexto) { <p>Desde la sesión: <strong>{{ contexto.sesion.nombre }}</strong>. La inscripción corresponde a la actividad y no confirma asistencia.</p> }
+    @if (contextoIntegrado(); as contexto) { <p>Sesión: <strong>{{ contexto.sesion.nombre }}</strong>. La asistencia queda pendiente hasta registrarla.</p> }
     @if (actividadContexto(); as actividad) { <p class="contexto-actividad">Inscribir participante en: <strong>{{ actividad.nombre }}</strong></p> }
     <section class="formulario" [attr.aria-busy]="cargandoEdicion() || enviando()">
       @if (errorFormulario(); as error) { <p class="alert alert-error" role="alert">{{ error }}</p> }
