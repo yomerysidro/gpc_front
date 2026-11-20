@@ -369,7 +369,18 @@ describe('Detalle de actividad con las APIs existentes', () => {
   it('finaliza solo la sesión, consulta capacidades y conserva la actividad Activa', async () => {
     const sesion = await prepararCierre(false, true);
     const peticion = await confirmarCierre();
+    fixture.detectChanges();
+    const botones = fixture.nativeElement.querySelectorAll('.cierre-sesion button') as NodeListOf<HTMLButtonElement>;
+    expect(botones[0].getAttribute('aria-busy')).toBe('true');
+    expect(botones[1].getAttribute('aria-busy')).toBe('false');
+    expect(botones[1].disabled).toBeFalse();
+    botones[1].click();
+    http.expectNone('/api/activity-session/16');
+    http.expectNone('/api/activity-session/16/finalizar');
     peticion.flush({ success: true, data: { finalizada: true, sesion: { ...sesion, estado: 'Finalizada' }, estado_actividad: 'Activa', motivos_bloqueo: [] } });
+    fixture.detectChanges();
+    const segundoBoton = fixture.nativeElement.querySelector('.cierre-sesion button') as HTMLButtonElement;
+    expect(segundoBoton.getAttribute('aria-disabled')).toBeNull();
     responder('/activity-session/15', { ...sesion, estado: 'Finalizada', puede_finalizarse: false, puede_certificarse: false, motivos_bloqueo_finalizacion: [], motivos_bloqueo_certificacion: ['Falta relación persistente con la sesión.'] });
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('.tarjeta-sesion').textContent).toContain('Finalizada');
