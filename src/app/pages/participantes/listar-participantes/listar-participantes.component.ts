@@ -313,7 +313,9 @@ export class ListarParticipantesComponent {
     if (!this.catalogosDisponibles() || !this.personasPorId().has(payload.id_persona) || !this.actividadesPorId().has(payload.id_actividad) || !this.tiposPorId().has(payload.id_tipo_participacion)) {
       this.errorFormulario.set('Selecciona personas, actividades y tipos de los catálogos disponibles. Puedes reintentar su carga.'); return;
     }
-    if (hayDuplicado(this.inscripciones(), payload.id_persona, payload.id_actividad, id)) {
+    const sesion = this.contextoIntegrado()?.sesion ?? this.sesionContexto().sesion;
+    if (id === null && sesion) payload.id_actividad_sesion = sesion.id;
+    if (payload.id_actividad_sesion === undefined && hayDuplicado(this.inscripciones(), payload.id_persona, payload.id_actividad, id)) {
       this.errorFormulario.set('La persona ya está inscrita en esta actividad.'); return;
     }
     this.enviando.set(true); this.form.disable({ emitEvent: false });

@@ -19,6 +19,7 @@ export function resultadoPresencia(fila: Readonly<Record<string, unknown>>): Res
   if (fila['duplicada']) return 'duplicada';
   if (!fila['id_asistencia']) return 'pendiente';
   const estado = String(fila['estado'] ?? '').trim().toLocaleLowerCase();
+  if (estado === 'inscrito') return 'pendiente';
   return estado === 'presente' || estado === 'ausente' ? estado : 'sin_clasificar';
 }
 

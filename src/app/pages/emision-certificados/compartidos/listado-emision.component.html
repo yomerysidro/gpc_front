@@ -131,7 +131,7 @@
         </dl>
       }
     }
-    @if (!paginaActual.data.length) { <p class="card">{{ recurso() === 'attendance' && (!filtrosSesiones.controls.actividad.value || !filtrosSesiones.controls.sesion.value) ? 'Selecciona una actividad y una sesión para controlar su asistencia.' : 'No hay registros para esta consulta.' }}</p> }
+    @if (!paginaActual.data.length) { <p class="card">{{ recurso() === 'attendance' && (!filtrosSesiones.controls.actividad.value || !filtrosSesiones.controls.sesion.value) ? 'Selecciona una actividad y una sesión para controlar su asistencia.' : paginaCompleta() && !filtrosSesiones.controls.nombre.value ? 'No hay participantes inscritos en esta sesión.' : 'No hay registros para esta consulta.' }}</p> }
     @else if (recurso() === 'attendance') {
       @if (catalogosSesiones.errorPersonas) { <p role="alert">{{ catalogosSesiones.errorPersonas }}</p> }
       @if (!paginaCompleta()) { <button class="btn" type="button" [disabled]="guardandoMarca() !== null" (click)="actualizarAsistencia()">Actualizar asistencia</button> }
