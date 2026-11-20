@@ -13,7 +13,7 @@
 } @else {
   <div class="encabezado">
     <p class="introduccion">Reconocimientos del personal municipal y estado de sus documentos asociados.</p>
-    @if (auth.tienePermiso('reconocimientos.crear')) { <a class="btn btn-primary" routerLink="/certificaciones/reconocimientos/nuevo"><span class="material-symbols-outlined" aria-hidden="true">add</span>Registrar reconocimiento</a> }
+    @if (auth.tienePermiso('reconocimientos.crear')) { <button class="btn btn-primary" type="button" (click)="abrirRegistro()"><span class="material-symbols-outlined" aria-hidden="true">add</span>Registrar reconocimiento</button> }
   </div>
   <form class="card busqueda" [formGroup]="filtro" (ngSubmit)="cargar()" aria-labelledby="buscar-reconocimientos-titulo">
     <h2 id="buscar-reconocimientos-titulo">Buscar reconocimientos</h2>
@@ -62,3 +62,10 @@
     </section>
   }
 }
+
+<app-dialogo #modalRegistro titulo="Registrar reconocimiento" ancho="amplio" [mostrarCerrar]="true" [cierreControlado]="true"
+  (cierreSolicitado)="cerrarRegistro()" (cerrado)="registroAbierto.set(false)">
+  @if (registroAbierto()) {
+    <app-formulario-emision #editorRegistro recurso="reconocimientos" [enDialogo]="true" (cancelar)="cerrarRegistro()" (guardado)="registroGuardado()" />
+  }
+</app-dialogo>

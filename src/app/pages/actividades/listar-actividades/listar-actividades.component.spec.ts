@@ -308,6 +308,8 @@ describe('Pantalla de Actividades', () => {
     respuesta.complete();
     await fixture.whenStable();
     expect($('tbody .badge-exito')).toBeNull();
+    expect($('tbody .badge')).toBeNull();
+    await escribir('#filtrar-estado', 'Cerrada');
     expect($('tbody .badge').textContent).toBe('Cerrada');
     await abrirPanel();
     expect($<HTMLButtonElement>('button[title="Cerrar actividad"]').disabled).toBeTrue();

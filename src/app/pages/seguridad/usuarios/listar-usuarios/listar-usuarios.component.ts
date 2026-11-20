@@ -27,14 +27,29 @@ type ResultadoCarga =
 const ESPERA_BUSQUEDA_MS = 350;
 const MENSAJE_429 = 'Ya se envió un enlace hace menos de un minuto. Espera un momento antes de reenviarlo.';
 
+import { DialogoComponent } from '../../../../shared/components/dialogo/dialogo.component';
+import { FormularioUsuarioComponent } from '../formulario-usuario/formulario-usuario.component';
+
 @Component({
   selector: 'app-listar-usuarios',
   standalone: true,
-  imports: [DatePipe, NgTemplateOutlet, ReactiveFormsModule, RouterLink, PageTitleComponent, HasPermissionDirective, DialogoConfirmacionComponent],
+  imports: [DatePipe, NgTemplateOutlet, ReactiveFormsModule, RouterLink, PageTitleComponent, HasPermissionDirective, DialogoConfirmacionComponent, DialogoComponent, FormularioUsuarioComponent],
   templateUrl: './listar-usuarios.component.html',
   styleUrl: './listar-usuarios.component.scss'
 })
 export class ListarUsuariosComponent {
+  protected readonly editorUsuario = viewChild<FormularioUsuarioComponent>('editorUsuario');
+  protected readonly nuevoUsuario = signal(false);
+  protected abrirNuevo(dialogo: DialogoComponent): void {
+    this.nuevoUsuario.set(true);
+    dialogo.abrir();
+  }
+
+  protected usuarioCreado(aviso: AvisoUsuarios, dialogo: DialogoComponent): void {
+    dialogo.cerrar();
+    this.aviso.set(aviso);
+    this.cargar();
+  }
   private readonly usuariosService = inject(UsuariosService);
   private readonly rolesService = inject(RolesService);
   private readonly destroyRef = inject(DestroyRef);

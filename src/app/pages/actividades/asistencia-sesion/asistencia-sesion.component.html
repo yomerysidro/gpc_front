@@ -34,25 +34,8 @@
 }
 @if (datos()) {
   <div class="acciones">
-    @if (puedeAgregar()) {
-      <button class="btn" type="button" [disabled]="ocupado()" (click)="consultarCandidatos()">Seleccionar participante</button>
-    }
     <button class="btn" type="button" [disabled]="ocupado() || !datos()" (click)="actualizar()"><span class="material-symbols-outlined" aria-hidden="true">refresh</span>Actualizar asistencia</button>
   </div>
-  @if (puedeAgregar() && candidatos(); as filas) {
-    <div class="seleccion">
-      @if (filas.length) {
-        <label for="participante-sesion">Participantes inscritos en la actividad</label>
-        <select id="participante-sesion" [disabled]="ocupado()" (change)="candidato.set(+$any($event.target).value || null)">
-          <option value="">Selecciona un participante</option>
-          @for (fila of filas; track fila.id_participacion) {
-            <option [value]="fila.id_participacion">{{ fila.nombre_completo }}</option>
-          }
-        </select>
-        <button class="btn btn-primary" type="button" [disabled]="ocupado() || !candidato()" (click)="agregarParticipante()">Agregar a la sesión</button>
-      } @else { <p role="status">No hay más inscritos disponibles para esta sesión.</p> }
-    </div>
-  }
 }
 @if (cargando()) { <p role="status">Consultando asistencia…</p> }
 @if (error()) { <p class="alert alert-error" role="alert">{{ error() }}</p>@if (!datos()) { <button class="btn" type="button" [disabled]="ocupado()" (click)="reintentar()">Reintentar</button> } }
