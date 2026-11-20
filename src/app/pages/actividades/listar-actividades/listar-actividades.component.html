@@ -53,6 +53,13 @@
       </div>
 
 
+      <div class="form-field">
+        <label for="filtrar-estado">Estado</label>
+        <select #estadoFiltro id="filtrar-estado" class="input" [value]="filtros().estado" (change)="filtrar('estado', estadoFiltro.value)">
+          <option value="">Todos los estados</option>
+          @for (estado of estados; track estado) { <option [value]="estado" [selected]="filtros().estado === estado">{{ estado }}</option> }
+        </select>
+      </div>
       <button type="button" class="btn limpiar" (click)="limpiarFiltros()">Limpiar filtros</button>
     </div>
 
