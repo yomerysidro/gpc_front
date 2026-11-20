@@ -15,11 +15,13 @@
 .tabla-propias .acciones { min-width: 2.75rem; }
 .estado-carga { color: #526170; font-size: .85rem; margin-block: .5rem; }
 .pestanas-gerencia { display: flex; flex-wrap: wrap; gap: .25rem; border-bottom: 1px solid #d5dee8; margin-bottom: 1rem; }
-.pestanas-gerencia button { display: inline-flex; align-items: center; gap: .4rem; padding: .6rem .8rem; background: transparent; border: 0; border-bottom: 3px solid transparent; color: #52677b; cursor: pointer; font: inherit; font-size: .9rem; }
-.pestanas-gerencia [aria-selected=true] { color: #075a9b; border-bottom-color: #d6ad4a; font-weight: 600; }
+.pestanas-gerencia :is(button, a) { text-decoration: none; display: inline-flex; align-items: center; gap: .4rem; padding: .6rem .8rem; background: transparent; border: 0; border-bottom: 3px solid transparent; color: #52677b; cursor: pointer; font: inherit; font-size: .9rem; }
+.pestanas-gerencia :is([aria-selected=true], [aria-current=page]) { color: #075a9b; border-bottom-color: #d6ad4a; font-weight: 600; }
 .pestanas-gerencia .material-symbols-outlined { font-size: 1.2rem; }
-.pestanas-gerencia button:focus-visible { outline: 2px solid #075a9b; outline-offset: 2px; }
+.pestanas-gerencia :is(button, a):focus-visible { outline: 2px solid #075a9b; outline-offset: 2px; }
 .filtros.filtros-gerencia { grid-template-columns: minmax(0, 32rem) auto; justify-content: start; align-items: end; gap: .75rem; }
 .filtros-gerencia .form-field { margin-bottom: 0; min-width: 0; }
 .filtros-gerencia .acciones.ancho { grid-column: auto; margin: 0; }
-@media (max-width: 600px) { .pestanas-gerencia button { flex: 1; justify-content: center; font-size: .85rem; } }
+@media (max-width: 600px) { .pestanas-gerencia :is(button, a) { text-decoration: none; flex: 1; justify-content: center; font-size: .85rem; } }
+
+.pestanas-gerencia a[aria-disabled=true] { pointer-events: none; }

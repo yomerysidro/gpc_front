@@ -334,6 +334,27 @@ describe('Integración real de sesión, rutas y Solicitudes', () => {
     expect(vista().textContent).toContain('Estado: Pendiente de aprobación');
     expect(vista().querySelector('tbody')).toBeNull();
   });
+  it('Recursos Humanos consulta derivadas y aprobadas en pestañas separadas', async () => {
+    sesion();
+    harness = await RouterTestingHarness.create('/solicitudes/revision');
+    http.expectOne(req => req.url === solicitudes && req.params.get('estado') === 'Enviada').flush(pagina([]));
+    harness.detectChanges();
+
+    for (const [pestana, estado, actividad] of [
+      ['derivadas', 'Pendiente de aprobación', null],
+      ['aprobadas', 'Aprobada', 20],
+    ] as const) {
+      const enlace = vista().querySelector<HTMLAnchorElement>('a[href*="pestana=' + pestana + '"]')!;
+      enlace.click();
+      await harness.fixture.whenStable();
+      const consulta = http.expectOne(req => req.url === solicitudes && req.params.get('estado') === estado);
+      consulta.flush(pagina([{ ...SOLICITUD_API_TEST, estado, id_actividad: actividad }]));
+      harness.detectChanges();
+      expect(vista().querySelector('tbody .estado')?.textContent?.trim()).toBe(estado);
+      expect(vista().querySelector('tbody .acciones')?.textContent).not.toContain('Iniciar revisión');
+      expect(enlace.getAttribute('aria-current')).toBe('page');
+    }
+  });
   it('Gerencia recupera aprobadas desde la URL y consulta el detalle sin repetir decisiones', async () => {
     sesion(['consultar', 'aprobar', 'rechazar'], 9, 'Gerencial');
     harness = await RouterTestingHarness.create('/pendientes/pendientes-aprobacion?pestana=aprobadas');

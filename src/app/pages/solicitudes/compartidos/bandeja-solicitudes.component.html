@@ -22,12 +22,24 @@
   <section class="card indicador"><strong>{{ observadas() ?? '—' }}</strong><p>Observadas</p></section>
 </div>
 }
-<section class="card" aria-label="Bandeja de solicitudes" [attr.id]="bandeja() === 'gerencia' ? 'gerencia-solicitudes' : null" [attr.role]="bandeja() === 'gerencia' ? 'tabpanel' : null" [attr.aria-labelledby]="bandeja() === 'gerencia' ? 'gerencia-' + pestanaGerencia() : null">@if (bandeja() === 'revision') { <h2>Consulta de solicitudes</h2> }
+@if (bandeja() === 'revision') {
+  <nav class="pestanas-gerencia" aria-label="Bandejas de revisión">
+    @for (pestana of pestanasRevision; track pestana.id) {
+      <a [routerLink]="[]" [queryParams]="{ pestana: pestana.id === 'revision' ? null : pestana.id, solicitud: null }"
+        queryParamsHandling="merge" [attr.aria-current]="pestanaRevision() === pestana.id ? 'page' : null"
+        [attr.aria-disabled]="ocupado() || null" [attr.tabindex]="ocupado() ? -1 : null"
+        (click)="ocupado() && $event.preventDefault()">
+        <span class="material-symbols-outlined" aria-hidden="true">{{ pestana.icono }}</span>{{ pestana.titulo }}
+      </a>
+    }
+  </nav>
+}
+<section class="card" aria-label="Bandeja de solicitudes" [attr.id]="bandeja() === 'gerencia' ? 'gerencia-solicitudes' : null" [attr.role]="bandeja() === 'gerencia' ? 'tabpanel' : null" [attr.aria-labelledby]="bandeja() === 'gerencia' ? 'gerencia-' + pestanaGerencia() : null">@if (bandeja() === 'revision') { <h2>{{ pestanaRevision() === 'revision' ? 'Consulta de solicitudes' : pestanaRevision() === 'derivadas' ? 'Enviadas a Gerencia' : 'Solicitudes aprobadas' }}</h2> }
   @if (bandeja() !== 'propias') {
   <form class="filtros" [class.filtros-gerencia]="bandeja() === 'gerencia'" [formGroup]="filtros" (ngSubmit)="cargar()">
     <div class="form-field"><label for="filtro-busqueda">Actividad o número de solicitud</label><input class="input" id="filtro-busqueda" formControlName="busqueda" type="search" /></div>
     @if (bandeja() !== 'gerencia') {
-    <div class="form-field"><label for="filtro-estado">Estado</label><select class="input" id="filtro-estado" formControlName="estado"><option value="">{{ bandeja() === 'revision' ? 'Enviadas' : 'Todos los estados' }}</option>@for (estado of estados; track estado) { <option [value]="estado">{{ estado }}</option> }</select></div>
+    @if (!estadoSeguimiento()) { <div class="form-field"><label for="filtro-estado">Estado</label><select class="input" id="filtro-estado" formControlName="estado"><option value="">{{ bandeja() === 'revision' ? 'Enviadas' : 'Todos los estados' }}</option>@for (estado of estados; track estado) { <option [value]="estado">{{ estado }}</option> }</select></div> }
     <div class="form-field"><label for="filtro-desde">Desde</label><input class="input" id="filtro-desde" formControlName="desde" type="date" /></div>
     <div class="form-field"><label for="filtro-hasta">Hasta</label><input class="input" id="filtro-hasta" formControlName="hasta" type="date" [min]="filtros.controls.desde.value" /></div>
     }
