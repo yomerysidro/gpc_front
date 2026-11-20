@@ -55,7 +55,7 @@
                 </nav>
                 @if (!sesionFinalizada(sesion)) {
                   <div class="cierre-sesion">
-                    <button class="btn accion-principal" type="button" title="Finalizar sesión" aria-label="Finalizar sesión" [disabled]="finalizandoSesion() !== null || panelOcupado()" (click)="finalizarSesion(sesion)"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>{{ finalizandoSesion() === +$any(sesion['id_actividad_sesion']) ? 'Procesando…' : 'Finalizar sesión' }}</button>
+                    <button class="btn accion-principal" type="button" title="Finalizar sesión" aria-label="Finalizar sesión" [disabled]="finalizandoSesion() === +$any(sesion['id_actividad_sesion']) || panelOcupado()" [attr.aria-disabled]="finalizandoSesion() !== null ? 'true' : null" [attr.aria-busy]="finalizandoSesion() === +$any(sesion['id_actividad_sesion'])" (click)="finalizarSesion(sesion)"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>{{ finalizandoSesion() === +$any(sesion['id_actividad_sesion']) ? 'Procesando…' : 'Finalizar sesión' }}</button>
                   </div>
                 }
                 @if (erroresCertificacion()[+$any(sesion['id_actividad_sesion'])]; as error) { <p class="motivo-cierre" role="alert">{{ error }}</p> }
