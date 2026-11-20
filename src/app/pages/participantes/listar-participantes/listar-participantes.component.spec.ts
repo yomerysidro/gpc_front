@@ -80,8 +80,12 @@ describe('Participantes: interfaz e inscripción', () => {
     expect($<HTMLSelectElement>('#inscripcion-actividad').disabled).toBeTrue();
     expect(fixture.nativeElement.querySelector('table')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Otra sesión de la misma actividad');
+    const fecha = $<HTMLInputElement>('#inscripcion-fecha');
+    expect(fecha.disabled).toBeTrue();
+    const fechaInscripcion = fecha.value;
+    expect(fechaInscripcion).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     await escribir('#inscripcion-persona', '1'); await escribir('#inscripcion-tipo', '3'); await escribir('#inscripcion-estado', 'Activo'); await guardar();
-    expect(servicio.crear).toHaveBeenCalledOnceWith(jasmine.objectContaining({ id_persona: 1, id_actividad: 10, id_actividad_sesion: 99 }));
+    expect(servicio.crear).toHaveBeenCalledOnceWith(jasmine.objectContaining({ id_persona: 1, id_actividad: 10, id_actividad_sesion: 99, fecha_inscripcion: fechaInscripcion }));
     expect(servicio.actividad).not.toHaveBeenCalled();
   });
   it('conserva sesión validada y muestra inscripciones de actividad sin duplicarlas', async () => {

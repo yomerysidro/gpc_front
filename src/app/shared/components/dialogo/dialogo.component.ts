@@ -20,6 +20,7 @@ export class DialogoComponent {
   readonly idDescripcion = input<string | null>(null);
   /** Se emite al cerrarse por cualquier vía (botón, Esc). */
   readonly cerrado = output<void>();
+  readonly ancho = input<'normal' | 'amplio'>('normal');
   readonly mostrarCerrar = input(false);
   readonly cierreControlado = input(false);
   readonly cierreSolicitado = output<void>();

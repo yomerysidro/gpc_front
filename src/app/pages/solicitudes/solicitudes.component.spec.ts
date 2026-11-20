@@ -96,7 +96,6 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   it('Mis solicitudes mantiene registros e indicadores durante refetch y después de un error real', async () => {
     configurar(); gateway.listar.and.returnValue(of({ ...pagina, total: 30, ultimaPagina: 2 }));
     await navegar('/solicitudes/mis-solicitudes');
-    window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange'));
     expect(gateway.listar).toHaveBeenCalledTimes(1);
     const respuesta = new Subject<PaginaSolicitudes<Solicitud>>(); gateway.listar.and.returnValue(respuesta);
     await pulsar('Siguiente'); expect(gateway.listar).toHaveBeenCalledTimes(2);
@@ -282,22 +281,16 @@ describe('Solicitudes y Gerencia preparadas para integración real', () => {
   });
   it('filtra y pagina a través del adaptador y no ofrece aprobación definitiva en RR. HH.', async () => {
     configurar(); await navegar('/solicitudes/revision');
-    expect(vista().querySelector('tbody')?.textContent).not.toContain('Aprobar'); expect(vista().querySelector('tbody')?.textContent).toContain('Observar');
+    expect(vista().querySelector('tbody')?.textContent).not.toContain('Aprobar'); expect(vista().querySelector('tbody')?.textContent).not.toContain('Observar');
     cambiar('#filtro-busqueda', 'Actividad'); cambiar('#filtro-estado', 'En revisión'); await pulsar('Buscar');
     expect(gateway.listar.calls.mostRecent().args).toEqual(['revision', { busqueda: 'Actividad', estado: 'En revisión', desde: '', hasta: '', pagina: 1 }]);
     gateway.listar.and.returnValue(of({ ...pagina, total: 30, ultimaPagina: 2 })); await pulsar('Buscar'); await pulsar('Siguiente');
     expect(gateway.listar.calls.mostRecent().args[1].pagina).toBe(2);
   });
-  it('RR. HH. exige motivo al observar, transmite la versión y recarga solo tras confirmación real', async () => {
-    configurar(); await navegar('/solicitudes/revision'); await pulsar('Observar');
-    expect(vista().querySelector('app-decision-modal dialog')?.hasAttribute('open')).toBeTrue();
-    await pulsar('Confirmar Observar'); expect(gateway.decidir).not.toHaveBeenCalled();
-    cambiar('#motivo-decision', '  '); await pulsar('Confirmar Observar'); expect(gateway.decidir).not.toHaveBeenCalled();
-    cambiar('#motivo-decision', 'Precisar el objetivo de la actividad');
-    gateway.decidir.and.returnValue(of({ ...solicitud, estado: 'Observada', acciones: [] }));
-    await pulsar('Confirmar Observar');
-    expect(gateway.decidir).toHaveBeenCalledWith('test-1', 'v1', 'Observar', 'Precisar el objetivo de la actividad');
-    expect(gateway.listar).toHaveBeenCalledTimes(2); expect(vista().textContent).toContain('Estado: Observada');
+  it('omite la acción Observar en la bandeja de revisión', async () => {
+    configurar(); await navegar('/solicitudes/revision');
+    expect(vista().querySelector('tbody')?.textContent).not.toContain('Observar');
+    expect(gateway.decidir).not.toHaveBeenCalled();
   });
   it('cancelar la aprobación no decide y un conflicto posterior no muestra éxito', async () => {
     configurar(); await navegar('/pendientes/pendientes-aprobacion'); await pulsar('Aprobar'); await pulsar('Cancelar');

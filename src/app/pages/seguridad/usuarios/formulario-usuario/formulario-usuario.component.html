@@ -1,5 +1,5 @@
 <section class="formulario-usuario">
-  <app-page-title [title]="modoEdicion ? 'Editar usuario' : 'Nuevo usuario'" />
+  @if (!enDialogo()) { <app-page-title [title]="modoEdicion ? 'Editar usuario' : 'Nuevo usuario'" /> }
 
   @if (cargando()) {
     <p role="status" class="estado-carga">Cargando usuario…</p>
@@ -149,7 +149,7 @@
       }
 
       <div class="acciones">
-        <a routerLink="/usuarios" class="btn">Cancelar</a>
+        @if (enDialogo()) { <button class="btn" type="button" [disabled]="enviando()" (click)="cancelado.emit()">Cancelar</button> } @else { <a routerLink="/usuarios" class="btn">Cancelar</a> }
         <button type="submit" class="btn btn-primary" [disabled]="enviando()" [attr.aria-busy]="enviando()">
           {{ enviando() ? 'Guardando…' : modoEdicion ? 'Guardar cambios' : 'Crear usuario' }}
         </button>

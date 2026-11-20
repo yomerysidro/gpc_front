@@ -110,6 +110,14 @@ export class BandejaSolicitudesComponent implements OnInit {
       next: contexto => this.puedeCrear.set(contexto.puedeCrear), error: error => this.error.set(mensajeSolicitudes(error)),
     });
   }
+  @HostListener('window:focus')
+  protected actualizarAlVolver(): void {
+    if (this.bandeja() !== 'propias' || this.ocupado() || this.cargando()) return;
+    this.cargar(this.pagina()?.pagina ?? 1);
+    const detalle = this.detalle();
+    if (detalle) this.abrirDetalle(detalle.id);
+  }
+
   protected cargar(numero = 1): void {
     if (!this.api.integrado) { this.pagina.set(null); this.cargando.set(false); this.error.set(null); return; }
     const filtros = this.filtros.getRawValue();
@@ -131,7 +139,7 @@ export class BandejaSolicitudesComponent implements OnInit {
   protected acciones(fila: Solicitud): readonly AccionSolicitud[] {
     if (this.bandeja() === 'gerencia' && (this.pestanaGerencia() === 'aprobadas' || fila.estado !== 'Pendiente de aprobación')) return [];
     const permitidas: readonly AccionSolicitud[] = this.bandeja() === 'propias' ? ['Enviar'] : this.bandeja() === 'revision'
-      ? ['Iniciar revisión', 'Observar', 'Derivar'] : ['Aprobar', 'Rechazar'];
+      ? ['Iniciar revisión', 'Derivar'] : ['Aprobar', 'Rechazar'];
     return this.api.accionesPermitidas(fila).filter(accion => permitidas.includes(accion));
   }
   protected ver(fila: Solicitud): void {
@@ -163,15 +171,32 @@ export class BandejaSolicitudesComponent implements OnInit {
     if (this.ocupado() || (!this.api.integrado) || !this.acciones(confirmacion.registro).includes(confirmacion.accion)) return;
     this.ocupado.set(true); this.error.set(null); this.aviso.set(null);
     const pagina = this.pagina()?.pagina ?? 1;
-    this.api.decidir(confirmacion.registro.id, confirmacion.registro.version, confirmacion.accion, confirmacion.motivo).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.decidir(confirmacion.registro.id, confirmacion.registro.version, confirmacion.accion, confirmacion.motivo).pipe(
+      switchMap(fila => {
+        if (confirmacion.accion !== 'Iniciar revisión' || !this.acciones(fila).includes('Derivar')) return of(fila);
+        if (this.detalle()?.id === fila.id) this.detalle.set(fila);
+        this.modal().abrir('Derivar', fila, confirmacion.motivo);
+        this.filtros.controls.estado.setValue('En revisión');
+        return this.api.decidir(fila.id, fila.version, 'Derivar', confirmacion.motivo);
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       next: fila => {
-        this.ocupado.set(false); this.modal().cerrar(); this.aviso.set(`Operación confirmada por el servidor. Estado: ${fila.estado}.`);
+        this.ocupado.set(false); this.aviso.set(`Operación confirmada por el servidor. Estado: ${fila.estado}.`);
         if (this.bandeja() === 'gerencia' && this.detalle()) { this.dialogo().cerrar(); this.cerrarDetalle(); }
-        // Mantener visible la etapa de revisión para poder derivar después del POST /review.
-        if (this.bandeja() === 'revision' && confirmacion.accion === 'Iniciar revisión') this.filtros.controls.estado.setValue('En revisión');
+
+        if (this.bandeja() === 'revision' && fila.estado === 'En revisión') {
+          this.filtros.controls.estado.setValue('En revisión');
+          if (this.detalle()?.id === fila.id) this.detalle.set(fila);
+          this.modal().cerrar();
+
+        } else {
+          this.modal().cerrar();
+          if (this.detalle()?.id === fila.id && this.bandeja() !== 'gerencia') this.dialogo().cerrar();
+        }
         this.cargar(pagina);
       },
-      error: error => { this.ocupado.set(false); this.modal().cerrar(); this.error.set(mensajeSolicitudes(error)); },
+      error: error => { this.ocupado.set(false); this.modal().error.set(mensajeSolicitudes(error)); },
     });
   }
 }

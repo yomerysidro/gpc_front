@@ -7,10 +7,17 @@ import { AuthService } from '../../../core/services/autenticacion/auth.service';
 export interface ConfirmacionDecision { readonly registro: Solicitud; readonly accion: AccionSolicitud; readonly motivo: string; }
 @Component({
   selector: 'app-decision-modal', standalone: true, imports: [DialogoComponent, ReactiveFormsModule],
-  template: `<app-dialogo [titulo]="accion()" (cerrado)="registro.set(null)">
-    @if (registro(); as fila) { <p><strong>{{ fila.numero }}</strong> · {{ fila.nombre }}</p><p>Área: {{ fila.area }}</p><p>Solicitante: {{ fila.responsable }}</p> }
+  template: `<app-dialogo [titulo]="etiqueta()" [ancho]="accion() === 'Iniciar revisión' || accion() === 'Derivar' ? 'amplio' : 'normal'" [cierreControlado]="true" (cierreSolicitado)="cerrar()" (cerrado)="registro.set(null)">
+    @if (registro(); as fila) {
+      <dl class="datos-decision">
+        <div><dt>Solicitud</dt><dd>{{ fila.numero }} · {{ fila.nombre }}</dd></div>
+        <div><dt>Área</dt><dd>{{ fila.area }}</dd></div>
+        <div><dt>Solicitante</dt><dd>{{ fila.responsable }}</dd></div>
+      </dl>
+    }
+    @if (error(); as mensaje) { <p class="alert alert-error" role="alert">{{ mensaje }}</p> }
     @if (decisionFormal() && ambitoInstitucional()) { <p>Ámbito institucional autorizado.</p> }
-    <p>La operación solo se confirmará cuando el servidor autorice y registre el resultado.</p>
+
     <form [formGroup]="form" (ngSubmit)="confirmar()">
       @if (accion() !== 'Enviar') {
         <div class="form-field"><label for="motivo-decision">{{ requiereMotivo() ? 'Motivo obligatorio' : 'Observación opcional' }}</label>
@@ -22,9 +29,9 @@ export interface ConfirmacionDecision { readonly registro: Solicitud; readonly a
           }
         </div>
       } @else { <p>Enviar cambia el estado de la solicitud; no registra una decisión ni una observación en el historial.</p> }
-      <p>¿Deseas confirmar «{{ accion() }}» para esta solicitud?</p>
+
       <div class="acciones"><button class="btn" type="button" autofocus [disabled]="ocupado()" (click)="dialogo().cerrar()">Cancelar</button>
-        <button class="btn btn-primary" type="submit" [disabled]="ocupado() || !autorizado() || !integrado()">Confirmar {{ accion() }}</button></div>
+        <button class="btn btn-primary" type="submit" [disabled]="ocupado() || !autorizado() || !integrado()">{{ etiqueta() === 'Enviar a Gerencia' ? etiqueta() : 'Confirmar ' + etiqueta() }}</button></div>
     </form>
   </app-dialogo>`, styleUrl: './solicitudes.scss',
 })
@@ -38,6 +45,8 @@ export class DecisionModalComponent {
   readonly integrado = input(false);
   protected readonly registro = signal<Solicitud | null>(null);
   protected readonly accion = signal<AccionSolicitud>('Aprobar');
+  readonly error = signal<string | null>(null);
+  protected readonly etiqueta = computed(() => (this.accion() === 'Derivar' || this.accion() === 'Iniciar revisión' && this.auth?.capacidadesSolicitudes?.()?.derivar) ? 'Enviar a Gerencia' : this.accion());
   protected readonly requiereMotivo = computed(() => ['Observar', 'Rechazar'].includes(this.accion()));
   protected readonly dialogo = viewChild.required(DialogoComponent);
   protected readonly form = inject(NonNullableFormBuilder).group({ motivo: [''] });
@@ -45,13 +54,13 @@ export class DecisionModalComponent {
     const registro = this.registro();
     return !!registro && this.api.accionesPermitidas(registro).includes(this.accion());
   }
-  abrir(accion: AccionSolicitud, registro: Solicitud): void {
+  abrir(accion: AccionSolicitud, registro: Solicitud, motivo = ''): void {
     if (!this.api.accionesPermitidas(registro).includes(accion) || !this.integrado()) return;
-    this.accion.set(accion); this.registro.set(registro); this.form.reset();
+    this.accion.set(accion); this.registro.set(registro); this.error.set(null); this.form.reset({ motivo });
     this.form.controls.motivo.setValidators(this.requiereMotivo() ? [Validators.required, Validators.pattern(/\S/)] : []);
     this.form.controls.motivo.updateValueAndValidity(); this.dialogo().abrir();
   }
-  cerrar(): void { this.dialogo().cerrar(); }
+  cerrar(): void { if (!this.ocupado()) this.dialogo().cerrar(); }
   protected confirmar(): void {
     this.form.markAllAsTouched();
     const registro = this.registro();

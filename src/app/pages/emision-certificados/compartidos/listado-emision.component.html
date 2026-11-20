@@ -240,7 +240,7 @@
 }
 <app-dialogo-confirmacion titulo="Eliminar registro" texto="¿Deseas eliminar este registro? Si tiene dependencias históricas, la operación será rechazada." confirmar="Eliminar" />
 
-<app-dialogo #modalRegistro class="modal-registro" [titulo]="tituloModal()" (cerrado)="alCerrarModal()">
+<app-dialogo #modalRegistro class="modal-registro" [titulo]="tituloModal()" [ancho]="registrandoSesion() ? 'amplio' : 'normal'" (cerrado)="alCerrarModal()">
   @if (mostrarModal() && editar() !== undefined) {
     @if (editable(); as recursoEditable) {
       <app-formulario-emision [recurso]="registrandoSesion() ? 'activity-session' : recursoEditable" [id]="editar() ?? null" [enDialogo]="true" [clasificacion]="esClasificacion()" [actividadContexto]="actividadFormulario()" [asistenciaContexto]="asistenciaContexto()"

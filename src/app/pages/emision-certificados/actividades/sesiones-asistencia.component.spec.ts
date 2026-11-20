@@ -72,7 +72,7 @@ describe('Sesiones y asistencia con pestañas y CRUD existentes', () => {
     harness = await RouterTestingHarness.create(ruta + query); harness.detectChanges();
     const params = new URLSearchParams(query); const id = params.get('id_actividad') ?? params.get('actividad');
     if (id && /^[1-9]\d*$/.test(id)) {
-      http.expectOne(base + '/activity/' + id).flush({ success: true, data: { id_actividad: Number(id), nombre: 'Actividad existente' } }); harness.detectChanges();
+      http.expectOne(base + '/activity/' + id).flush({ success: true, data: { id_actividad: Number(id), nombre: 'Actividad existente', fecha_inicio: '2026-11-04' } }); harness.detectChanges();
     }
   }
   async function seleccionar(id: string): Promise<void> {
@@ -547,6 +547,7 @@ describe('Sesiones y asistencia con pestañas y CRUD existentes', () => {
     disparadorRegistro().click(); harness.detectChanges(); await harness.fixture.whenStable(); harness.detectChanges();
     expect(vista().querySelector<HTMLSelectElement>('#activity-session-id_actividad')?.value).toBe('7');
     expect(vista().querySelector<HTMLSelectElement>('#activity-session-id_actividad')?.disabled).toBeTrue();
+    expect(vista().querySelector<HTMLInputElement>('#activity-session-fecha')?.value).toBe('2026-11-04');
     http.expectNone(base + '/activity');
     completarNuevaSesion();
     const guardar = http.expectOne(req => req.url === base + '/activity-session' && req.method === 'POST');

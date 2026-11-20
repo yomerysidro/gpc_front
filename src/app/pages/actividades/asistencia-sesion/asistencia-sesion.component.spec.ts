@@ -122,28 +122,12 @@ describe('Control de asistencia como página de sesión', () => {
     expect(vista().querySelectorAll('.circulo-ausente[aria-pressed="true"]').length).toBe(1);
     http.expectNone('/api/activity/7'); http.expectNone('/api/participation');
   });
-  it('agrega un inscrito mediante la selección de Laravel y recarga su asistencia confirmada', async () => {
+  it('muestra los participantes de la sesión sin selector de inscritos', async () => {
     await iniciar();
-    pulsar('Seleccionar participante');
-    const candidato = { id_participacion: 31, nombre_completo: 'Luis Ríos', seleccionado: false, id_asistencia: null };
-    const datos = { id_actividad: 7, id_actividad_sesion: 15 };
-    responder('/activity-session/15/participantes/candidatos', { ...datos, participantes: [candidato] });
-    harness.detectChanges();
-    const select = vista().querySelector<HTMLSelectElement>('#participante-sesion')!;
-    select.value = '31';
-    select.dispatchEvent(new Event('change'));
-    harness.detectChanges();
-    pulsar('Agregar a la sesión');
-    const post = http.expectOne(r => r.method === 'POST' && r.url === '/api/activity-session/15/participantes');
-    expect(post.request.body).toEqual({ ids_participacion: [31] });
-    const seleccionado = { ...candidato, seleccionado: true, id_asistencia: 82, estado_asistencia: 'INSCRITO' };
-    post.flush({ success: true, data: { ...datos, participantes: [seleccionado] } });
-    responder('/activity/7', actividad);
-    responder('/activity-session/15', sesion);
-    responder('/activity-session/15/participantes', { ...datos, participantes: [seleccionado] });
-    harness.detectChanges();
-    expect(vista().querySelector('tbody')?.textContent).toContain('Luis Ríos');
-    expect(vista().querySelector('tbody')?.textContent).toContain('Pendiente');
+    expect(vista().querySelectorAll('tbody tr').length).toBeGreaterThan(0);
+    expect(vista().textContent).not.toContain('Seleccionar participante');
+    expect(vista().querySelector('#participante-sesion')).toBeNull();
+    http.expectNone('/api/activity-session/15/participantes/candidatos');
   });
   for (const actual of [{ ...sesion, estado: 'Finalizada', puede_editar_asistencia: false }, { ...sesion, puede_editar_asistencia: false }]) {
     it('respeta la consulta protegida: ' + actual.estado + ' sin edición', async () => {

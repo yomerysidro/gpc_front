@@ -126,7 +126,7 @@ describe('Bandeja de certificación y beneficiarios', () => {
     responderParticipantes(15, 1, 'Participante de la primera sesión', 10);
     expect(f.nativeElement.querySelector('app-ponentes-sesion tbody').textContent).toContain('Maria Perez');
     expect(participantes().textContent).not.toContain('Maria Perez');
-    expect(f.nativeElement.querySelector('[aria-label="Resumen de asistencia"]').textContent).toContain('23Participantes');
+    expect(f.nativeElement.querySelector('[aria-label="Resumen de asistencia"]').textContent).toContain('23Inscritos en la sesión');
     const siguiente = Array.from(f.nativeElement.querySelectorAll('nav button') as NodeListOf<HTMLButtonElement>)
       .find(button => button.textContent === 'Siguiente')!;
     siguiente.click();
@@ -167,7 +167,7 @@ describe('Bandeja de certificación y beneficiarios', () => {
     expect(f.nativeElement.querySelectorAll('.asistencia-tarjeta')[2].querySelector('strong').textContent).toBe('2');
     expect(f.nativeElement.textContent).not.toContain('No determinable');
     expect(f.nativeElement.querySelector('.aviso-asistencia')).toBeNull();
-    expect(Array.from(f.nativeElement.querySelectorAll('.asistencia-tarjeta strong')).map((n: any) => n.textContent)).toEqual(['2', '2', '2', '0', '0']);
+    expect(Array.from(f.nativeElement.querySelectorAll('.asistencia-tarjeta strong')).map((n: any) => n.textContent)).toEqual(['2', '1', '2', '0', '0']);
     expect(f.nativeElement.querySelector('.pasos')).toBeNull();
     const volver = Array.from(f.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(b => b.getAttribute('aria-label') === 'Volver a pendientes')!;
     volver.click(); f.detectChanges();

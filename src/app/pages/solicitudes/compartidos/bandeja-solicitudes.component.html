@@ -73,7 +73,7 @@
                 <button class="btn btn-icono" type="button" [disabled]="ocupado() || fila.puedeVerDetalle === false" [attr.title]="fila.puedeVerDetalle === false ? 'La consulta del detalle requiere autorización del servidor para esta solicitud.' : null" (click)="ver(fila)" aria-label="Ver detalle"><span class="material-symbols-outlined" aria-hidden="true" data-icon="visibility"></span><span class="sr-only">Ver</span></button>
               }
               @if (bandeja() === 'propias' && fila.puedeEditar) { <a class="btn" routerLink="/solicitudes/nueva" [queryParams]="{ editar: fila.id }">{{ fila.estado === 'Observada' ? 'Corregir solicitud' : 'Editar borrador' }}</a> }
-              @for (accion of acciones(fila); track accion) { <button class="btn" type="button" [class.btn-primary]="accion === 'Aprobar' || accion === 'Derivar'" [disabled]="ocupado() || !operativo()" (click)="modal().abrir(accion, fila)">{{ accion === 'Derivar' ? 'Derivar a Gerencia' : accion }}</button> }
+              @for (accion of acciones(fila); track accion) { <button class="btn" type="button" [class.btn-primary]="accion === 'Aprobar' || accion === 'Derivar'" [disabled]="ocupado() || !operativo()" (click)="modal().abrir(accion, fila)">{{ accion === 'Derivar' ? 'Enviar a Gerencia' : accion }}</button> }
               }
             </div></td></tr>
         }</tbody></table></div>
@@ -83,12 +83,12 @@
   }
   @if (!api.integrado) { <div class="vacio" role="status"><span class="material-symbols-outlined" aria-hidden="true">inbox</span><h3>Bandeja preparada para sus solicitudes</h3><p>Los registros aparecerán cuando se habilite la consulta autenticada.</p></div> }
 </section>
-<app-dialogo titulo="Detalle de solicitud" (cerrado)="cerrarDetalle()">
+<app-dialogo titulo="Detalle de solicitud" [ancho]="bandeja() === 'revision' ? 'amplio' : 'normal'" (cerrado)="cerrarDetalle()">
   @if (cargandoDetalle()) { <p role="status">Consultando detalle autorizado…</p> }
   @if (errorDetalle()) { <p class="error" role="alert">{{ errorDetalle() }}</p> }
   @if (detalle(); as fila) { <app-solicitud-detalle [revision]="bandeja() === 'revision'" [datos]="fila" [registro]="fila" [area]="fila.area" [responsable]="fila.responsable" [tipo]="fila.tipo" /> }
   @if (bandeja() === 'gerencia' && detalle(); as fila) {
-    <div class="acciones">@for (accion of acciones(fila); track accion) { <button class="btn" type="button" [class.btn-primary]="accion === 'Aprobar'" [disabled]="ocupado() || !operativo()" (click)="modal().abrir(accion, fila)">{{ accion }}</button> }</div>
+    <div class="acciones">@for (accion of acciones(fila); track accion) { <button class="btn" type="button" [class.btn-primary]="accion === 'Aprobar'" [disabled]="ocupado() || !operativo()" (click)="modal().abrir(accion, fila)">{{ accion === 'Derivar' ? 'Enviar a Gerencia' : accion }}</button> }</div>
   }
   <div class="acciones"><button class="btn" type="button" autofocus (click)="dialogo().cerrar()">Cerrar</button></div>
 </app-dialogo>
