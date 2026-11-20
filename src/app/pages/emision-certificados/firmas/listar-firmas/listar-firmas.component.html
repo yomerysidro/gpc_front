@@ -10,27 +10,45 @@
       <div class="acciones"><button type="button" class="btn confirmar" [disabled]="ocupada()" (click)="deshabilitar()">Confirmar deshabilitación</button><button type="button" class="btn" [disabled]="ocupada()" (click)="cancelarBaja()">Cancelar</button></div>
     </section>
   }
-  @if (firmanteImagen(); as t) {
-    <section class="confirmacion card" aria-labelledby="titulo-imagen-firma">
-      <h2 id="titulo-imagen-firma">{{ t.tiene_imagen_firma ? 'Cambiar imagen de firma' : 'Subir imagen de firma' }}</h2>
-      <p>{{ t.nombre }} · {{ t.cargo }}</p>
-      <label for="imagen-firma">Archivo de imagen</label>
-      <input #archivoFirma id="imagen-firma" type="file" accept="image/png,image/jpeg" aria-describedby="ayuda-imagen-firma"
-        [disabled]="ocupada()" (change)="elegirImagen(archivoFirma)" />
-      <small id="ayuda-imagen-firma">PNG o JPEG. Máximo 1 MB y 1600 × 800 píxeles.</small>
-      @if (vistaFirma(); as vista) {
-        <img class="vista-firma" [src]="vista" alt="Vista previa de la imagen de firma" />
+  <app-dialogo #dialogoFirma [titulo]="firmanteImagen()?.tiene_imagen_firma ? 'Gestionar imagen de firma' : 'Subir imagen de firma'"
+    [mostrarCerrar]="true" [cierreControlado]="true" idDescripcion="firmante-imagen-descripcion" (cierreSolicitado)="cancelarImagen()">
+    @if (firmanteImagen(); as t) {
+      <p id="firmante-imagen-descripcion">{{ t.nombre }} · {{ t.cargo }}</p>
+      @if (error()) { <p role="alert">{{ error() }}</p> }
+      @if (confirmarEliminarImagen()) {
+        <p>¿Eliminar la imagen guardada? Los PDF que se generen después de este cambio mostrarán el nombre y cargo sin la imagen.</p>
+        <div class="acciones">
+          <button type="button" class="btn encender" [disabled]="ocupada()" (click)="eliminarImagen()">Confirmar eliminación</button>
+          <button type="button" class="btn" [disabled]="ocupada()" (click)="confirmarEliminarImagen.set(false)">Volver</button>
+        </div>
       }
-      <div class="acciones">
-        <button type="button" class="btn confirmar" [disabled]="ocupada() || !vistaFirma()" (click)="guardarImagen()">
-          {{ t.habilitado_firma_certificados ? 'Guardar imagen' : 'Habilitar y guardar imagen' }}
-        </button>
-        <button type="button" class="btn" [disabled]="ocupada()" (click)="cancelarImagen()">Cancelar</button>
+      <div [hidden]="confirmarEliminarImagen()">
+        @if (puedeHabilitar(t)) {
+          <label for="imagen-firma">{{ t.tiene_imagen_firma ? 'Nueva imagen de firma' : 'Archivo de imagen' }}</label>
+          <input #archivoFirma id="imagen-firma" type="file" accept="image/png,image/jpeg" aria-describedby="ayuda-imagen-firma"
+            [disabled]="ocupada()" (change)="elegirImagen(archivoFirma)" />
+          <small id="ayuda-imagen-firma">PNG o JPEG. Máximo 1 MB y 1600 × 800 píxeles.</small>
+          @if (vistaFirma(); as vista) {
+            <img class="vista-firma" [src]="vista" alt="Vista previa de la imagen de firma" />
+          }
+        }
+        <div class="acciones">
+          @if (puedeHabilitar(t)) {
+            <button type="button" class="btn confirmar" [disabled]="ocupada() || !vistaFirma()" (click)="guardarImagen()">
+              {{ !t.habilitado_firma_certificados ? 'Habilitar y guardar imagen' : t.tiene_imagen_firma ? 'Reemplazar imagen' : 'Guardar imagen' }}
+            </button>
+          }
+          @if (t.tiene_imagen_firma) {
+            <button type="button" class="btn encender" [disabled]="ocupada()" (click)="confirmarEliminarImagen.set(true)">Eliminar imagen</button>
+          }
+          <button type="button" class="btn" [disabled]="ocupada()" (click)="cancelarImagen()">Cancelar</button>
+        </div>
       </div>
-    </section>
-  }
+      @if (ocupada()) { <p role="status">Guardando cambios...</p> }
+    }
+  </app-dialogo>
   @if (aviso()) { <p role="status" class="aviso">{{ aviso() }}</p> }
-  @if (error()) { <p role="alert">{{ error() }}</p> }
+  @if (error() && !firmanteImagen()) { <p role="alert">{{ error() }}</p> }
   <section class="card" aria-label="Trabajadores municipales" [attr.aria-busy]="ocupada()">
     <div class="busqueda-firmantes"><label for="buscar-funcionario">Buscar por nombre, cargo o área</label><input id="buscar-funcionario" class="input" type="search" placeholder="Nombre, cargo o área" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" /></div>
     @if (cargando()) { <p role="status">Consultando trabajadores...</p> }
@@ -40,9 +58,9 @@
       <tbody>
         @for (t of filtrados(); track t.id_persona_trabajador; let numeroVisual = $index) {
           <tr><td class="col-centro col-numero" data-label="N.º">{{ numeroVisual + 1 }}</td><td data-label="Nombre completo">{{ t.nombre }}</td><td data-label="Cargo">{{ t.cargo || 'Cargo no informado' }}</td><td data-label="Área municipal">{{ t.area || 'Área no informada' }}</td><td data-label="Estado laboral" class="col-centro"><span class="estado" [class.activo]="t.vigente">{{ t.vigente ? 'Activo' : 'Inactivo' }}</span></td><td data-label="Habilitación de firma"><span class="estado" [class.habilitado]="t.habilitado_firma_certificados">{{ t.habilitado_firma_certificados ? 'Habilitado' : 'No habilitado' }}</span></td><td data-label="Imagen de firma">
-            @if (puedeAdministrar() && puedeHabilitar(t)) {
-              <button type="button" class="btn" [disabled]="ocupada() || !!confirmarBaja() || !!firmanteImagen()" (click)="abrirImagen(t)">
-                {{ t.tiene_imagen_firma ? 'Cambiar imagen' : 'Subir imagen' }}
+            @if (puedeAdministrar() && (puedeHabilitar(t) || t.tiene_imagen_firma)) {
+              <button type="button" class="btn" [disabled]="ocupada() || !!confirmarBaja()" (click)="abrirImagen(t)">
+                {{ t.tiene_imagen_firma ? 'Gestionar imagen' : 'Subir imagen' }}
               </button>
             } @else { {{ t.tiene_imagen_firma ? 'Registrada' : 'Pendiente' }} }
           </td><td data-label="Acciones" class="col-centro">

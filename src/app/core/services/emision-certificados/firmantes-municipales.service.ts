@@ -21,17 +21,21 @@ export class FirmantesMunicipalesService {
       datos.append('id_persona_trabajador', String(id));
       datos.append('imagen_firma', imagen);
     }
-    return this.confirmar(this.http.post<ApiResponse<ConfirmacionHabilitacion>>(this.base + '/habilitar', datos, this.privado), id, true, !!imagen);
+    return this.confirmar(this.http.post<ApiResponse<ConfirmacionHabilitacion>>(this.base + '/habilitar', datos, this.privado), id, true, imagen ? true : undefined);
   }
   deshabilitar(id: number) {
     return this.confirmar(this.http.delete<ApiResponse<ConfirmacionHabilitacion>>(`${this.base}/${id}/habilitacion`, this.privado), id, false);
   }
-  private confirmar(operacion: Observable<ApiResponse<ConfirmacionHabilitacion>>, id: number, habilitado: boolean, conImagen = false) {
+  eliminarImagen(id: number) {
+    return this.confirmar(this.http.delete<ApiResponse<ConfirmacionHabilitacion>>(`${this.base}/${id}/imagen-firma`, this.privado), id, undefined, false);
+  }
+  private confirmar(operacion: Observable<ApiResponse<ConfirmacionHabilitacion>>, id: number, habilitado?: boolean, tieneImagen?: boolean) {
     return operacion.pipe(timeout(30000), map(r => {
       const d = r.data;
       if (!r.success || d?.completada !== true || d.persistido !== true || !this.valido(d.funcionario)
-        || d.funcionario.id_persona_trabajador !== id || d.funcionario.habilitado_firma_certificados !== habilitado || (conImagen && d.funcionario.tiene_imagen_firma !== true)) {
-        throw new Error('No se confirmó la habilitación solicitada.');
+        || d.funcionario.id_persona_trabajador !== id || (habilitado !== undefined && d.funcionario.habilitado_firma_certificados !== habilitado)
+        || (tieneImagen !== undefined && d.funcionario.tiene_imagen_firma !== tieneImagen)) {
+        throw new Error('No se confirmó el cambio solicitado.');
       }
       return d.funcionario;
     }), catchError(e => throwError(() => aErrorApi(e))));

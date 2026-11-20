@@ -48,10 +48,12 @@ describe('Habilitación persistida de firmantes municipales', () => {
     expect(Array.from(vista().querySelectorAll('th')).map(t => t.textContent)).toEqual(['N.º', 'Nombre completo', 'Cargo', 'Área municipal', 'Estado laboral', 'Habilitación de firma', 'Imagen de firma', 'Acciones']);
     expect(vista().querySelectorAll('[title="Habilitar firmante"]').length).toBe(4); http.expectNone(() => true);
   });
-  it('sube la imagen por archivo al habilitar al trabajador seleccionado', () => {
+  it('sube la imagen por archivo al habilitar al trabajador seleccionado', async () => {
     cargar([maria]);
+    f.autoDetectChanges();
     boton('Subir imagen').click();
-    f.detectChanges();
+    await f.whenStable();
+    expect(vista().querySelector('dialog')?.open).toBeTrue();
     const input = vista().querySelector<HTMLInputElement>('#imagen-firma')!;
     const archivos = new DataTransfer();
     archivos.items.add(new File(['imagen de prueba'], 'firma.png', { type: 'image/png' }));
@@ -71,7 +73,36 @@ describe('Habilitación persistida de firmantes municipales', () => {
 
     cargar([registrada]);
     expect(vista().querySelector('img.vista-firma')).toBeNull();
-    expect(boton('Cambiar imagen')).toBeDefined();
+    expect(vista().querySelector('dialog')?.open).toBeFalse();
+    expect(boton('Gestionar imagen')).toBeDefined();
+  });
+  it('elimina la imagen desde el modal solo tras confirmar y mantiene al trabajador habilitado', async () => {
+    cargar([{ ...habilitada, tiene_imagen_firma: true }]);
+    f.autoDetectChanges();
+    boton('Gestionar imagen').click();
+    await f.whenStable();
+    expect(vista().querySelector('dialog')?.open).toBeTrue();
+    boton('Eliminar imagen').click();
+    f.detectChanges();
+    http.expectNone(r => r.method === 'DELETE');
+    boton('Volver').click();
+    f.detectChanges();
+    expect(boton('Eliminar imagen')).toBeDefined();
+    boton('Eliminar imagen').click();
+    f.detectChanges();
+    boton('Confirmar eliminación').click();
+
+    const solicitud = http.expectOne(base + '/2/imagen-firma');
+    expect(solicitud.request.method).toBe('DELETE');
+    expect(solicitud.request.context.get(AUTHENTICATED_REQUEST)).toBeTrue();
+    const actualizado = { ...habilitada, tiene_imagen_firma: false };
+    solicitud.flush({ success: true, data: { completada: true, persistido: true, funcionario: actualizado } });
+    cargar([actualizado]);
+
+    expect(vista().querySelector('dialog')?.open).toBeFalse();
+    expect(boton('Subir imagen')).toBeDefined();
+    expect(vista().textContent).toContain('Imagen de firma eliminada.');
+    expect(f.componentInstance.trabajadores()[0].habilitado_firma_certificados).toBeTrue();
   });
   it('mantiene ambas Maria por ID laboral y muestra cargo y área independientes', () => {
     cargar(); f.componentInstance.busqueda.set('maria'); f.detectChanges();
