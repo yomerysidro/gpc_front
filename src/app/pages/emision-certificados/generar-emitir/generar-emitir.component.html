@@ -74,8 +74,8 @@
         <p>{{ r.contexto.nombre_actividad }}@if (sesionBeneficiarios()?.['numero_sesion']; as numero) { · Sesión {{ numero }} }@if (sesionBeneficiarios()?.['fecha']; as fecha) { · {{ $any(fecha) | date:'dd/MM/yyyy' }} }</p>
         @if (r.contadores; as c) {
           <div class="asistencia-indicadores" aria-label="Resumen de asistencia">
-            <div class="asistencia-tarjeta"><span class="material-symbols-outlined" aria-hidden="true">how_to_reg</span><strong>{{ c.inscritos_actividad_vigentes }}</strong><span>Inscritos</span></div>
-            <div class="asistencia-tarjeta"><span class="material-symbols-outlined" aria-hidden="true">groups</span><strong>{{ c.participantes_sesion }}</strong><span>Participantes</span></div>
+            <div class="asistencia-tarjeta"><span class="material-symbols-outlined" aria-hidden="true">how_to_reg</span><strong>{{ c.participantes_sesion ?? 'No informado' }}</strong><span>Inscritos en la sesión</span></div>
+            <div class="asistencia-tarjeta"><span class="material-symbols-outlined" aria-hidden="true">groups</span><strong>{{ r.beneficiarios.total }}</strong><span>Beneficiarios</span></div>
             <div class="asistencia-tarjeta"><span class="material-symbols-outlined" aria-hidden="true">co_present</span><strong>{{ c.presentes }}</strong><span>Presentes</span></div>
             <div class="asistencia-tarjeta"><span class="material-symbols-outlined" aria-hidden="true">person_off</span><strong>{{ c.ausentes }}</strong><span>Ausentes</span></div>
             <div class="asistencia-tarjeta"><span class="material-symbols-outlined" aria-hidden="true">pending_actions</span><strong>{{ c.pendientes }}</strong><span>Pendientes</span></div>
@@ -156,7 +156,7 @@
                 <button class="btn btn-consulta" type="button" [disabled]="!puedeRevisar(b, r) || cargandoRevision()" (click)="revisarBeneficiario(b, r)">Preparar certificado</button>
               }
             </td></tr>
-          } @empty { <tr><td colspan="8">No hay beneficiarios autorizados.</td></tr> }
+          } @empty { <tr><td colspan="8">{{ r.origen === 'sesion' ? (r.contadores?.participantes_sesion === 0 ? 'No hay inscritos en esta sesión.' : r.finalizada === false ? 'Los beneficiarios se muestran al finalizar la sesión.' : 'No hay beneficiarios para esta sesión.') : 'No hay beneficiarios autorizados.' }}</td></tr> }
         </tbody></table></div>
         <nav class="acciones"><button type="button" class="btn" [disabled]="r.beneficiarios.current_page <= 1 || cargandoBeneficiarios()" (click)="cargarBeneficiarios(r.beneficiarios.current_page - 1)">Anterior</button><span>{{ r.beneficiarios.current_page }} / {{ r.beneficiarios.last_page }} / {{ r.beneficiarios.total }} beneficiarios</span><button type="button" class="btn" [disabled]="r.beneficiarios.current_page >= r.beneficiarios.last_page || cargandoBeneficiarios()" (click)="cargarBeneficiarios(r.beneficiarios.current_page + 1)">Siguiente</button></nav>
         }

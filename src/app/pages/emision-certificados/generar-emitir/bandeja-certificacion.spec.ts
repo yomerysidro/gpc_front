@@ -126,7 +126,7 @@ describe('Bandeja de certificación y beneficiarios', () => {
     responderParticipantes(15, 1, 'Participante de la primera sesión', 10);
     expect(f.nativeElement.querySelector('app-ponentes-sesion tbody').textContent).toContain('Maria Perez');
     expect(participantes().textContent).not.toContain('Maria Perez');
-    expect(f.nativeElement.querySelector('[aria-label="Resumen de asistencia"]').textContent).toContain('23Participantes');
+    expect(f.nativeElement.querySelector('[aria-label="Resumen de asistencia"]').textContent).toContain('23Inscritos en la sesión');
     const siguiente = Array.from(f.nativeElement.querySelectorAll('nav button') as NodeListOf<HTMLButtonElement>)
       .find(button => button.textContent === 'Siguiente')!;
     siguiente.click();
