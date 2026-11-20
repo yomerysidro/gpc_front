@@ -7,7 +7,7 @@ import { AuthService } from '../../../core/services/autenticacion/auth.service';
 export interface ConfirmacionDecision { readonly registro: Solicitud; readonly accion: AccionSolicitud; readonly motivo: string; }
 @Component({
   selector: 'app-decision-modal', standalone: true, imports: [DialogoComponent, ReactiveFormsModule],
-  template: `<app-dialogo [titulo]="etiqueta()" [cierreControlado]="true" (cierreSolicitado)="cerrar()" (cerrado)="registro.set(null)">
+  template: `<app-dialogo [titulo]="etiqueta()" [ancho]="accion() === 'Iniciar revisión' || accion() === 'Derivar' ? 'amplio' : 'normal'" [cierreControlado]="true" (cierreSolicitado)="cerrar()" (cerrado)="registro.set(null)">
     @if (registro(); as fila) {
       <dl class="datos-decision">
         <div><dt>Solicitud</dt><dd>{{ fila.numero }} · {{ fila.nombre }}</dd></div>

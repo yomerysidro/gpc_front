@@ -14,7 +14,12 @@ dd { margin: 0 0 var(--espacio-3); overflow-wrap: anywhere; }
 .reconocimiento { border-top: 3px solid var(--boton-dorado); overflow-wrap: anywhere; }
 .reconocimiento h2 { margin-top: var(--espacio-4); font-size: 1.25rem; }
 
-.grid-compacta { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: .75rem; }
+.grid-compacta {
+  grid-template-columns: minmax(0, 1fr);
+  gap: .75rem;
+  @media (min-width: 560px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 840px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
 .estado-sesion {
   display: flex;

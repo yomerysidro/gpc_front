@@ -83,7 +83,7 @@
   }
   @if (!api.integrado) { <div class="vacio" role="status"><span class="material-symbols-outlined" aria-hidden="true">inbox</span><h3>Bandeja preparada para sus solicitudes</h3><p>Los registros aparecerán cuando se habilite la consulta autenticada.</p></div> }
 </section>
-<app-dialogo titulo="Detalle de solicitud" (cerrado)="cerrarDetalle()">
+<app-dialogo titulo="Detalle de solicitud" [ancho]="bandeja() === 'revision' ? 'amplio' : 'normal'" (cerrado)="cerrarDetalle()">
   @if (cargandoDetalle()) { <p role="status">Consultando detalle autorizado…</p> }
   @if (errorDetalle()) { <p class="error" role="alert">{{ errorDetalle() }}</p> }
   @if (detalle(); as fila) { <app-solicitud-detalle [revision]="bandeja() === 'revision'" [datos]="fila" [registro]="fila" [area]="fila.area" [responsable]="fila.responsable" [tipo]="fila.tipo" /> }
