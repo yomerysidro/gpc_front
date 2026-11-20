@@ -137,7 +137,7 @@ export class DetalleActividadComponent {
   }
   protected readonly actividadContexto = computed(() => {
     const actividad = this.actividad();
-    return actividad ? { id_actividad: actividad.id_actividad, nombre: actividad.nombre } : null;
+    return actividad ? { id_actividad: actividad.id_actividad, nombre: actividad.nombre, fecha_inicio: actividad.fecha_inicio } : null;
   });
   protected readonly detalleSesion = signal<RegistroEmision | null>(null);
   protected readonly cargandoDetalleSesion = signal(false);

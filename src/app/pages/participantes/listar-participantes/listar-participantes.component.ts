@@ -256,14 +256,14 @@ export class ListarParticipantesComponent {
     if (!item) {
       const id = Number(this.filtros().actividad);
       if (this.actividadesPorId().has(id)) this.form.controls.id_actividad.setValue(String(id));
-      this.protegerActividad();
+      this.protegerCampos();
       return;
     }
     this.solicitudDetalle = this.servicio.obtener(item.id_participacion).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: actual => { this.form.reset({ id_persona: String(actual.id_persona), id_actividad: String(actual.id_actividad),
         id_tipo_participacion: String(actual.id_tipo_participacion), fecha_inscripcion: actual.fecha_inscripcion.slice(0, 10), estado: actual.estado });
         if (this.actividadContexto() && actual.id_actividad !== this.actividadContexto()!.id_actividad) { this.errorFormulario.set('La inscripción no pertenece a esta actividad.'); return; }
-        this.protegerActividad(); this.cargandoEdicion.set(false); },
+        this.protegerCampos(); this.cargandoEdicion.set(false); },
       error: (error: ErrorApi) => { this.cargandoEdicion.set(false); this.errorFormulario.set(this.mensajeError(error)); },
     });
   }
@@ -327,12 +327,15 @@ export class ListarParticipantesComponent {
         this.aviso.set({ tipo: 'exito', texto: respuesta.message }); this.limpiarFiltros(); this.cargar();
       },
       error: (error: ErrorApi) => {
-        this.form.enable({ emitEvent: false }); this.protegerActividad(); this.enviando.set(false); this.errorFormulario.set(this.mensajeError(error));
+        this.form.enable({ emitEvent: false }); this.protegerCampos(); this.enviando.set(false); this.errorFormulario.set(this.mensajeError(error));
         this.erroresServidor.set(error.errores); this.form.markAllAsTouched();
       },
     });
   }
-  private protegerActividad(): void {
+  private protegerCampos(): void {
+    if (this.editando() === null && (this.contextoIntegrado()?.sesion ?? this.sesionContexto().sesion)) {
+      this.form.controls.fecha_inscripcion.disable({ emitEvent: false });
+    }
     const actividad = this.actividadContexto();
     if (actividad) { this.form.controls.id_actividad.setValue(String(actividad.id_actividad), { emitEvent: false }); this.form.controls.id_actividad.disable({ emitEvent: false }); }
   }

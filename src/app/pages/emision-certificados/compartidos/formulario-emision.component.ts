@@ -22,7 +22,7 @@ export class FormularioEmisionComponent implements OnChanges {
   readonly id = input<number | null>(null);
   readonly enDialogo = input(false);
   readonly clasificacion = input(false);
-  readonly actividadContexto = input<{ id_actividad: number; nombre: string } | null>(null);
+  readonly actividadContexto = input<{ id_actividad: number; nombre: string; fecha_inicio?: string | null } | null>(null);
   readonly asistenciaContexto = input<{ id_participacion: number; id_actividad_sesion: number; nombre: string } | null>(null);
   private readonly personasApi = inject(PersonService);
   protected readonly estadosClasificaciones = ESTADOS_CLASIFICACIONES;
@@ -110,6 +110,16 @@ export class FormularioEmisionComponent implements OnChanges {
     if (this.actividadContexto() && controles['id_actividad']) {
       controles['id_actividad'].setValue(String(this.actividadContexto()!.id_actividad));
       controles['id_actividad'].disable({ emitEvent: false });
+    }
+    if (this.recurso() === 'activity-session' && this.id() === null) {
+      const fechaInicio = this.actividadContexto()?.fecha_inicio;
+      if (fechaInicio) controles['fecha'].setValue(fechaInicio.slice(0, 10));
+      if (!this.actividadContexto()) {
+        controles['id_actividad'].valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(id => {
+          const actividad = this.opciones()['id_actividad']?.find(opcion => String(opcion.id) === id);
+          controles['fecha'].setValue(actividad?.fechaInicio?.slice(0, 10) ?? '');
+        });
+      }
     }
     if (this.clasificacion() && this.recurso() === 'tipos-certificado') {
       controles['estado'].setValue('1');

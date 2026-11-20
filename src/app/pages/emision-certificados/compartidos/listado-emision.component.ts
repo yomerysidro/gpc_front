@@ -5,7 +5,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, concatMap, defer, from, map, Observable, of, Subscription, switchMap, tap } from 'rxjs';
 import { ErrorApi } from '../../../core/interfaces/api/api-response.interface';
-import { FiltrosEmision, PaginaEmision, RecursoEmision, RegistroEmision } from '../../../core/interfaces/emision-certificados/emision-certificados.interface';
+import { FiltrosEmision, OpcionRelacion, PaginaEmision, RecursoEmision, RegistroEmision } from '../../../core/interfaces/emision-certificados/emision-certificados.interface';
 import { AuthService } from '../../../core/services/autenticacion/auth.service';
 import { EmisionCertificadosService, PERMISOS_EMISION } from '../../../core/services/emision-certificados/emision-certificados.service';
 import { DialogoComponent } from '../../../shared/components/dialogo/dialogo.component';
@@ -257,8 +257,8 @@ export class ListadoEmisionComponent implements OnChanges {
   readonly clasificacion = input(false);
   readonly estadoInicial = input<EstadoNavegacionListado | null>(null);
   readonly reinicioNavegacion = input(0);
-  readonly actividadContexto = input<{ id_actividad: number; nombre: string } | null>(null);
-  protected readonly actividadFormulario = signal<{ id_actividad: number; nombre: string } | null>(null);
+  readonly actividadContexto = input<{ id_actividad: number; nombre: string; fecha_inicio?: string | null } | null>(null);
+  protected readonly actividadFormulario = signal<{ id_actividad: number; nombre: string; fecha_inicio?: string | null } | null>(null);
   private numeroPagina = 1;
   private readonly api = inject(EmisionCertificadosService);
   private readonly auth = inject(AuthService);
@@ -462,7 +462,7 @@ export class ListadoEmisionComponent implements OnChanges {
 
   private cargarRelaciones(): void {
     for (const campo of this.config().columnas.filter(campo => campo.relacion)) {
-      const peticion = campo.relacion === 'gestion' ? this.api.relaciones(campo.nombre)
+      const peticion: Observable<readonly OpcionRelacion[]> = campo.relacion === 'gestion' ? this.api.relaciones(campo.nombre)
         : this.api.listarTodos(campo.relacion!).pipe(map(registros => registros.map(registro => {
           const cfg = CONFIGURACION_EMISION[campo.relacion as RecursoEmision];
           const id = Number(registro[cfg.clave]);
@@ -507,7 +507,7 @@ export class ListadoEmisionComponent implements OnChanges {
 
   protected abrirFormulario(id: number | null, evento?: Event): void {
     const seleccion = this.catalogosSesiones.actividades.find(a => String(a['id_actividad']) === this.filtrosSesiones.controls.actividad.value);
-    this.actividadFormulario.set(this.actividadContexto() ?? (seleccion ? { id_actividad: Number(seleccion['id_actividad']), nombre: String(seleccion['nombre']) } : null));
+    this.actividadFormulario.set(this.actividadContexto() ?? (seleccion ? { id_actividad: Number(seleccion['id_actividad']), nombre: String(seleccion['nombre']), fecha_inicio: typeof seleccion['fecha_inicio'] === 'string' ? seleccion['fecha_inicio'] : null } : null));
     if (this.mostrarModal()) {
       if (this.editar() !== undefined || this.eliminando()) return;
       this.aviso.set(null);

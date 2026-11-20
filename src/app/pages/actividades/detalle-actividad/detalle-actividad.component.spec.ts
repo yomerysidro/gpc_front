@@ -197,7 +197,10 @@ describe('Detalle de actividad con las APIs existentes', () => {
     const selector = fixture.nativeElement.querySelector('#activity-session-id_actividad') as HTMLSelectElement;
     expect(selector.value).toBe('7'); expect(selector.disabled).toBeTrue();
     expect(fixture.nativeElement.querySelector('.modal-sesion-detalle dialog[open]')).not.toBeNull();
-    const valores = { nombre: 'Jornada real', fecha: '2026-11-04', hora_inicio: '08:00', hora_fin: '09:00', lugar: 'Auditorio', estado: 'activo' };
+    const fechaSesion = fixture.nativeElement.querySelector('#activity-session-fecha') as HTMLInputElement;
+    expect(fechaSesion.value).toBe('2026-11-04');
+    expect(fechaSesion.disabled).toBeFalse();
+    const valores = { nombre: 'Jornada real', fecha: '2026-11-05', hora_inicio: '08:00', hora_fin: '09:00', lugar: 'Auditorio', estado: 'activo' };
     for (const [nombre, valor] of Object.entries(valores)) {
       const campo = fixture.nativeElement.querySelector('#activity-session-' + nombre) as HTMLInputElement;
       campo.value = valor; campo.dispatchEvent(new Event('input'));
@@ -205,6 +208,7 @@ describe('Detalle de actividad con las APIs existentes', () => {
     fixture.nativeElement.querySelector('.modal-sesion-detalle form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await fixture.whenStable();
     const guardar = http.expectOne(req => req.url === '/api/activity-session' && req.method === 'POST');
     expect(guardar.request.body.id_actividad).toBe(7);
+    expect(guardar.request.body.fecha).toBe('2026-11-05');
     guardar.flush({ success: true, data: { id_actividad_sesion: 15, id_actividad: 7, ...valores } }); await fixture.whenStable();
     responder('/activity-session', [{ id_actividad_sesion: 15, id_actividad: 7, ...valores }]); await fixture.whenStable();
     expect(texto()).toContain('Jornada real');
