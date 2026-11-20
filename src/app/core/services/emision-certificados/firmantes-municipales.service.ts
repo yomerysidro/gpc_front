@@ -14,17 +14,23 @@ export class FirmantesMunicipalesService {
   private readonly base = environment.apiBaseUrl.replace(/\/$/, '') + '/funcionarios-firmantes';
   private readonly privado = { withCredentials: true, context: new HttpContext().set(AUTHENTICATED_REQUEST, true) };
 
-  habilitar(id: number) {
-    return this.confirmar(this.http.post<ApiResponse<ConfirmacionHabilitacion>>(this.base + '/habilitar', { id_persona_trabajador: id }, this.privado), id, true);
+  habilitar(id: number, imagen?: File) {
+    let datos: { id_persona_trabajador: number } | FormData = { id_persona_trabajador: id };
+    if (imagen) {
+      datos = new FormData();
+      datos.append('id_persona_trabajador', String(id));
+      datos.append('imagen_firma', imagen);
+    }
+    return this.confirmar(this.http.post<ApiResponse<ConfirmacionHabilitacion>>(this.base + '/habilitar', datos, this.privado), id, true, !!imagen);
   }
   deshabilitar(id: number) {
     return this.confirmar(this.http.delete<ApiResponse<ConfirmacionHabilitacion>>(`${this.base}/${id}/habilitacion`, this.privado), id, false);
   }
-  private confirmar(operacion: Observable<ApiResponse<ConfirmacionHabilitacion>>, id: number, habilitado: boolean) {
+  private confirmar(operacion: Observable<ApiResponse<ConfirmacionHabilitacion>>, id: number, habilitado: boolean, conImagen = false) {
     return operacion.pipe(timeout(30000), map(r => {
       const d = r.data;
       if (!r.success || d?.completada !== true || d.persistido !== true || !this.valido(d.funcionario)
-        || d.funcionario.id_persona_trabajador !== id || d.funcionario.habilitado_firma_certificados !== habilitado) {
+        || d.funcionario.id_persona_trabajador !== id || d.funcionario.habilitado_firma_certificados !== habilitado || (conImagen && d.funcionario.tiene_imagen_firma !== true)) {
         throw new Error('No se confirmó la habilitación solicitada.');
       }
       return d.funcionario;
