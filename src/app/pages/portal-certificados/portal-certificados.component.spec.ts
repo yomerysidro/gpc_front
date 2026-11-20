@@ -90,6 +90,7 @@ describe('Portal público sin autenticación', () => {
   it('conserva el sidebar para la sesión administrativa ya cargada y lo retira al pasar a visitante', async () => {
     const auth = TestBed.inject(AuthService) as any;
     auth.usuario.set({ nombre: 'Administrador', rol: 'Administrador', email: 'admin@institucional.test' });
+    auth.tienePermiso = (clave: string) => clave === 'portal-publico.ver';
     const h = await RouterTestingHarness.create('/portal-certificados'); h.detectChanges();
     expect(h.routeNativeElement!.querySelector('app-sidebar')).not.toBeNull();
     expect(h.routeNativeElement!.textContent).toContain('Portal Público de Certificados');
@@ -406,13 +407,12 @@ describe('Portal público sin autenticación', () => {
 });
 
 describe('Acceso adicional al portal público', () => {
-  it('muestra un enlace independiente aun sin permisos administrativos', () => {
+  it('omite el enlace interno al portal sin permiso administrativo', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: AuthService,
       useValue: { usuario: signal(null), tienePermiso: () => false } }] });
     const f = TestBed.createComponent(SidebarComponent); f.detectChanges();
     const enlace = f.nativeElement.querySelector('a[href="/portal-certificados"]');
-    expect(enlace.textContent).toContain('Portal público');
-    expect(enlace.querySelector('.material-symbols-outlined').textContent).toBe('verified');
+    expect(enlace).toBeNull();
     f.destroy();
   });
 });
