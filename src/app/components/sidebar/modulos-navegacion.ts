@@ -108,11 +108,44 @@ export function rutaPantallaPendiente(entrada: EntradaSidebar): string {
 }
 
 export function resolverGruposSidebar(tienePermiso: (clave: string) => boolean, items: readonly NavigationItem[], consultarPendientes = false, capacidades: CapacidadesSolicitudes | null = null): readonly GrupoSidebarVisible[] {
-  return SIDEBAR_CONFIG.map(grupo => ({
+  return SIDEBAR_CONFIG.filter(grupo => puedeAbrirGrupo(grupo.id, tienePermiso)).map(grupo => ({
     ...grupo,
     hijos: grupo.hijos.flatMap(entrada => {
       const resuelta = resolverEntradaSidebar(entrada, tienePermiso, items, consultarPendientes, capacidades);
       return resuelta ? [resuelta] : [];
     }),
   })).filter(grupo => grupo.hijos.length > 0);
+}
+
+const permisosPorGrupo: Readonly<Record<string, string>> = {
+  seguridad: 'roles.ver',
+  'recursos-humanos': 'recursos-humanos.ver',
+  solicitudes: 'solicitudes.propias',
+  actividades: 'actividades.ver',
+  emision: 'emision.gestionar',
+  gerencia: 'gerencia.ver',
+  reportes: 'reportes.ver',
+  configuracion: 'configuracion.ver',
+};
+
+export function puedeAbrirGrupo(grupo: string, tienePermiso: (clave: string) => boolean): boolean {
+  const permiso = permisosPorGrupo[grupo];
+  return !permiso || !tienePermiso('dashboard.acceso-modular') || tienePermiso(permiso);
+}
+
+export function grupoDeRuta(segmentos: readonly string[]): string {
+  const [raiz, pagina] = segmentos;
+  switch (raiz) {
+    case 'usuarios': case 'roles': return 'seguridad';
+    case 'solicitudes': return pagina === 'revision' ? 'recursos-humanos' : 'solicitudes';
+    case 'gestion': return ['personas', 'trabajadores', 'practicas', 'ponentes'].includes(pagina) ? 'recursos-humanos' : 'configuracion';
+    case 'certificaciones':
+      if (['actividades', 'participantes', 'sesiones-asistencia'].includes(pagina)) return 'actividades';
+      if (pagina === 'reconocimientos') return 'recursos-humanos';
+      if (pagina === 'configuracion' || pagina === 'firmas' && segmentos[2] === 'aplicadas') return 'configuracion';
+      return 'emision';
+    case 'pendientes': return 'gerencia';
+    case 'reportes': return 'reportes';
+    default: return '';
+  }
 }

@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
 import { AuthService } from '../../core/services/autenticacion/auth.service';
 import { IndicadorRegistrado, ReportesService } from '../../core/services/reportes/reportes.service';
-import { SIDEBAR_CONFIG, resolverEntradaSidebar } from '../../components/sidebar/modulos-navegacion';
+import { resolverGruposSidebar } from '../../components/sidebar/modulos-navegacion';
 
 type Indicador = { clave: IndicadorRegistrado; nombre: string; icono: string; permiso: string; valor: number | null; estado: 'cargando' | 'disponible' | 'error' };
 
@@ -21,12 +21,9 @@ export class HomeComponent {
   private readonly reportes = inject(ReportesService);
   private readonly destroyRef = inject(DestroyRef);
   readonly indicadores = signal<readonly Indicador[]>([]);
-  readonly accesos = computed(() => SIDEBAR_CONFIG.flatMap(grupo => grupo.hijos)
-    .filter(entrada => ['actividades', 'generar-emitir', 'emitidos', 'documentos-firmar', 'pendientes-aprobacion'].includes(entrada.id))
-    .flatMap(entrada => {
-      const visible = resolverEntradaSidebar(entrada, clave => this.auth.tienePermiso(clave), [], false, this.auth.capacidadesSolicitudes());
-      return visible ? [visible] : [];
-    }));
+  readonly accesos = computed(() => resolverGruposSidebar(clave => this.auth.tienePermiso(clave), [], false, this.auth.capacidadesSolicitudes())
+    .flatMap(grupo => grupo.hijos)
+    .filter(entrada => ['actividades', 'generar-emitir', 'emitidos', 'documentos-firmar', 'pendientes-aprobacion'].includes(entrada.id)));
 
   constructor() { afterNextRender(() => this.cargar()); }
 

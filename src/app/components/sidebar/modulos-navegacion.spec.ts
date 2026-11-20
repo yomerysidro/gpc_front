@@ -130,7 +130,7 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
 
   it('un consultor con lectura de Dashboard y Reportes obtiene sus cuatro consultas', () => {
     permisos.set(['dashboard.ver', 'reportes.ver']); fixture.detectChanges();
-    expect(vista().querySelectorAll('a').length).toBe(6);
+    expect(vista().querySelectorAll('a').length).toBe(5);
     expect(vista().querySelector('a')?.getAttribute('href')).toBe('/inicio');
     expect(vista().querySelector('#submenu-reportes')?.querySelectorAll('a').length).toBe(4);
     expect(vista().querySelector('#submenu-seguridad')).toBeNull();
@@ -140,9 +140,23 @@ describe('Sidebar compartido, capacidades efectivas y accesibilidad', () => {
     permisos.set([]);
     fixture.componentRef.setInput('items', [{ label: 'Administrador', path: '/usuarios' }, { label: 'Gerencia', path: '/gerencia' }]);
     fixture.detectChanges();
-    expect(vista().querySelectorAll('a').length).toBe(1);
-    expect(vista().querySelector('a')?.getAttribute('href')).toBe('/portal-certificados');
+    expect(vista().querySelectorAll('a').length).toBe(0);
+
     expect(vista().textContent).toContain('No hay opciones habilitadas');
+  });
+
+  it('separa Gerencia y Emisión aunque compartan lectura y oculta el portal interno sin permiso', () => {
+    permisos.set(['dashboard.ver', 'dashboard.acceso-modular', 'gerencia.ver', 'emision.ver', 'reportes.ver']);
+    fixture.detectChanges();
+    expect(vista().querySelector('#submenu-gerencia')).not.toBeNull();
+    expect(vista().querySelector('#submenu-reportes')).not.toBeNull();
+    expect(vista().querySelector('#submenu-emision')).toBeNull();
+    expect(vista().querySelector('.portal-publico')).toBeNull();
+
+    permisos.set([...permisos(), 'emision.gestionar', 'portal-publico.ver']);
+    fixture.detectChanges();
+    expect(vista().querySelector('#submenu-emision')).not.toBeNull();
+    expect(vista().querySelector('.portal-publico')?.getAttribute('href')).toBe('/portal-certificados');
   });
 
   it('se actualiza cuando cambian las capacidades sin cambiar de componente', () => {

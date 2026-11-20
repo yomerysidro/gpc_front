@@ -26,6 +26,7 @@ export class SidebarComponent {
   protected readonly expandidos = signal<ReadonlySet<string>>(new Set());
   private readonly consultarPendientes = computed(() => puedeConsultarPantallasPendientes(this.auth.usuario(), clave => this.auth.tienePermiso(clave)));
   protected readonly grupos = computed(() => resolverGruposSidebar(clave => this.auth.tienePermiso(clave), this.items(), this.consultarPendientes(), this.auth.capacidadesSolicitudes?.()));
+  protected readonly portalPublico = computed(() => this.auth.tienePermiso('portal-publico.ver'));
   protected readonly dashboard = computed(() => resolverEntradaSidebar(DASHBOARD_SIDEBAR, clave => this.auth.tienePermiso(clave), this.items()));
   protected readonly entradaActiva = computed(() => {
     const arbol = this.router.parseUrl(this.url());
