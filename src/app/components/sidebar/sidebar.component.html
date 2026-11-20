@@ -27,10 +27,11 @@
         }
       </div>
     }
-    <a routerLink="/portal-certificados" aria-label="Portal público" [attr.title]="contraido() ? 'Portal público' : null" class="portal-publico">
+    @if (portalPublico()) { <a routerLink="/portal-certificados" aria-label="Portal público" [attr.title]="contraido() ? 'Portal público' : null" class="portal-publico">
       <span class="material-symbols-outlined" aria-hidden="true">verified</span>
       <span class="texto-enlace">Portal público</span>
     </a>
+    }
     @if (!dashboard() && !grupos().length) {
       <p class="sin-opciones" role="status">No hay opciones habilitadas para tus permisos actuales.</p>
     }

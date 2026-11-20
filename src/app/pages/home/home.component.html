@@ -27,7 +27,7 @@
       @for (acceso of accesos(); track acceso.id) {
         <a [routerLink]="acceso.path"><span class="material-symbols-outlined acceso-icono" aria-hidden="true">{{ acceso.icon }}</span><span>{{ acceso.label }}</span><span class="material-symbols-outlined flecha" aria-hidden="true">chevron_right</span></a>
       }
-      <a routerLink="/portal-certificados"><span class="material-symbols-outlined acceso-icono" aria-hidden="true">search</span><span>Portal público</span><span class="material-symbols-outlined flecha" aria-hidden="true">chevron_right</span></a>
+      @if (auth.tienePermiso('portal-publico.ver')) { <a routerLink="/portal-certificados"><span class="material-symbols-outlined acceso-icono" aria-hidden="true">search</span><span>Portal público</span><span class="material-symbols-outlined flecha" aria-hidden="true">chevron_right</span></a> }
     </nav>
   </section>
   <aside class="nota-documental"><span class="material-symbols-outlined" aria-hidden="true">verified</span><div><h2>Gestión documental confiable</h2><p>Consulta el estado exacto de cada documento en su módulo. La preparación, la confirmación administrativa, la firma y la disponibilidad para entrega son etapas diferentes.</p></div></aside>
