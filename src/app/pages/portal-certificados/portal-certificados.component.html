@@ -92,7 +92,7 @@
               @if (r.fecha) { <p>{{ r.fechaEtiqueta || 'Fecha del documento' }}: {{ r.fecha | date:'dd/MM/yyyy' }}</p> }
               @if (r.urlPdf) {
                 <div class="resultado-acciones">
-                  <button type="button" class="btn principal" (click)="verCertificado(r)">Ver certificado</button>
+                  <button type="button" class="btn principal" aria-haspopup="dialog" (click)="verCertificado(r)">Ver certificado</button>
                   <a class="btn descargar" [href]="r.urlPdf + '&descargar=1'">Descargar PDF</a>
                 </div>
               }
@@ -112,23 +112,24 @@
         </section>
       }
       </div>
-    @if (detalle()) {
-      <section class="tarjeta documento" aria-labelledby="titulo-documento">
-        <button type="button" class="btn" (click)="volver()"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Regresar</button>
-        <h2 id="titulo-documento">{{ resultado()?.tipo || 'Certificado' }}</h2>
-        @if (resultado()?.actividad) { <p class="actividad-certificado">{{ resultado()?.actividad }}</p> }
-        <p class="estado">{{ resultado()?.estadoPublico }}</p>
-        <p class="codigo">Código de verificación: {{ resultado()?.codigo }}</p>
-        @if (cargandoPdf()) { <p role="status">Cargando el documento…</p> }
-        @if (errorPdf()) { <p role="alert">{{ errorPdf() }}</p> }
-        @if (archivo(); as pdf) {
-          @if (pdf.vistaFirmas) { <p>Vista de consulta con las imágenes registradas de los firmantes.</p> }
-          <app-pdf-continuo [archivo]="pdf" [ajustarAncho]="true" (fallo)="falloVisor()" />
-        }
-        @if (urlDescarga(); as url) { <a class="btn principal descargar" [href]="resultado()?.urlPdf + '&descargar=1'" download="certificado.pdf">{{ archivo()?.vistaFirmas ? 'Descargar PDF original' : 'Descargar PDF' }}</a> }
-        @if (errorPdf() && !archivo() && resultado()?.urlPdf) { <button type="button" class="btn" (click)="verCertificado()">Reintentar PDF</button> }
-      </section>
-    }
+    <app-dialogo #dialogoCertificado [titulo]="resultado()?.tipo || 'Certificado'" ancho="amplio"
+      [mostrarCerrar]="true" [cierreControlado]="true" (cierreSolicitado)="volver()">
+      @if (detalle()) {
+        <div class="documento" [attr.aria-busy]="cargandoPdf()">
+          @if (resultado()?.actividad) { <p class="actividad-certificado">{{ resultado()?.actividad }}</p> }
+          <p class="estado">{{ resultado()?.estadoPublico }}</p>
+          <p class="codigo">Código de verificación: {{ resultado()?.codigo }}</p>
+          @if (cargandoPdf()) { <p role="status">Cargando el documento…</p> }
+          @if (errorPdf()) { <p role="alert">{{ errorPdf() }}</p> }
+          @if (archivo(); as pdf) {
+            @if (pdf.vistaFirmas) { <p>Vista de consulta con las imágenes registradas de los firmantes.</p> }
+            <app-pdf-continuo [archivo]="pdf" [ajustarAncho]="true" (fallo)="falloVisor()" />
+          }
+          @if (urlDescarga(); as url) { <a class="btn principal descargar" [href]="resultado()?.urlPdf + '&descargar=1'" download="certificado.pdf">Descargar PDF</a> }
+          @if (errorPdf() && !archivo() && resultado()?.urlPdf) { <button type="button" class="btn" (click)="verCertificado()">Reintentar PDF</button> }
+        </div>
+      }
+    </app-dialogo>
   </main>
   <footer>Municipalidad Distrital de Morales<span>Portal Público de Certificados · Servicio institucional</span></footer>
 </div>
