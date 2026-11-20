@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { afterNextRender, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { cargarApiTurnstile, TurnstileApi } from './turnstile';
@@ -15,7 +15,7 @@ import { ZONA_HORARIA_LIMA } from '../../../shared/utils/zona-horaria';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, DatePipe, AuthLayoutComponent],
+  imports: [ReactiveFormsModule, DatePipe, AuthLayoutComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })
