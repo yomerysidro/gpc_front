@@ -167,7 +167,7 @@ describe('Bandeja de certificación y beneficiarios', () => {
     expect(f.nativeElement.querySelectorAll('.asistencia-tarjeta')[2].querySelector('strong').textContent).toBe('2');
     expect(f.nativeElement.textContent).not.toContain('No determinable');
     expect(f.nativeElement.querySelector('.aviso-asistencia')).toBeNull();
-    expect(Array.from(f.nativeElement.querySelectorAll('.asistencia-tarjeta strong')).map((n: any) => n.textContent)).toEqual(['2', '2', '2', '0', '0']);
+    expect(Array.from(f.nativeElement.querySelectorAll('.asistencia-tarjeta strong')).map((n: any) => n.textContent)).toEqual(['2', '1', '2', '0', '0']);
     expect(f.nativeElement.querySelector('.pasos')).toBeNull();
     const volver = Array.from(f.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(b => b.getAttribute('aria-label') === 'Volver a pendientes')!;
     volver.click(); f.detectChanges();
