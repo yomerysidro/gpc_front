@@ -224,6 +224,7 @@ describe('Detalle de actividad con las APIs existentes', () => {
     expect(tarjetas.map(t => t.dataset['sesionId'])).toEqual(['15', '17']);
     expect(tarjetas[0].textContent).not.toContain('1 presentes'); expect(tarjetas[0].textContent).not.toContain('2 inscritos');
     expect(texto()).not.toContain('Sesión ajena');
+    expect(tarjetas.map(tarjeta => tarjeta.querySelector('.numero-sesion')?.textContent?.trim())).toEqual(['Sesión #1', 'Sesión #2']);
     for (const tarjeta of tarjetas) {
       expect(tarjeta.querySelectorAll('.acciones-sesion > button').length).toBe(4);
       expect(Array.from(tarjeta.querySelectorAll('.acciones-sesion > button')).every(b => !!b.getAttribute('title') && !!b.getAttribute('aria-label'))).toBeTrue();
@@ -234,7 +235,7 @@ describe('Detalle de actividad con las APIs existentes', () => {
     tarjetas[0].querySelectorAll('button')[1].click(); await fixture.whenStable();
     const panel = fixture.nativeElement.querySelector('.modal-ponentes-sesion dialog[open]') as HTMLElement;
     expect(panel).not.toBeNull(); expect(panel.textContent).toContain('Ponentes de la sesión');
-    expect(panel.textContent).toContain('Jornada municipal'); expect(panel.textContent).toContain('Sesión 15');
+    expect(panel.textContent).toContain('Jornada municipal'); expect(panel.textContent).toContain('Sesión 1');
     const vinculos = http.expectOne('/api/activity/7/sessions/15/ponentes');
     expect(vinculos.request.method).toBe('GET'); expect(vinculos.request.withCredentials).toBeTrue();
     vinculos.flush({ success: true, data: { id_actividad: 7, id_sesion: 15,
@@ -432,7 +433,7 @@ describe('Detalle de actividad con las APIs existentes', () => {
     http.expectNone(req => req.method !== 'GET');
   });
 
-  it('inscribe desde la tarjeta con el formulario existente, actividad protegida y sesión solo contextual', async () => {
+  it('inscribe desde la tarjeta con el formulario existente, actividad protegida y sesión explícita', async () => {
     ['actividades.ver', 'participantes.ver', 'participantes.crear'].forEach(p => permisos.add(p));
     responder('/activity/7', actividad); catalogos(); responder('/participation', []); responder('/attendance/list', []);
     responder('/activity-session', [{ id_actividad_sesion: 15, id_actividad: 7, nombre: 'Primera jornada' }]); await fixture.whenStable();
@@ -448,9 +449,10 @@ describe('Detalle de actividad con las APIs existentes', () => {
     modal.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
     const post = http.expectOne('/api/participation');
     expect(post.request.method).toBe('POST'); expect(post.request.body.id_actividad).toBe(7);
-    expect(post.request.body.id_persona).toBe(41); expect(post.request.body.id_sesion).toBeUndefined(); expect(post.request.body.id_actividad_sesion).toBeUndefined();
+    expect(post.request.body.id_persona).toBe(41); expect(post.request.body.id_sesion).toBeUndefined(); expect(post.request.body.id_actividad_sesion).toBe(15);
     const inscrito = { id_participacion: 30, id_actividad: 7, id_persona: 41, id_tipo_participacion: 5, fecha_inscripcion: '2026-11-05', estado: 'Activo' };
     post.flush({ success: true, message: 'Inscrito', data: inscrito }); await fixture.whenStable();
+    responder('/activity-session', [{ id_actividad_sesion: 15, id_actividad: 7, nombre: 'Primera jornada' }]);
     responder('/participation', [inscrito]); responder('/persons/list', [{ id_persona: 41, nombres: 'Ana', apellido_paterno: 'Pérez' }]); responder('/participation-type', [{ id_tipo_participacion: 5, nombre: 'Asistente', estado: true }]); await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('.indicadores dd').textContent.trim()).toBe('No informado');
     expect(fixture.nativeElement.querySelector('.tarjeta-sesion').textContent).not.toContain('1 inscritos');

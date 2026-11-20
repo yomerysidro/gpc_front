@@ -27,7 +27,7 @@ interface OpcionPonente {
     <dl class="contexto">
       <div><dt>Actividad</dt><dd>{{ actividad().nombre }}</dd></div>
       <div><dt>Sesión</dt><dd>Sesión {{ sesion().numero }}</dd></div>
-      <div><dt>Fecha</dt><dd>{{ sesion().fecha }}</dd></div>
+      <div><dt><label for="fecha-sesion-ponente">Fecha de la sesión</label></dt><dd><input id="fecha-sesion-ponente" type="text" class="input" [value]="sesion().fecha" disabled /></dd></div>
     </dl>
     @if (!autorizado()) { <p role="status">No tienes permiso para consultar los ponentes de esta sesión.</p> }
     @if (cargando()) { <p role="status">Consultando ponentes de la sesión…</p> }

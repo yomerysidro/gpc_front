@@ -49,7 +49,9 @@ describe('Ponentes de una sesión en Gestión de actividades', () => {
 
   it('muestra la actividad, la sesión, la fecha y los vínculos reales de esa sesión', () => {
     iniciar();
-    expect(texto()).toContain('Capacitación Personal'); expect(texto()).toContain('Sesión 001'); expect(texto()).toContain('10/02/2026');
+    expect(texto()).toContain('Capacitación Personal'); expect(texto()).toContain('Sesión 001');
+    const fecha = fixture.nativeElement.querySelector('#fecha-sesion-ponente') as HTMLInputElement;
+    expect(fecha.value).toBe('10/02/2026'); expect(fecha.disabled).toBeTrue();
     expect(texto()).toContain('Maria Perez'); expect(texto()).toContain('DNI 12345678'); expect(texto()).toContain('Especialista');
     http.expectNone(r => r.method !== 'GET');
   });
@@ -174,7 +176,7 @@ describe('Ponentes de una sesión en Gestión de actividades', () => {
     expect(texto()).toContain('Maria Perez');
     expect(Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
       .some(b => ['Asignar ponente a esta sesión', 'Desvincular'].includes(b.textContent?.trim() ?? ''))).toBeFalse();
-    expect(fixture.nativeElement.querySelector('form, input[type="text"], a[href*="person"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('form, input[type="text"]:not(:disabled), a[href*="person"]')).toBeNull();
   });
 
   it('presenta el bloqueo real del servidor sin inventar vínculos', () => {

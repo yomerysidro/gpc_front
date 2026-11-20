@@ -70,7 +70,7 @@ describe('Participantes: interfaz e inscripción', () => {
     expect(vista.querySelectorAll('app-sidebar').length).toBe(1);
     expect(vista.querySelectorAll('app-header').length).toBe(1);
   });
-  it('el modo modal contextual reutiliza la inscripción y rechaza duplicarla aunque cambie la sesión', async () => {
+  it('el modo modal contextual permite vincular una inscripción existente a la sesión elegida', async () => {
     fixture.destroy(); fixture = TestBed.createComponent(ListarParticipantesComponent);
     fixture.componentRef.setInput('contextoIntegrado', { actividad: { id_actividad: 10, nombre: 'Jornada institucional' }, sesion: { id: 99, nombre: 'Otra sesión de la misma actividad' } });
     fixture.autoDetectChanges(); await fixture.whenStable();
@@ -81,8 +81,7 @@ describe('Participantes: interfaz e inscripción', () => {
     expect(fixture.nativeElement.querySelector('table')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Otra sesión de la misma actividad');
     await escribir('#inscripcion-persona', '1'); await escribir('#inscripcion-tipo', '3'); await escribir('#inscripcion-estado', 'Activo'); await guardar();
-    expect(fixture.nativeElement.textContent).toContain('La persona ya está inscrita en esta actividad.');
-    expect(servicio.crear).not.toHaveBeenCalled();
+    expect(servicio.crear).toHaveBeenCalledOnceWith(jasmine.objectContaining({ id_persona: 1, id_actividad: 10, id_actividad_sesion: 99 }));
     expect(servicio.actividad).not.toHaveBeenCalled();
   });
   it('conserva sesión validada y muestra inscripciones de actividad sin duplicarlas', async () => {

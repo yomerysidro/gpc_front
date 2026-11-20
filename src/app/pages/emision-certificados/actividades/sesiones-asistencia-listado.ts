@@ -22,7 +22,6 @@ export interface DatosAsistenciaContextual {
   participantes: readonly { id: number; nombres: string; apellidos: string; fechaInscripcion?: string | null }[];
   asistencias: readonly RegistroEmision[];
   soloSeleccionados?: boolean;
-  incluirCandidatos?: boolean;
 }
 
 /** Modelo de presentación exclusivo de estas pestañas. Las claves CRUD no cambian. */

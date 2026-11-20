@@ -42,7 +42,7 @@
             @for (sesion of sesiones(); track sesion['id_actividad_sesion']) {
               <li class="tarjeta-sesion" [attr.data-sesion-id]="sesion['id_actividad_sesion']" [attr.data-actividad-id]="actual.id_actividad">
                 @let estadoSesion = sesionFinalizada(sesion) ? 'Finalizada' : sesion['estado'] || 'No disponible';
-                <div class="titulo-panel"><div class="identidad-sesion"><small class="numero-sesion">Sesión #{{ sesion['numero_sesion'] ?? sesion['id_actividad_sesion'] }}</small><h3>{{ sesion['nombre'] || 'Nombre no disponible' }}</h3></div><span class="badge" [class.badge-exito]="estadoSesion === 'Finalizada'" [attr.data-estado]="estadoSesion">{{ estadoSesion }}</span></div>
+                <div class="titulo-panel"><div class="identidad-sesion"><small class="numero-sesion">Sesión #{{ sesion['numero_sesion'] }}</small><h3>{{ sesion['nombre'] || 'Nombre no disponible' }}</h3></div><span class="badge" [class.badge-exito]="estadoSesion === 'Finalizada'" [attr.data-estado]="estadoSesion">{{ estadoSesion }}</span></div>
                 <p>{{ fecha($any(sesion['fecha'])) }} · {{ sesion['hora_inicio'] || 'Hora no disponible' }} – {{ sesion['hora_fin'] || 'Hora no disponible' }}</p>
                 @if (capacidadSesion(sesion['id_actividad_sesion'])?.contadores; as c) {
                   <small class="resumen-sesion">{{ c.participantes_sesion ?? 'Sin dato de' }} participantes · {{ c.presentes ?? 'Sin dato de' }} {{ c.presentes === 1 ? 'presente' : 'presentes' }} · {{ c.ausentes ?? 'Sin dato de' }} {{ c.ausentes === 1 ? 'ausente' : 'ausentes' }}</small>
@@ -50,7 +50,7 @@
                 <nav class="acciones-sesion" [attr.aria-label]="'Opciones de ' + (sesion['nombre'] || 'sesión sin nombre')">
                   <button class="btn" type="button" title="Detalle de sesión" aria-label="Detalle de sesión" [disabled]="panelOcupado()" (click)="abrirPanel('detalle', sesion)"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button>
                   @if (auth?.tienePermiso('ponentes-firmantes.ver')) { <button class="btn" type="button" title="Asignar ponentes" aria-label="Asignar ponentes" [disabled]="panelOcupado()" (click)="abrirPanel('ponentes', sesion)"><span class="material-symbols-outlined" aria-hidden="true">co_present</span></button> }
-                  @if (auth?.tienePermiso('participantes.crear')) { <button class="btn" type="button" title="Inscribir participante en la actividad" aria-label="Inscribir participante" [disabled]="panelOcupado()" (click)="abrirInscripcion(sesion)"><span class="material-symbols-outlined" aria-hidden="true">how_to_reg</span></button> }
+                  @if (auth?.tienePermiso('participantes.crear')) { <button class="btn" type="button" title="Inscribir participante en la sesión" aria-label="Inscribir participante" [disabled]="panelOcupado()" (click)="abrirInscripcion(sesion)"><span class="material-symbols-outlined" aria-hidden="true">how_to_reg</span></button> }
                   @if (auth?.tienePermiso('participantes.ver')) { <button class="btn asistencia-principal" type="button" title="Control de asistencia" aria-label="Asistencia de sesión" [disabled]="panelOcupado()" (click)="abrirPanel('asistencia', sesion)"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span></button> }
                 </nav>
                 @if (!sesionFinalizada(sesion)) {
@@ -84,7 +84,7 @@
     @if (actividadContexto(); as actividad) {
       <app-ponentes-sesion-actividad
         [actividad]="actividad"
-        [sesion]="{ id_actividad_sesion: +$any(sesion['id_actividad_sesion']), numero: '' + (sesion['numero_sesion'] ?? sesion['id_actividad_sesion']), fecha: fecha($any(sesion['fecha'])) }" />
+        [sesion]="{ id_actividad_sesion: +$any(sesion['id_actividad_sesion']), numero: '' + (sesion['numero_sesion']), fecha: fecha($any(sesion['fecha'])) }" />
     }
   }
 </app-dialogo>
