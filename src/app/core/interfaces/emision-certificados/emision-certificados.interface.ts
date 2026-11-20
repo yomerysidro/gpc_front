@@ -120,7 +120,7 @@ export interface PaginaEmision<T> {
   readonly total: number;
 }
 export type FiltrosEmision = Readonly<Record<string, string | number | boolean | null | undefined>>;
-export interface OpcionRelacion { readonly id: number; readonly texto: string }
+export interface OpcionRelacion { readonly id: number; readonly texto: string; readonly fechaInicio?: string }
 
 /** Campos de person-workers/list; los nombres y el area se resuelven por sus APIs de lectura. */
 export interface TrabajadorEmision {

@@ -370,6 +370,7 @@ export class EmisionCertificadosService {
     return this.http.get<ApiResponse<readonly Record<string, string | number | null>[]>>(`${this.api}/${ruta.url}`, this.opciones())
       .pipe(map(respuesta => this.datos(respuesta).map(fila => ({
         id: Number(fila[ruta.clave]), texto: `#${fila[ruta.clave]} · ${fila[ruta.texto] ?? ''}`,
+        ...(campo === 'id_actividad' && typeof fila['fecha_inicio'] === 'string' ? { fechaInicio: fila['fecha_inicio'] } : {}),
       }))), catchError(error => this.error(error)));
   }
 

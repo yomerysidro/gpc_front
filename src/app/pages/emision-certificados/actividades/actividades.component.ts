@@ -43,7 +43,7 @@ export class ActividadesComponent {
       if (!/^[1-9]\d*$/.test(valor) || !Number.isSafeInteger(Number(valor))) return of({ cargando: false, error: 'El identificador de actividad no es válido.', actividad: null });
       return this.api.obtener('activity', Number(valor)).pipe(map(fila => {
         if (Number(fila['id_actividad']) !== Number(valor) || typeof fila['nombre'] !== 'string' || !fila['nombre'].trim()) throw new Error('Laravel no confirmó la actividad solicitada.');
-        return { cargando: false, error: null, actividad: { id_actividad: Number(fila['id_actividad']), nombre: fila['nombre'] } };
+        return { cargando: false, error: null, actividad: { id_actividad: Number(fila['id_actividad']), nombre: fila['nombre'], fecha_inicio: typeof fila['fecha_inicio'] === 'string' ? fila['fecha_inicio'] : null } };
       }), catchError((error: ErrorApi) => of({ cargando: false, error: error?.mensaje || aErrorApi(error).mensaje, actividad: null })),
         startWith({ cargando: true, error: null, actividad: null }));
     }),
