@@ -160,3 +160,14 @@
   .opciones-usuario { animation: none; }
   .flecha { transition: none; }
 }
+
+.aviso-sesion {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1200;
+  display: flex;
+  max-width: calc(100vw - 2rem);
+  padding: .75rem 1rem;
+  box-shadow: var(--sombra-md, 0 6px 20px #10254226);
+}

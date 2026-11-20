@@ -218,7 +218,7 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
       fixture.detectChanges();
       const selector = vista().querySelector<HTMLInputElement | HTMLSelectElement>('#' + clave + '-estado')!;
       expect(selector).not.toBeNull();
-      if (campo.tipo === 'boolean') {
+      if (campo.tipo === 'boolean' || clave === 'id_persona_documento') {
         expect((selector as HTMLSelectElement).selectedOptions[0].textContent?.trim()).toBe('Inactivo');
         expect(selector.tagName).toBe('SELECT');
       } else {
@@ -229,7 +229,7 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
       expect(control.value).toBe(valor);
       expect(control.valid).toBeTrue();
       control.setValue(null); expect(control.invalid).toBeTrue();
-      control.setValue('Otro estado'); expect(control.invalid).toBe(campo.tipo === 'boolean');
+      control.setValue('Otro estado'); expect(control.invalid).toBe(campo.tipo === 'boolean' || clave === 'id_persona_documento');
       control.setValue(null);
       componente.validar(); componente.ejecutar(); expect(servicio.actualizar).not.toHaveBeenCalled();
     });
@@ -251,18 +251,21 @@ describe('CRUD de Gestion aislado de Laravel y Neon', () => {
     expect(servicio.actualizar).toHaveBeenCalledOnceWith(4, { nombre: 'DNI', estado: false });
   });
 
-  it('Documentos conserva ambas relaciones, muestra nombres y envía Estado como texto', () => {
+  it('Documentos muestra solo a la persona vinculada y conserva el estado seleccionado', () => {
     permisos.set(['personas.verpersonas', 'personas.editar', 'tipos-documento.ver']);
     const actual = { id_persona_documento: 6, id_persona: 2, id_tipo_documento: 3, numero_documento: '12345678', estado: 'Inactivo' };
     servicio.obtener.and.returnValue(of(actual));
     servicio.listar.and.returnValue(of([]));
     fixture.componentRef.setInput('clavePrimaria', 'id_persona_documento'); fixture.detectChanges();
-    componente.abrirFormulario('editar', actual); opcionesPersona();
+    componente.abrirFormulario('editar', actual);
+    http.expectOne(r => r.url.endsWith('/persons/detail/2')).flush({ success: true, message: '', data: { id_persona: 2, nombres: 'Persona', apellido_paterno: 'del test' } });
+    http.expectNone(r => r.url.endsWith('/persons/list'));
     http.expectOne(r => r.url.endsWith('/document-types/list')).flush({ success: true, message: '', data: [{ id_tipo_documento: 3, nombre: 'DNI', estado: true }] });
     fixture.detectChanges();
     expect(vista().querySelector<HTMLSelectElement>('#id_persona_documento-id_persona')?.selectedOptions[0].textContent?.trim()).toBe('Persona del test');
     expect(vista().querySelector<HTMLSelectElement>('#id_persona_documento-id_tipo_documento')?.selectedOptions[0].textContent?.trim()).toBe('DNI');
-    expect(vista().querySelector<HTMLInputElement>('#id_persona_documento-estado')?.value).toBe('Inactivo');
+    expect(vista().querySelector<HTMLSelectElement>('#id_persona_documento-id_persona')?.options.length).toBe(1);
+    expect(vista().querySelector<HTMLSelectElement>('#id_persona_documento-estado')?.selectedOptions[0].textContent).toContain('Inactivo');
     componente.validar(); componente.ejecutar();
     expect(servicio.actualizar).toHaveBeenCalledOnceWith(6, { id_persona: 2, id_tipo_documento: 3, numero_documento: '12345678', estado: 'Inactivo' });
   });

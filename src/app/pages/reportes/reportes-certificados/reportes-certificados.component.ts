@@ -1,3 +1,4 @@
+import { puedeConsultarReporte } from '../reportes.utils';
 import { afterNextRender, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -32,7 +33,7 @@ export class ReportesCertificadosComponent {
   constructor() { afterNextRender(() => { this.cargarTipos(); this.consultar(); }); }
 
   cargarTipos(page = 1): void {
-    if (!this.auth.tienePermiso('reportes.ver') || !this.auth.tienePermiso('emision.ver') || this.cargandoTipos()) return;
+    if (!this.auth.tienePermiso('reportes.ver') || !puedeConsultarReporte(this.auth, 'emision.ver') || this.cargandoTipos()) return;
     this.cargandoTipos.set(true); this.errorTipos.set('');
     this.servicio.tipos(page).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: pagina => { this.catalogo.set(pagina); this.cargandoTipos.set(false); },
@@ -51,7 +52,7 @@ export class ReportesCertificadosComponent {
   cargar(page: number): void {
     if (this.cargando() || this.exportando()) return;
     this.error.set(''); this.errorExportacion.set(''); this.pagina.set(null); this.consultado.set(true);
-    if (!this.auth.tienePermiso('reportes.ver') || !this.auth.tienePermiso('emision.ver')) { this.error.set('Necesitas los permisos reportes.ver y emision.ver para consultar los certificados.'); return; }
+    if (!this.auth.tienePermiso('reportes.ver') || !puedeConsultarReporte(this.auth, 'emision.ver')) { this.error.set('Necesitas los permisos reportes.ver y emision.ver para consultar los certificados.'); return; }
     this.cargando.set(true);
     this.servicio.certificadosReporte(page, this.aplicado).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: pagina => { this.pagina.set(pagina); this.cargando.set(false); },
@@ -77,8 +78,10 @@ export class ReportesCertificadosComponent {
   }
   nombreTipo(id: number): string { return this.tiposDisponibles().find(tipo => tipo.id_tipo_certificado === id)?.nombre_tipo ?? 'Nombre no incluido en esta página de tipos'; }
   conFecha(): number { return this.pagina()?.resumen['con_fecha_emision'] ?? 0; }
+  puedeExportar(): boolean { return puedeConsultarReporte(this.auth, 'reportes.exportar'); }
+
   exportar(): void {
-    if (!this.auth.tienePermiso('reportes.exportar') || this.cargando() || this.exportando() || !this.pagina()?.total) return;
+    if (!puedeConsultarReporte(this.auth, 'reportes.exportar') || this.cargando() || this.exportando() || !this.pagina()?.total) return;
     this.exportando.set(true); this.errorExportacion.set('');
     this.servicio.exportar('certificados', this.aplicado).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: archivo => { descargarArchivo('reporte-certificados.csv', archivo); this.exportando.set(false); },

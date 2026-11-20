@@ -1,3 +1,4 @@
+import { puedeConsultarReporte } from '../reportes.utils';
 import { afterNextRender, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -46,7 +47,7 @@ export class IndicadoresGeneralesComponent {
     this.consultado.set(true);
     const tarjetas: readonly TarjetaIndicador[] = this.tarjetasIniciales().map(item => ({
       ...item,
-      estado: this.auth.tienePermiso('reportes.ver') && this.auth.tienePermiso(item.permiso) ? 'cargando' : 'sin-permiso',
+      estado: this.auth.tienePermiso('reportes.ver') && puedeConsultarReporte(this.auth, item.permiso) ? 'cargando' : 'sin-permiso',
     }));
     this.indicadores.set(tarjetas);
     this.cargando.set(tarjetas.some(item => item.estado === 'cargando'));
@@ -70,7 +71,7 @@ export class IndicadoresGeneralesComponent {
     const definiciones = [
       { clave: 'actividades' as const, permiso: 'actividades.ver', nombre: 'Actividades por fecha de inicio' },
       { clave: 'certificados' as const, permiso: 'emision.ver', nombre: 'Certificados por fecha de emisión registrada' },
-    ].filter(item => this.auth.tienePermiso('reportes.ver') && this.auth.tienePermiso(item.permiso));
+    ].filter(item => this.auth.tienePermiso('reportes.ver') && puedeConsultarReporte(this.auth, item.permiso));
     if (!definiciones.length) { this.errorAnio.set('No tienes permisos para consultar las series de actividades o certificados.'); return; }
     this.cargandoSeries.set(true);
     forkJoin(definiciones.map(item => this.servicio.serie(item.clave, this.anio).pipe(
@@ -84,10 +85,12 @@ export class IndicadoresGeneralesComponent {
     return maximo ? total / maximo * 100 : 0;
   }
 
+  autorizadoExportar(): boolean { return puedeConsultarReporte(this.auth, 'reportes.exportar'); }
+
   puedeExportar(): boolean { return !this.cargando() && this.indicadores().some(item => item.estado === 'exito'); }
 
   exportar(): void {
-    if (!this.auth.tienePermiso('reportes.exportar') || !this.puedeExportar()) return;
+    if (!this.autorizadoExportar() || !this.puedeExportar()) return;
     const filas = this.indicadores().filter(item => item.estado === 'exito');
     descargarCsv('indicadores-registros.csv', ['Indicador', 'Total', 'Criterio y alcance', 'Filtros'],
       filas.map(item => [item.nombre, item.valor, item.regla, 'Sin filtros; alcance autorizado del usuario']));

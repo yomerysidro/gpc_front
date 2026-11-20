@@ -1,5 +1,6 @@
-import { Component, computed, ElementRef, HostListener, inject, input, signal, viewChild } from '@angular/core';
-import { finalize } from 'rxjs';
+import { Component, computed, DestroyRef, ElementRef, HostListener, inject, input, signal, viewChild } from '@angular/core';
+import { finalize, timer } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { MainLayoutComponent } from '../main-layout/main-layout.component';
 import { NavigationItem } from '../../../core/interfaces/navigation/navigation-item.interface';
@@ -47,6 +48,12 @@ export class PrivateLayoutComponent {
       icon: modulo.imagen,
     })),
   );
+
+  constructor() {
+    if (this.inicioSesionExitoso()) {
+      timer(4500).pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe(() => this.inicioSesionExitoso.set(false));
+    }
+  }
 
   protected cerrarSesion(): void {
     if (this.saliendo()) return;

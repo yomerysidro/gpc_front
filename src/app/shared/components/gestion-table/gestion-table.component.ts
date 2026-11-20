@@ -147,8 +147,13 @@ export class GestionTableComponent implements OnInit {
     return campo.tipo === 'boolean'
       ? [{ etiqueta: 'Activo', valor: true }, { etiqueta: 'Inactivo', valor: false }]
       : [...new Set([...this.registros().map(registro => registro[campo.clave]), this.seleccion?.[campo.clave]]
-        .filter((valor): valor is string => typeof valor === 'string' && valor.trim().length > 0))]
+        .filter((valor): valor is string => typeof valor === 'string' && valor.trim().length > 0)
+        .concat(this.clavePrimaria() === 'id_persona_documento' ? ['Activo', 'Inactivo'] : []))]
         .map(valor => ({ etiqueta: valor, valor }));
+  }
+
+  protected personaDocumentoFija(): boolean {
+    return this.modo() === 'editar' && this.clavePrimaria() === 'id_persona_documento';
   }
 
   protected relacionActual(campo: GestionCampo): unknown {
@@ -210,9 +215,10 @@ export class GestionTableComponent implements OnInit {
     const controles: Record<string, FormControl> = {};
     for (const campo of this.config().campos) {
       const validadores = [];
-      if (campo.clave === 'estado' && campo.tipo === 'boolean') validadores.push((control: AbstractControl) =>
+      if (campo.clave === 'estado' && (campo.tipo === 'boolean' || this.clavePrimaria() === 'id_persona_documento')) validadores.push((control: AbstractControl) =>
         this.estados(campo).some(opcion => opcion.valor === control.value) ? null : { estado: true });
       if (campo.obligatorio && campo.tipo !== 'boolean') validadores.push(Validators.required);
+      if (campo.clave === 'correo') validadores.push(Validators.email);
       if (campo.tipo === 'text' && campo.obligatorio) validadores.push(Validators.pattern(/\S/));
       if (campo.maximo) validadores.push(Validators.maxLength(campo.maximo));
       if (campo.tipo === 'number') validadores.push(Validators.min(1), Validators.pattern(/^\d+$/));
@@ -221,8 +227,9 @@ export class GestionTableComponent implements OnInit {
         const fecha = new Date(`${c.value}T00:00:00Z`);
         return !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === c.value ? null : { fecha: true };
       });
-      controles[campo.clave] = new FormControl(campo.relacion ? null : campo.tipo === 'boolean' ? true : '', validadores);
+      controles[campo.clave] = new FormControl(campo.relacion ? null : campo.tipo === 'boolean' ? true : campo.clave === 'estado' && this.clavePrimaria() === 'id_persona_documento' ? 'Activo' : '', validadores);
     }
+    if (this.personaDocumentoFija()) controles['id_persona'].disable();
     this.formulario = new FormGroup(controles, { validators: grupo => {
       const inicio = grupo.get('fecha_inicio')?.value || grupo.get('fecha_ingreso')?.value;
       const fin = grupo.get('fecha_fin')?.value;
@@ -236,6 +243,14 @@ export class GestionTableComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef), finalize(() => this.cargandoDetalle.set(false)),
       ).subscribe({ next: r => {
         this.seleccion = { ...r, [this.clavePrimaria()]: registro[this.clavePrimaria()] };
+        if (this.personaDocumentoFija() && this.auth.tienePermiso('personas.verpersonas')) {
+          this.relaciones['id_persona'].obtener(Number(r['id_persona'])).pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({ next: persona => {
+              if (this.seleccion?.['id_persona'] === persona['id_persona'] && this.personaDocumentoFija()) {
+                this.opcionesRelacion.update(opciones => ({ ...opciones, id_persona: [persona] }));
+              }
+            }, error: () => {} });
+        }
         for (const campo of this.config().campos) {
           let valor = r[campo.clave] ?? '';
           if (campo.tipo === 'date' && typeof valor === 'string') valor = valor.slice(0, 10);
@@ -248,7 +263,7 @@ export class GestionTableComponent implements OnInit {
   private cargarRelaciones(): void {
     const generacion = ++this.generacion;
     this.opcionesRelacion.set({}); this.erroresRelacion.set({});
-    const campos = this.config().campos.filter(c => c.relacion);
+    const campos = this.config().campos.filter(c => c.relacion && !(c.clave === 'id_persona' && this.personaDocumentoFija()));
     let pendientes = campos.length;
     this.cargandoRelaciones.set(pendientes > 0);
     for (const campo of campos) {
@@ -279,7 +294,7 @@ export class GestionTableComponent implements OnInit {
     this.formulario.markAllAsTouched();
     this.errorOperacion.set('');
     if (this.formulario.invalid || this.relacionesInvalidas() || this.cargandoDetalle() || this.cargandoRelaciones() || this.errorDetalle()) return;
-    const valores = this.formulario.value;
+    const valores = this.formulario.getRawValue();
     const inicio = valores['fecha_inicio'] || valores['fecha_ingreso'];
     if (inicio && valores['fecha_fin'] && valores['fecha_fin'] < inicio) {
       this.errorOperacion.set('La fecha final debe ser igual o posterior a la fecha inicial.'); return;
