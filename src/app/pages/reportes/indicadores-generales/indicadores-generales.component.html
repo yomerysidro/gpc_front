@@ -7,7 +7,7 @@
   <div class="acciones" aria-label="Acciones de indicadores">
     <button class="btn btn-primario" (click)="consultar()" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>Consultar</button>
     <button class="btn btn-secundario" (click)="consultar()" [disabled]="cargando()"><span class="material-symbols-outlined" aria-hidden="true">tune</span>Actualizar</button>
-    @if (auth.tienePermiso('reportes.exportar')) {
+    @if (autorizadoExportar()) {
       <button class="btn btn-exportar" (click)="exportar()" [disabled]="!puedeExportar()"><span class="material-symbols-outlined" aria-hidden="true">download</span>Exportar totales CSV</button>
     }
   </div>

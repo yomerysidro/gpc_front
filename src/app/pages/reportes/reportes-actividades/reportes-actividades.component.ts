@@ -1,3 +1,4 @@
+import { puedeConsultarReporte } from '../reportes.utils';
 import { afterNextRender, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -36,7 +37,7 @@ export class ReportesActividadesComponent {
   cargar(page: number): void {
     if (this.cargando() || this.exportando()) return;
     this.error.set(''); this.errorExportacion.set(''); this.pagina.set(null);
-    if (!this.auth.tienePermiso('reportes.ver') || !this.auth.tienePermiso('actividades.ver')) {
+    if (!this.auth.tienePermiso('reportes.ver') || !puedeConsultarReporte(this.auth, 'actividades.ver')) {
       this.error.set('Necesitas los permisos reportes.ver y actividades.ver para consultar este reporte.'); return;
     }
     this.cargando.set(true);
@@ -57,9 +58,11 @@ export class ReportesActividadesComponent {
   }
   hayFiltros(): boolean { return Object.values(this.aplicado).some(valor => valor !== ''); }
 
+  puedeExportar(): boolean { return puedeConsultarReporte(this.auth, 'reportes.exportar'); }
+
   exportar(): void {
     const pagina = this.pagina();
-    if (!this.auth.tienePermiso('reportes.exportar') || !pagina?.total || this.cargando() || this.exportando()) return;
+    if (!puedeConsultarReporte(this.auth, 'reportes.exportar') || !pagina?.total || this.cargando() || this.exportando()) return;
     this.exportando.set(true); this.errorExportacion.set('');
     this.reportes.exportar('actividades', this.aplicado).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: archivo => { descargarArchivo('reporte-actividades.csv', archivo); this.exportando.set(false); },

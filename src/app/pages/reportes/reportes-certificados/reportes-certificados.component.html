@@ -12,7 +12,7 @@
   @if (cargando()) { <p class="estado" role="status">Consultando certificados…</p> }
   @if (pagina(); as resultado) {
     <section class="panel" aria-label="Resultado del reporte">
-      <div class="encabezado-resultados"><div><h2><span class="total-resultados">{{ resultado.total }}</span> certificados</h2><p class="subtitulo">{{ resultado.resumen['personas_unicas'] }} beneficiarios únicos</p></div>@if (auth.tienePermiso('reportes.exportar')) { <button class="btn btn-exportar" (click)="exportar()" [disabled]="!resultado.total || exportando()"><span class="material-symbols-outlined" aria-hidden="true">download</span>{{ exportando() ? 'Exportando…' : 'Exportar CSV' }}</button> }</div>
+      <div class="encabezado-resultados"><div><h2><span class="total-resultados">{{ resultado.total }}</span> certificados</h2><p class="subtitulo">{{ resultado.resumen['personas_unicas'] }} beneficiarios únicos</p></div>@if (puedeExportar()) { <button class="btn btn-exportar" (click)="exportar()" [disabled]="!resultado.total || exportando()"><span class="material-symbols-outlined" aria-hidden="true">download</span>{{ exportando() ? 'Exportando…' : 'Exportar CSV' }}</button> }</div>
       @if (errorExportacion()) { <p class="error" role="alert">{{ errorExportacion() }}</p> }
       @if (!resultado.data.length) { <p class="estado" role="status">No hay certificados para esta consulta.</p> }
       @else {

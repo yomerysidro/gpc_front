@@ -61,6 +61,7 @@ export class SessionAuthService extends AuthService {
           if (error.status === 401) {
             return of<ResultadoLogin>({
               tipo: 'rechazado',
+              ...(typeof cuerpo?.intentosRestantes === 'number' ? { intentosRestantes: cuerpo.intentosRestantes } : {}),
               mensaje: cuerpo?.message === 'Usuario desactivado'
                 ? 'Usuario desactivado. Contacta con el administrador.'
                 : 'Correo electrónico o contraseña incorrectos.',
@@ -70,6 +71,7 @@ export class SessionAuthService extends AuthService {
           if (error.status === 423) {
             return of<ResultadoLogin>({
               tipo: 'bloqueado',
+              ...(typeof cuerpo?.bloqueoMinutos === 'number' ? { bloqueoMinutos: cuerpo.bloqueoMinutos } : {}),
               mensaje: cuerpo?.message ?? 'Cuenta bloqueada',
               bloqueadoHasta: cuerpo?.bloqueadoHasta ?? null,
             });

@@ -69,10 +69,12 @@ export interface ResetPasswordRequest {
 export interface AuthErrorResponse {
   readonly message: string;
   readonly bloqueadoHasta?: string;
+  readonly intentosRestantes?: number;
+  readonly bloqueoMinutos?: number;
 }
 
 /** Resultado de login() para la página: 401 → rechazado, 423 → bloqueado. */
 export type ResultadoLogin =
   | { readonly tipo: 'exito' }
-  | { readonly tipo: 'rechazado'; readonly mensaje: string }
-  | { readonly tipo: 'bloqueado'; readonly mensaje: string; readonly bloqueadoHasta: string | null };
+  | { readonly tipo: 'rechazado'; readonly mensaje: string; readonly intentosRestantes?: number }
+  | { readonly tipo: 'bloqueado'; readonly mensaje: string; readonly bloqueadoHasta: string | null; readonly bloqueoMinutos?: number };

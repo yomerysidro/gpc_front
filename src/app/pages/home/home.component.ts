@@ -1,3 +1,4 @@
+import { puedeConsultarReporte } from '../reportes/reportes.utils';
 import { afterNextRender, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DecimalPipe } from '@angular/common';
@@ -35,7 +36,7 @@ export class HomeComponent {
       { clave: 'participaciones', nombre: 'Participaciones registradas', icono: 'groups', permiso: 'participantes.ver' },
       { clave: 'asistencias', nombre: 'Asistencias registradas', icono: 'how_to_reg', permiso: 'participantes.ver' },
     ];
-    const tarjetas: Indicador[] = definiciones.filter(item => this.auth.tienePermiso(item.permiso))
+    const tarjetas: Indicador[] = definiciones.filter(item => puedeConsultarReporte(this.auth, item.permiso))
       .map(item => ({ ...item, valor: null, estado: 'cargando' }));
     this.indicadores.set(tarjetas);
     for (const item of tarjetas) {

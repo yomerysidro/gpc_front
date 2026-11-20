@@ -28,7 +28,7 @@
       }
       <p class="subtitulo">El rango incluye ambos extremos de la fecha de inicio. Todos los filtros, el total y la paginación se calculan en el servidor.</p>
       <div class="acciones">
-        @if (auth.tienePermiso('reportes.exportar')) { <button class="btn btn-exportar" (click)="exportar()" [disabled]="!resultado.total || exportando()"><span class="material-symbols-outlined" aria-hidden="true">download</span>{{ exportando() ? 'Exportando…' : 'Exportar CSV completo' }}</button> }
+        @if (puedeExportar()) { <button class="btn btn-exportar" (click)="exportar()" [disabled]="!resultado.total || exportando()"><span class="material-symbols-outlined" aria-hidden="true">download</span>{{ exportando() ? 'Exportando…' : 'Exportar CSV completo' }}</button> }
         <small>Incluye todos los resultados con los filtros aplicados.</small>
       </div>
       @if (errorExportacion()) { <p class="error" role="alert">{{ errorExportacion() }}</p> }
