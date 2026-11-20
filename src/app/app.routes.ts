@@ -5,7 +5,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { cambiosPendientesGuard } from './core/guards/cambios-pendientes.guard';
 import { guestGuard } from './core/guards/guest.guard';
 import { inicioGuard } from './core/guards/inicio.guard';
-import { permissionGuard } from './core/guards/permission.guard';
+import { accesoGrupoGuard, permissionGuard } from './core/guards/permission.guard';
 import { PrivateLayoutComponent } from './components/layouts/private-layout/private-layout.component';
 import { LoginComponent } from './pages/autenticacion/login/login.component';
 import { RecuperarPasswordComponent } from './pages/autenticacion/recuperar-password/recuperar-password.component';
@@ -90,6 +90,7 @@ export const routes: Routes = [
     path: '',
     component: PrivateLayoutComponent,
     canActivate: [authGuard],
+    canActivateChild: [accesoGrupoGuard],
     children: [
       { path: 'inicio', component: HomeComponent },
       { path: 'pendientes/documentos-firmar/:id', canActivate: [permissionGuard], data: { titulo: 'Detalle del certificado', permiso: 'emision.ver' },

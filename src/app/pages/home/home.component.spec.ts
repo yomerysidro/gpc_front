@@ -32,8 +32,8 @@ describe('Dashboard institucional', () => {
     permisos.clear(); const f = iniciar();
     expect(conteo).not.toHaveBeenCalled();
     expect(f.componentInstance.indicadores()).toEqual([]);
-    expect(f.nativeElement.querySelectorAll('.accesos a').length).toBe(1);
-    expect(f.nativeElement.querySelector('.accesos a').getAttribute('href')).toBe('/portal-certificados');
+    expect(f.nativeElement.querySelectorAll('.accesos a').length).toBe(0);
+
   });
   it('un error no se representa como cero ni bloquea los demás indicadores', () => {
     conteo.and.callFake(clave => clave === 'certificados' ? throwError(() => new Error('No disponible')) : of(12));
