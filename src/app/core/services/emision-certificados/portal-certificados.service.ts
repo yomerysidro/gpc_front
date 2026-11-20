@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { Observable, throwError, timeout, map } from 'rxjs';
+import { Observable, throwError, timeout, map, catchError } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { ApiResponse } from '../../interfaces/api/api-response.interface';
 import { DocumentosDigitalesService } from './documentos-digitales.service';
@@ -17,6 +17,7 @@ export interface CertificadoPublico {
   readonly fecha: string | null;
   readonly fechaEtiqueta?: 'Fecha del documento' | 'Fecha de sesión';
   readonly urlPdf: string | null;
+  readonly vistaFirmasDisponible?: boolean;
   readonly tipo: string | null;
   readonly actividad: string | null;
   readonly sesion: string | null;
@@ -35,6 +36,7 @@ export interface CertificadoConsultaDni {
   readonly estado_disponibilidad: string;
   readonly disponible_rrhh: boolean;
   readonly pdf_publicado: boolean;
+  readonly vista_firmas_disponible?: boolean;
   readonly url_documento: string | null;
 }
 
@@ -65,6 +67,7 @@ export class PortalCertificadosService {
           fecha: [r.fecha_generacion, r.fecha_sesion].find(v => typeof v === 'string' && !Number.isNaN(Date.parse(v))) ?? null,
           fechaEtiqueta: r.fecha_generacion && !Number.isNaN(Date.parse(r.fecha_generacion)) ? 'Fecha del documento' as const : 'Fecha de sesión' as const,
           estadoPublico: r.estado_disponibilidad === 'Listo para entrega' ? 'Listo para entrega' as const : 'Disponible para consulta' as const,
+          ...(r.vista_firmas_disponible === true ? { vistaFirmasDisponible: true } : {}),
           urlPdf: r.pdf_publicado === true && r.disponible_rrhh === true ? this.urlPublica(r.url_documento, r.codigo_verificacion) : null,
         }));
       }));
@@ -86,7 +89,12 @@ export class PortalCertificadosService {
   archivo(certificado: CertificadoPublico): Observable<ArchivoPdf> {
     if (certificado.estado !== 'disponible' || !certificado.urlPdf) return throwError(() => ({ status: 403 }));
     // El servicio existente valida URL, código, contenido PDF y hash cuando está disponible.
-    return this.documentos.archivoPublico(certificado.urlPdf, certificado.codigo).pipe(timeout(60000));
+    const original = this.documentos.archivoPublico(certificado.urlPdf, certificado.codigo);
+    if (!certificado.vistaFirmasDisponible) return original;
+    return this.documentos.archivoPublico(certificado.urlPdf, certificado.codigo, true).pipe(
+      map(archivo => ({ ...archivo, vistaFirmas: true })),
+      catchError(() => original),
+    );
   }
 
   private proyectar(r: VerificacionDocumento): CertificadoPublico {
@@ -103,6 +111,7 @@ export class PortalCertificadosService {
       estado: !r.registro_encontrado ? 'no-encontrado' : anulado ? 'anulado' : !r.integridad_verificada ? 'integridad-no-verificada' : verificado ? 'disponible' : 'no-disponible',
       verificado,
       fecha: r.registro_encontrado ? fecha ?? null : null,
+      ...(r.vista_firmas_disponible === true ? { vistaFirmasDisponible: true } : {}),
       urlPdf: verificado && r.puede_ver_documento === true ? this.urlPublica(r.url_documento, r.codigo_verificacion) : null,
       tipo: r.registro_encontrado ? textoPublico(r.tipo_certificado) : null,
       actividad: r.registro_encontrado ? textoPublico(r.actividad) : null,

@@ -208,6 +208,21 @@ describe('Portal público sin autenticación', () => {
     c.volver(); f.detectChanges(); expect(revocar).toHaveBeenCalled();
     expect(f.nativeElement.querySelector('a[download]')).toBeNull(); f.destroy();
   });
+  it('muestra las firmas en la vista de consulta y conserva la descarga original', async () => {
+    const crearUrl = URL.createObjectURL.bind(URL);
+    const listo = new Promise<void>(resolve => {
+      spyOn(URL, 'createObjectURL').and.callFake(blob => { const url = crearUrl(blob); resolve(); return url; });
+    });
+    const f = crear(); const c = f.componentInstance as any;
+    consultar(c).flush({ success: true, data: { ...datos, vista_firmas_disponible: true } }); c.verCertificado();
+    const bytes = '%PDF-1.4\nvista con firmas';
+    http.expectOne(datos.url_documento + '&vista_firmas=1').flush(new Blob([bytes], { type: 'application/pdf' }));
+    await listo; await f.whenStable(); f.detectChanges();
+    expect(await c.archivo().blob.text()).toBe(bytes);
+    expect(f.nativeElement.querySelector('a[download]').textContent).toContain('Descargar PDF original');
+    expect(f.nativeElement.querySelector('a[download]').getAttribute('href')).toBe(datos.url_documento + '&descargar=1');
+    f.destroy();
+  });
   for (const status of [0, 401, 403, 404, 409, 422, 429, 500]) {
     it(`maneja HTTP ${status} sin filtrar errores internos ni redirigir al login`, () => {
       const f = crear(); const c = f.componentInstance as any;

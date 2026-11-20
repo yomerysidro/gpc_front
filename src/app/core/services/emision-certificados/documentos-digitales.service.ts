@@ -540,13 +540,13 @@ export class DocumentosDigitalesService {
       .pipe(timeout(90000), catchError(e => this.error(e)));
   }
 
-  archivoPublico(url: string, codigo: string): Observable<ArchivoPdf> {
+  archivoPublico(url: string, codigo: string, vistaFirmas = false): Observable<ArchivoPdf> {
     // Se acepta únicamente la URL que el contrato público devuelve para ese código.
     const ruta = `/api/certificados/verificar/${encodeURIComponent(codigo)}?archivo=1`;
     if (url !== ruta && url !== `${this.api}/certificados/verificar/${encodeURIComponent(codigo)}?archivo=1`) {
       return throwError(() => ({ status: 0, mensaje: 'La URL pública del PDF no corresponde al documento consultado.', errores: {} }));
     }
-    return this.pdf(`${this.api}/certificados/verificar/${encodeURIComponent(codigo)}?archivo=1`, false);
+    return this.pdf(`${this.api}/certificados/verificar/${encodeURIComponent(codigo)}?archivo=1${vistaFirmas ? '&vista_firmas=1' : ''}`, false);
   }
 
   private pdf(url: string, privado: boolean): Observable<ArchivoPdf> {

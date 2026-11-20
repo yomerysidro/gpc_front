@@ -121,8 +121,11 @@
         <p class="codigo">Código de verificación: {{ resultado()?.codigo }}</p>
         @if (cargandoPdf()) { <p role="status">Cargando el documento…</p> }
         @if (errorPdf()) { <p role="alert">{{ errorPdf() }}</p> }
-        @if (archivo(); as pdf) { <app-pdf-continuo [archivo]="pdf" [ajustarAncho]="true" (fallo)="falloVisor()" /> }
-        @if (urlDescarga(); as url) { <a class="btn principal descargar" [href]="resultado()?.urlPdf + '&descargar=1'" download="certificado.pdf">Descargar PDF</a> }
+        @if (archivo(); as pdf) {
+          @if (pdf.vistaFirmas) { <p>Vista de consulta con las imágenes registradas de los firmantes.</p> }
+          <app-pdf-continuo [archivo]="pdf" [ajustarAncho]="true" (fallo)="falloVisor()" />
+        }
+        @if (urlDescarga(); as url) { <a class="btn principal descargar" [href]="resultado()?.urlPdf + '&descargar=1'" download="certificado.pdf">{{ archivo()?.vistaFirmas ? 'Descargar PDF original' : 'Descargar PDF' }}</a> }
         @if (errorPdf() && !archivo() && resultado()?.urlPdf) { <button type="button" class="btn" (click)="verCertificado()">Reintentar PDF</button> }
       </section>
     }

@@ -27,8 +27,9 @@ export interface VerificacionDocumento {
   vigente: boolean;
   puede_ver_documento: boolean;
   url_documento: string | null;
+  vista_firmas_disponible?: boolean;
   emision_oficial_verificada: boolean;
   firma_verificada: boolean;
   motivos: readonly string[];
 }
-export interface ArchivoPdf { blob: Blob; nombre: string }
+export interface ArchivoPdf { blob: Blob; nombre: string; vistaFirmas?: boolean }
