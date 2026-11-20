@@ -5,6 +5,7 @@ import { provideClientHydration, withHttpTransferCacheOptions } from '@angular/p
 
 import { routes } from './app.routes';
 import { environment } from '../environments/environment';
+import { operacionAvisoInterceptor } from './core/interceptors/operacion-aviso.interceptor';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { AuthService } from './core/services/autenticacion/auth.service';
 import { SessionAuthService } from './core/services/autenticacion/session-auth.service';
@@ -17,7 +18,7 @@ export const appConfig: ApplicationConfig = {
     provideClientHydration(withHttpTransferCacheOptions({
       filter: request => !request.url.startsWith(environment.apiBaseUrl),
     })),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor, operacionAvisoInterceptor])),
     { provide: AuthService, useClass: SessionAuthService },
   ],
 };

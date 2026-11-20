@@ -42,3 +42,7 @@ export function estadoCertificado(valor: unknown): string {
   const estados: Record<string, string> = { PREPARADO: 'Preparado', PENDIENTE_FIRMA: 'Pendiente de firma', FIRMADO: 'Firmado', EMITIDO: 'Emitido', ANULADO: 'Anulado' };
   return typeof valor === 'string' && valor.trim() ? (estados[valor] ?? valor) : 'Estado no reconocido';
 }
+
+export function puedeConsultarReporte(auth: { tienePermiso(clave: string): boolean }, permiso: string): boolean {
+  return auth.tienePermiso(permiso) || auth.tienePermiso('gerencia.ver') && auth.tienePermiso('reportes.ver');
+}

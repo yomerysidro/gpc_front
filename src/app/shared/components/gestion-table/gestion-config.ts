@@ -44,7 +44,7 @@ export const GESTION_CONFIG: Record<string, GestionConfig> = {
       {
         "clave": "correo",
         "obligatorio": false,
-        "tipo": "text",
+        "tipo": "email",
         "maximo": 255
       },
       {

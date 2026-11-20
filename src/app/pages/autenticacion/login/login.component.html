@@ -8,10 +8,17 @@
         <div class="alert alert-error">
           <span class="material-symbols-outlined" aria-hidden="true">error</span>
           <span>
-            @if (error.tipo === 'bloqueado' && error.bloqueadoHasta) {
+            @if (error.tipo === 'bloqueado' && error.bloqueoMinutos) {
+              Tu cuenta se bloqueó por {{ error.bloqueoMinutos }} minutos.
+            } @else if (error.tipo === 'bloqueado' && error.bloqueadoHasta) {
               Cuenta bloqueada hasta {{ error.bloqueadoHasta | date: 'HH:mm' : zonaLima }}
             } @else {
               {{ error.mensaje }}
+              @if (error.tipo === 'rechazado' && error.intentosRestantes === 1) {
+                Te queda 1 intento. Si fallas, tu cuenta se bloqueará por 30 minutos.
+              } @else if (error.tipo === 'rechazado' && error.intentosRestantes) {
+                Te quedan {{ error.intentosRestantes }} intentos.
+              }
             }
           </span>
         </div>

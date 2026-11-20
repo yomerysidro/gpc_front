@@ -1,3 +1,4 @@
+import { puedeConsultarReporte } from '../reportes.utils';
 import { afterNextRender, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -33,8 +34,10 @@ export class ReportesAsistenciaComponent {
 
   constructor() { afterNextRender(() => { this.cargarActividades(); this.consultar(); }); }
 
+  puedeFiltrarActividades(): boolean { return puedeConsultarReporte(this.auth, 'actividades.ver'); }
+
   cargarActividades(page = 1, nuevaBusqueda = false): void {
-    if (this.cargandoActividades() || !this.auth.tienePermiso('reportes.ver') || !this.auth.tienePermiso('actividades.ver') || !this.auth.tienePermiso('participantes.ver')) return;
+    if (this.cargandoActividades() || !this.auth.tienePermiso('reportes.ver') || !puedeConsultarReporte(this.auth, 'actividades.ver') || !puedeConsultarReporte(this.auth, 'participantes.ver')) return;
     if (nuevaBusqueda) this.busquedaActividadesAplicada = this.buscarActividad.trim();
     this.cargandoActividades.set(true); this.errorCatalogo.set('');
     this.servicio.actividades(page, { desde: '', hasta: '', estado: '', q: this.busquedaActividadesAplicada }).pipe(takeUntilDestroyed(this.destroy)).subscribe({
@@ -81,7 +84,7 @@ export class ReportesAsistenciaComponent {
   cargar(page: number): void {
     if (this.cargando() || this.exportando()) return;
     this.error.set(''); this.errorExportacion.set(''); this.pagina.set(null);
-    if (!this.auth.tienePermiso('reportes.ver') || !this.auth.tienePermiso('participantes.ver')) { this.error.set('Necesitas los permisos reportes.ver y participantes.ver para consultar las asistencias.'); return; }
+    if (!this.auth.tienePermiso('reportes.ver') || !puedeConsultarReporte(this.auth, 'participantes.ver')) { this.error.set('Necesitas los permisos reportes.ver y participantes.ver para consultar las asistencias.'); return; }
     this.cargando.set(true);
     this.servicio.asistencias(page, this.aplicado).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: pagina => { this.pagina.set(pagina); this.cargando.set(false); },
@@ -98,8 +101,10 @@ export class ReportesAsistenciaComponent {
     this.buscarActividad = ''; this.busquedaActividadesAplicada = ''; this.cargarActividades(); this.consultar();
   }
 
+  puedeExportar(): boolean { return puedeConsultarReporte(this.auth, 'reportes.exportar'); }
+
   exportar(): void {
-    if (!this.auth.tienePermiso('reportes.exportar') || this.cargando() || this.exportando() || !this.pagina()?.total) return;
+    if (!puedeConsultarReporte(this.auth, 'reportes.exportar') || this.cargando() || this.exportando() || !this.pagina()?.total) return;
     this.exportando.set(true); this.errorExportacion.set('');
     this.servicio.exportar('asistencia', this.aplicado).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: archivo => { descargarArchivo('reporte-asistencia.csv', archivo); this.exportando.set(false); },

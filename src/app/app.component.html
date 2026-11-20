@@ -1,1 +1,9 @@
 <router-outlet />
+
+@if (avisos.mensaje(); as mensaje) {
+  <div class="alert alert-exito aviso-operacion" role="status" aria-live="polite">
+    <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+    <span>{{ mensaje }}</span>
+    <button type="button" class="btn btn-icono btn-sin-borde" aria-label="Cerrar aviso" (click)="avisos.cerrar()">×</button>
+  </div>
+}

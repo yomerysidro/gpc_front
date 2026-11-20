@@ -93,22 +93,26 @@
             <label [for]="clavePrimaria() + '-' + campo.clave">{{ etiqueta(campo) }}{{ campo.obligatorio ? ' *' : '' }}</label>
             @if (campo.relacion) {
               <select class="input" [id]="clavePrimaria() + '-' + campo.clave" [formControlName]="campo.clave">
-                <option [ngValue]="null">Sin seleccionar</option>
+                @if (!(campo.clave === 'id_persona' && personaDocumentoFija())) { <option [ngValue]="null">Sin seleccionar</option> }
                 @if (relacionSinOpcion(campo)) {
-                  <option [ngValue]="relacionActual(campo)">Relación actual</option>
+                  <option [ngValue]="relacionActual(campo)">{{ campo.clave === 'id_persona' && personaDocumentoFija() ? 'Persona #' + relacionActual(campo) : 'Relación actual' }}</option>
                 }
                 @for (opcion of opcionesRelacion()[campo.clave] || []; track opcion) {
                   <option [ngValue]="opcion[campo.clave]">{{ nombreRelacion(opcion, campo.clave) }}</option>
                 }
               </select>
               @if (erroresRelacion()[campo.clave]) { <p class="error-text" role="alert">{{ erroresRelacion()[campo.clave] }} En edición se conserva la relación actual si no la cambias.</p> }
-              @if (!cargandoRelaciones() && !erroresRelacion()[campo.clave] && !(opcionesRelacion()[campo.clave] || []).length) { <p class="form-ayuda">No hay registros disponibles en este catálogo.</p> }
+              @if (!(campo.clave === 'id_persona' && personaDocumentoFija()) && !cargandoRelaciones() && !erroresRelacion()[campo.clave] && !(opcionesRelacion()[campo.clave] || []).length) { <p class="form-ayuda">No hay registros disponibles en este catálogo.</p> }
+            } @else if (campo.clave === 'estado' && clavePrimaria() === 'id_persona_documento') {
+              <select class="input" [id]="clavePrimaria() + '-' + campo.clave" [formControlName]="campo.clave" required>
+                <option value="" disabled>Selecciona un estado</option>
+                @for (opcion of estados(campo); track opcion.valor) { <option [ngValue]="opcion.valor">{{ opcion.etiqueta }}</option> }
+              </select>
             } @else if (campo.clave === 'estado' && campo.tipo !== 'boolean') {
               <input class="input" [id]="clavePrimaria() + '-' + campo.clave" [formControlName]="campo.clave" [attr.maxlength]="campo.maximo ?? null" [attr.list]="clavePrimaria() + '-estados'" required />
               <datalist [id]="clavePrimaria() + '-estados'">
                 @for (opcion of estados(campo); track opcion.valor) { <option [value]="opcion.valor">{{ opcion.etiqueta }}</option> }
               </datalist>
-              <small class="form-ayuda">Laravel valida el estado. Las sugerencias corresponden a registros existentes.</small>
             } @else if (campo.clave === 'estado') {
               <select class="input" [id]="clavePrimaria() + '-' + campo.clave" [formControlName]="campo.clave" required>
                 <option [ngValue]="null" disabled>Selecciona un estado</option>

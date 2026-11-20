@@ -2,7 +2,7 @@
   <header><p class="eyebrow">REPORTES</p><h1>Asistencia</h1></header>
   <form class="panel filtros filtros-compactos" (ngSubmit)="consultar()" aria-label="Buscar asistencias">
     <label class="campo-busqueda">Buscar asistencia<div class="buscador"><span class="material-symbols-outlined" aria-hidden="true">search</span><input type="search" name="busqueda" [(ngModel)]="busqueda" maxlength="100" [disabled]="cargando() || exportando()" placeholder="Participante, actividad o sesión"></div></label>
-    @if (auth.tienePermiso('actividades.ver')) {
+    @if (puedeFiltrarActividades()) {
       <label>Actividad<select name="actividad" [(ngModel)]="actividad" (ngModelChange)="seleccionarActividad()" [disabled]="cargando() || exportando() || cargandoActividades() || cargandoSesiones()"><option value="">Todas las actividades</option>@for (opcion of opcionesActividades(); track opcion.id_actividad) { <option [value]="opcion.id_actividad">{{ opcion.nombre }}</option> }</select></label>
       @if (actividades(); as opciones) { @if (opciones.last_page > 1) { <div class="catalogo-paginacion"><small>Actividades {{ opciones.current_page }} de {{ opciones.last_page }}</small><button type="button" class="btn" (click)="cargarActividades(opciones.current_page - 1)" [disabled]="opciones.current_page <= 1 || cargandoActividades()">Anteriores</button><button type="button" class="btn" (click)="cargarActividades(opciones.current_page + 1)" [disabled]="opciones.current_page >= opciones.last_page || cargandoActividades()">Más actividades</button></div> } }
       @if (errorCatalogo()) { <p class="error" role="alert">{{ errorCatalogo() }} <button type="button" class="btn" (click)="cargarActividades()">Reintentar actividades</button></p> }
@@ -20,7 +20,7 @@
     <section class="panel" aria-label="Resultado del reporte">
       <div class="encabezado-resultados">
         <h2>Resultados de asistencia</h2>
-        @if (auth.tienePermiso('reportes.exportar')) { <button class="btn btn-exportar" (click)="exportar()" [disabled]="!resultado.total || exportando()"><span class="material-symbols-outlined" aria-hidden="true">download</span>{{ exportando() ? 'Exportando…' : 'Exportar CSV' }}</button> }
+        @if (puedeExportar()) { <button class="btn btn-exportar" (click)="exportar()" [disabled]="!resultado.total || exportando()"><span class="material-symbols-outlined" aria-hidden="true">download</span>{{ exportando() ? 'Exportando…' : 'Exportar CSV' }}</button> }
       </div>
       <div class="resumen-asistencia" aria-label="Resumen de asistencia">
         <article class="indicador-asistencia"><span class="icono-resumen material-symbols-outlined" aria-hidden="true">fact_check</span><div><span class="etiqueta-resumen">Asistencias</span><strong>{{ resultado.total }}</strong></div></article>
